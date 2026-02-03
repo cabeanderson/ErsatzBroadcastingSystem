@@ -1,0 +1,7 @@
+# Core Dependencies
+requests>=2.25.0
+
+# ErsatzTV API Client
+# Note: This project relies on 'etv_client' which is typically generated
+# from the ErsatzTV OpenAPI specification.
+# etv-client

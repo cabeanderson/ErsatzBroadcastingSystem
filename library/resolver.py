@@ -1,0 +1,119 @@
+"""
+Content Resolver - The Bridge to ErsatzTV.
+
+Translates internal content keys and collections into actual
+ErsatzTV search queries and registers them via the API.
+"""
+
+from typing import Any, Dict, Optional, Set, Union, Callable
+from etv_client.models import ContentSearch, ContentPlaylist
+from scripts.playout import ChannelLogger
+
+class ContentResolver:
+    def __init__(self, api: Any, build_id: str, registry: Dict[str, Any], logger: ChannelLogger):
+        self.api: Any = api
+        self.build_id: str = build_id
+        self.registry: Dict[str, Any] = registry # This IS the MASTER_SOURCES from sources.py
+        self.active_keys: Set[str] = set()
+        self.dynamic_registry: Dict[str, Dict[str, Any]] = {}
+        self.logger: ChannelLogger = logger
+
+    def _get_key_from_target(self, target: Any, boss: Optional[Any] = None) -> Any: # boss: DayDirector
+        """
+        Unpacks the target from the calendar.
+        If the calendar returns 'DBZ_TV', this finds it in sources.py.
+        """
+        # 1. If it's an object with a pick method (like OrderedCollection)
+        if hasattr(target, 'pick'):
+            return self._get_key_from_target(target.pick(boss), boss)
+
+        # 2. If it's a raw list
+        if isinstance(target, list):
+            return self._get_key_from_target(boss.pick(f"resolver_list_pick:{id(target)}", target) if boss else target[0], boss) # Fallback to first item if no boss
+
+        return target
+
+    def _register_with_etv(self, key: str) -> None:
+        """Uses the key to find the query/order and tells ErsatzTV."""
+        # Safety check: Ignore non-string keys (e.g. CommercialBreak objects)
+        if not isinstance(key, str):
+            return
+
+        if key in self.active_keys:
+            return
+
+        # Lookup in MASTER_SOURCES
+        data = self.registry.get(key)
+        if not data:
+            self.logger.warn(f"Key '{key}' not found in MASTER_SOURCES!")
+            return
+
+        # Default values
+        query = None
+        order = "Shuffle"
+        content_type = "search"
+        playlist_name = None
+        playlist_group = None
+
+        # 1. Handle Dictionary Definitions
+        if isinstance(data, dict):
+            content_type = data.get("type", "search")
+            
+            if content_type == "playlist":
+                playlist_name = data.get("playlist")
+                playlist_group = data.get("group")
+            
+            # Structure from playback_order(): {"query": "...", "order": "..."}
+            elif "query" in data:
+                query = data["query"]
+                order = data.get("order", "Shuffle")
+            
+            # Structure from legacy/marathon: {"content": ...}
+            elif "content" in data:
+                content = data["content"]
+                if isinstance(content, dict):
+                    query = content.get("query")
+                    order = content.get("order", "Shuffle")
+                else:
+                    query = content
+        
+        # 2. Handle String Definitions
+        elif isinstance(data, str):
+            query = data
+
+        # 3. Validation
+        if content_type == "playlist":
+            if playlist_name and playlist_group:
+                self.api.add_playlist(self.build_id, ContentPlaylist(key=key, playlist=playlist_name, playlist_group=playlist_group))
+                self.active_keys.add(key)
+                return
+            else:
+                self.logger.warn(f"Invalid playlist definition for '{key}': {data}")
+                return
+
+        if not isinstance(query, str):
+            self.logger.warn(f"Invalid query format for key '{key}'. Got: {type(data)}")
+            return
+
+        self.api.add_search(self.build_id, ContentSearch(key=key, query=query, order=order))
+        self.active_keys.add(key)
+
+    def resolve(self, target: Any, boss: Optional[Any] = None) -> str: # boss: DayDirector
+        key = self._get_key_from_target(target, boss)
+        self._register_with_etv(key)
+        return key
+
+    def get_query_data(self, key: str) -> Optional[Union[str, Dict[str, Any]]]:
+        """Retrieve raw query data for a key from the registry."""
+        if key in self.dynamic_registry:
+            return self.dynamic_registry[key]
+        return self.registry.get(key)
+
+    def register_dynamic_query(self, key: str, query: str, order: str = "Shuffle") -> None:
+        """Register a dynamically generated query with ErsatzTV."""
+        if key in self.active_keys:
+            return
+        self.api.add_search(self.build_id, ContentSearch(key=key, query=query, order=order))
+        self.active_keys.add(key)
+        # Store locally so we can inspect it later (e.g. for multi-part detection)
+        self.dynamic_registry[key] = {"query": query, "order": order}
