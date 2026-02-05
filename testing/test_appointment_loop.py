@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 from scripts.testing import install_mocks
 install_mocks()
 
-from scripts.logic.structures import AppointmentBlock
-from scripts.logic.sequencing import find_active_season
+from scripts.logic.structures import Program
+from scripts.logic.sequencing import resolve_scheduled_content
 
 # Mock registry for seasonal ramps
 MOCK_SEASONAL_RAMPS = {
@@ -27,7 +27,7 @@ class TestAppointmentLoop(unittest.TestCase):
     
     def setUp(self):
         # Patch registry in sequential module
-        self.patcher = patch('scripts.engines.sequential.registry')
+        self.patcher = patch('scripts.logic.sequencing.registry')
         self.mock_registry = self.patcher.start()
         self.mock_registry.SEASONAL_RAMPS = MOCK_SEASONAL_RAMPS
 
@@ -39,20 +39,24 @@ class TestAppointmentLoop(unittest.TestCase):
         # Show runs for 2 weeks (2 episodes)
         # Start: Jan 1, 2026
         # End: Jan 15, 2026
-        block = AppointmentBlock(
-            seasons=[("show_s1", 2, date(2026, 1, 1))],
-            loop=True,
-            loop_restart_season=None
+        block = Program(
+            name="Test",
+            content=None,
+            scheduling={
+                "seasons": [("show_s1", 2, date(2026, 1, 1))],
+                "loop": True,
+                "loop_restart_season": None
+            }
         )
         
         # During run
-        self.assertIsNotNone(find_active_season(block, date(2026, 1, 1)))
-        self.assertIsNotNone(find_active_season(block, date(2026, 1, 8)))
+        self.assertIsNotNone(resolve_scheduled_content(block, date(2026, 1, 1)))
+        self.assertIsNotNone(resolve_scheduled_content(block, date(2026, 1, 8)))
         
         # Immediately after run (Jan 15) -> Should loop to start
         # Cycle length = 14 days
         # Jan 15 is 14 days after Jan 1. 14 % 14 = 0. Should map to Jan 1.
-        result = find_active_season(block, date(2026, 1, 15))
+        result = resolve_scheduled_content(block, date(2026, 1, 15))
         self.assertIsNotNone(result)
         self.assertEqual(result[2], 1) # Episode 1
 
@@ -62,20 +66,24 @@ class TestAppointmentLoop(unittest.TestCase):
         # Start: Mar 1, 2026
         # End: Mar 15, 2026
         # Restart: Sept 1, 2026 (FALL)
-        block = AppointmentBlock(
-            seasons=[("show_s1", 2, date(2026, 3, 1))],
-            loop=True,
-            loop_restart_season="FALL"
+        block = Program(
+            name="Test",
+            content=None,
+            scheduling={
+                "seasons": [("show_s1", 2, date(2026, 3, 1))],
+                "loop": True,
+                "loop_restart_season": "FALL"
+            }
         )
         
         # During run
-        self.assertIsNotNone(find_active_season(block, date(2026, 3, 1)))
+        self.assertIsNotNone(resolve_scheduled_content(block, date(2026, 3, 1)))
         
         # After run, before restart (Summer) -> Should be None (Off-season)
-        self.assertIsNone(find_active_season(block, date(2026, 6, 1)))
+        self.assertIsNone(resolve_scheduled_content(block, date(2026, 6, 1)))
         
         # At restart (Sept 1) -> Should be Episode 1
-        result = find_active_season(block, date(2026, 9, 1))
+        result = resolve_scheduled_content(block, date(2026, 9, 1))
         self.assertIsNotNone(result)
         self.assertEqual(result[2], 1)
 
@@ -85,20 +93,24 @@ class TestAppointmentLoop(unittest.TestCase):
         # Duration: 2 weeks
         # End: Sept 15, 2026
         # Restart: Sept 1, 2027 (Next FALL)
-        block = AppointmentBlock(
-            seasons=[("show_s1", 2, date(2026, 9, 1))],
-            loop=True,
-            loop_restart_season="FALL"
+        block = Program(
+            name="Test",
+            content=None,
+            scheduling={
+                "seasons": [("show_s1", 2, date(2026, 9, 1))],
+                "loop": True,
+                "loop_restart_season": "FALL"
+            }
         )
         
         # Year 1 (2026) - Active
-        self.assertIsNotNone(find_active_season(block, date(2026, 9, 1)))
+        self.assertIsNotNone(resolve_scheduled_content(block, date(2026, 9, 1)))
         
         # Year 1 (2026) - Finished (Oct)
-        self.assertIsNone(find_active_season(block, date(2026, 10, 1)))
+        self.assertIsNone(resolve_scheduled_content(block, date(2026, 10, 1)))
         
         # Year 2 (2027) - Active again
-        result = find_active_season(block, date(2027, 9, 1))
+        result = resolve_scheduled_content(block, date(2027, 9, 1))
         self.assertIsNotNone(result)
         self.assertEqual(result[2], 1)
 

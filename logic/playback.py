@@ -5,6 +5,7 @@ Helpers for time calculations and boundary checks.
 """
 
 from typing import Any
+from datetime import timedelta
 
 def hour_in_window(hour: int, start: int, end: int) -> bool:
     """
@@ -45,3 +46,27 @@ def is_approaching_hour_boundary(context: Any, minutes_threshold: int = 13) -> b
     
     minutes_until_next_hour = 60 - minute
     return minutes_until_next_hour <= minutes_threshold
+
+def calculate_boundary_dt(context: Any, start_hour: int, end_hour: int) -> Any:
+    """
+    Calculates the datetime boundary for the end of a time slot.
+    Handles standard slots and slots that wrap over midnight.
+    
+    Args:
+        context: Current playout context
+        start_hour: Start hour of the slot (0-23)
+        end_hour: End hour of the slot (0-24)
+    """
+    boundary_dt = context.current_time.replace(minute=0, second=0, microsecond=0)
+    
+    if end_hour == 24:
+        boundary_dt = boundary_dt.replace(hour=0) + timedelta(days=1)
+    elif end_hour < start_hour:  # Wraps over midnight
+        if context.current_time.hour >= start_hour:
+            boundary_dt = boundary_dt.replace(hour=end_hour) + timedelta(days=1)
+        else:
+            boundary_dt = boundary_dt.replace(hour=end_hour)
+    else:
+        boundary_dt = boundary_dt.replace(hour=end_hour)
+        
+    return boundary_dt

@@ -23,19 +23,24 @@ class HolidayContext:
     
     def __init__(self, boss: Any):
         self.boss: Any = boss
-        self.envelope: Dict[str, float] = {
-            "halloween": boss.signal("HALLOWEEN", window=14),
-            "halloween_hangover": boss.signal("HALLOWEEN", window=1, hangover=True),
-            "christmas": boss.signal("CHRISTMAS", window=30),
-            "christmas_hangover": boss.signal("CHRISTMAS", window=3, hangover=True),
-            "thanksgiving": boss.signal("THANKSGIVING", window=7),
-            "new_years": boss.signal("NEW_YEARS_EVE", window=3),
-            "new_years_hangover": boss.signal("NEW_YEARS_DAY", window=1), # Jan 1 is the hangover
-            "valentines": boss.signal("VALENTINES_DAY", window=7),
-            "st_patricks": boss.signal("ST_PATRICKS_DAY", window=5),
-            "star_wars": boss.signal("STAR_WARS_DAY", window=2),
-            "july_4": boss.signal("JULY_4", window=5),
-        }
+        self.envelope: Dict[str, float] = {}
+        
+        # Dynamically load signals from profiles
+        for holiday_name, profile in HOLIDAY_PROFILES.items():
+            if holiday_name == "default":
+                continue
+                
+            key = holiday_name.lower()
+            # Main ramp
+            self.envelope[key] = boss.signal(holiday_name, window=profile.window)
+            
+            # Hangover ramp (if defined)
+            if profile.hangover_days > 0:
+                self.envelope[f"{key}_hangover"] = boss.signal(holiday_name, window=profile.hangover_days, hangover=True)
+        
+        # Manual aliases for backward compatibility if needed
+        self.envelope["new_years"] = self.envelope.get("new_years_eve", 0.0)
+        self.envelope["new_years_hangover"] = self.envelope.get("new_years_day", 0.0)
         
         # Convenience properties
         self.halloween = self.envelope.get("halloween", 0.0)

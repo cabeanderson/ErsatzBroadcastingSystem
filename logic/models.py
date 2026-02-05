@@ -68,35 +68,6 @@ class ContentItem:
         # Fallback to query inspection
         return is_movie_query(self.query)
 
-@dataclass
-class BrandedBlock:
-    """Branded programming block."""
-    name: str
-    content: Any
-    intro: Optional[str] = None
-    outro: Optional[str] = None
-    bumpers: Optional[str] = None
-    use_epg_group: bool = True
-    branding: Optional[Branding] = None
-    specific_intros: Optional[Dict[str, str]] = None
-    commercials_between_items: int = 0
-    commercial_content: Any = "commercials_spot"
-
-    def __post_init__(self):
-        """Apply branding profile defaults if specific fields are missing."""
-        if self.branding:
-            if self.intro is None: self.intro = self.branding.intro
-            if self.outro is None: self.outro = self.branding.outro
-            if self.bumpers is None: self.bumpers = self.branding.bumpers
-
-    def has_branding(self, sources: Dict[str, Any]) -> bool:
-        """Check if block has any active branding elements."""
-        # Otherwise check if source clips exist
-        has_intro = self.intro and self.intro in sources
-        has_outro = self.outro and self.outro in sources
-        has_bumpers = self.bumpers and self.bumpers in sources
-        return has_intro or has_outro or has_bumpers
-
 
 @dataclass
 class BlockProfile:
@@ -104,9 +75,11 @@ class BlockProfile:
     Defines how a time block blends default/seasonal/holiday content.
     
     Args:
-        max_ratio: Maximum ratio of alt content at peak (0.0-1.0)
-        bias: Adjust ratio up/down (-1.0 to +1.0)
-        hangover_ratio: Ratio during hangover (0.0-1.0, default: 0.5)
+        max_ratio: Maximum ratio of alt content at peak (0.0-1.0).
+        bias: Additive adjustment to the blend ratio. A positive bias
+              (e.g., 0.2) ensures a minimum chance (20%) of playing
+              holiday content even at the very start of a ramp-up period.
+        hangover_ratio: Ratio during hangover (0.0-1.0, default: 0.5).
     """
     max_ratio: float = 1.0
     bias: float = 0.0
@@ -125,6 +98,16 @@ class BlockProfile:
             return max(0.0, min(1.0, val))
             
         return 0.0
+
+@dataclass
+class HolidayProfile:
+    """
+    Defines the complete behavior of a holiday ramp-up.
+    Combines the time window with the slot-specific intensity profiles.
+    """
+    window: int
+    blocks: Dict[str, BlockProfile]
+    hangover_days: int = 0
 
 @dataclass
 class PlayOnce:

@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 from scripts.testing import install_mocks
 install_mocks()
 
-from scripts.logic.structures import AppointmentBlock
-from scripts.logic.sequencing import find_active_season
+from scripts.logic.structures import Program
+from scripts.logic.sequencing import resolve_scheduled_content
 
 # Mock registry for seasonal ramps
 MOCK_SEASONAL_RAMPS = {
@@ -44,24 +44,28 @@ class TestAppointmentRestart(unittest.TestCase):
         
         # Scenario: Show runs for 2 weeks in Spring 2026.
         # It should finish mid-March and NOT restart until Fall 2026.
-        block = AppointmentBlock(
-            seasons=[("show_s1", 2, date(2026, 3, 1))], # 2 episodes = 2 weeks
-            loop=True,
-            loop_restart_season="FALL" # Restart on Sept 1
+        block = Program(
+            name="Test Show",
+            content=None,
+            scheduling={
+                "seasons": [("show_s1", 2, date(2026, 3, 1))], # 2 episodes = 2 weeks
+                "loop": True,
+                "loop_restart_season": "FALL" # Restart on Sept 1
+            }
         )
         
         # 1. During the run (March 8) -> Active
-        active = find_active_season(block, date(2026, 3, 8))
+        active = resolve_scheduled_content(block, date(2026, 3, 8))
         self.assertIsNotNone(active, "Show should be active during run")
         print(f"✅ During run (Mar 8): Active (Ep {active[2]})")
 
         # 2. After run, before restart (June 1) -> Inactive (Gap)
-        inactive = find_active_season(block, date(2026, 6, 1))
+        inactive = resolve_scheduled_content(block, date(2026, 6, 1))
         self.assertIsNone(inactive, "Show should be inactive during summer gap")
         print(f"✅ During gap (Jun 1): Inactive (Waiting for Fall)")
 
         # 3. At restart date (Sept 1) -> Active (Loop Restart)
-        restart = find_active_season(block, date(2026, 9, 1))
+        restart = resolve_scheduled_content(block, date(2026, 9, 1))
         self.assertIsNotNone(restart, "Show should restart in Fall")
         self.assertEqual(restart[2], 1, "Should restart at Episode 1")
         print(f"✅ At restart (Sep 1): Active (Ep {restart[2]})")
@@ -76,13 +80,17 @@ class TestAppointmentRestart(unittest.TestCase):
         # Should finish Oct 2027.
         # Should restart S1 in Fall 2028.
         
-        block = AppointmentBlock(
-            seasons=[
-                ("lost_s1", 2, date(2026, 9, 1)),
-                ("lost_s2", 2, date(2027, 9, 1))
-            ],
-            loop=True,
-            loop_restart_season="FALL"
+        block = Program(
+            name="Lost",
+            content=None,
+            scheduling={
+                "seasons": [
+                    ("lost_s1", 2, date(2026, 9, 1)),
+                    ("lost_s2", 2, date(2027, 9, 1))
+                ],
+                "loop": True,
+                "loop_restart_season": "FALL"
+            }
         )
         
         # 1. Check end of final season (Sept 15, 2027) -> Active S2
@@ -90,11 +98,11 @@ class TestAppointmentRestart(unittest.TestCase):
         # Sept 15 is after S2 ends.
         
         # 2. Check gap year (Spring 2028) -> Inactive
-        inactive = find_active_season(block, date(2028, 3, 1))
+        inactive = resolve_scheduled_content(block, date(2028, 3, 1))
         self.assertIsNone(inactive, "Should be inactive in gap year before restart")
         
         # 3. Check restart (Sept 1, 2028) -> Active S1
-        restart = find_active_season(block, date(2028, 9, 1))
+        restart = resolve_scheduled_content(block, date(2028, 9, 1))
         self.assertIsNotNone(restart, "Should restart S1 in Fall 2028")
         self.assertEqual(restart[0], "lost_s1", "Should be Season 1")
         self.assertEqual(restart[2], 1, "Should be Episode 1")

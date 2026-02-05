@@ -28,18 +28,17 @@ from scripts.playout import (
     fill_until_time,
     play_item, play_with_fallback, fill_until_next_hour
 )
-from scripts.engines import run_marathon, play_branded_block
+from scripts.engines import run_marathon, play_block, play_program
 from scripts.library.sources import MASTER_SOURCES
 from scripts.logic.timeslots import (
     DEFAULT_TIMESLOTS, ALT_TIMESLOTS, 
     expand_timeslots, get_timeslot_map
 )
 from scripts.logic.models import (
-    BrandedBlock, Marathon, MarathonDefinition, BlockProfile, PlayOnce, Fallback, Swap, Feather, CommercialBreak
+    Marathon, MarathonDefinition, BlockProfile, HolidayProfile, PlayOnce, Fallback, Swap, Feather, CommercialBreak
 )
 from scripts.logic.profiles import HOLIDAY_PROFILES
-from scripts.logic.structures import AppointmentBlock, SeriesRelay, AppointmentLineup, AppointmentSlot, MarathonSequence
-from scripts.engines.sequential import play_appointment_block, play_series_relay, play_appointment_lineup
+from scripts.logic.structures import Block, Program, MarathonSequence
 from scripts.config import ENABLE_SEASONAL_BLOCKS
 
 # 5. SCHEDULE CONFIGURATION
@@ -62,6 +61,7 @@ class ScheduleConfig:
         fallback_content: Optional[Any] = None,
         commercials_between_items: int = 0,
         commercial_content: Any = "commercials_spot",
+        commercial_duration: int = 0,
     ):
         # Resolve timeslots map locally to handle single_play_slots resolution
         timeslots = get_timeslot_map(timeslot_preset, custom_timeslots)
@@ -96,8 +96,10 @@ class ScheduleConfig:
         self.filler_content = filler_content
         self.logger = logger or ChannelLogger() # Default to a basic logger
         self.fallback_content = fallback_content
-        self.commercials_between_items = commercials_between_items
+        # Support both old and new naming, prefer new
+        self.commercial_duration = commercial_duration or commercials_between_items
         self.commercial_content = commercial_content
+        self.commercials_between_items = self.commercial_duration # Backwards compat alias
 
 
 # 6. PRE-REGISTRATION (CRITICAL)
@@ -144,30 +146,22 @@ def pre_register_all_content(resolver: ContentResolver, config: ScheduleConfig) 
             walk(obj.secondary, depth + 1)
             return
 
-        if isinstance(obj, BrandedBlock):
-            walk(obj.content, depth + 1)
+        if isinstance(obj, Block):
+            walk(obj.items, depth + 1)
             if obj.intro: resolver.resolve(obj.intro)
             if obj.outro: resolver.resolve(obj.outro)
             if obj.bumpers: resolver.resolve(obj.bumpers)
-            if hasattr(obj, "specific_intros") and obj.specific_intros:
-                walk(obj.specific_intros, depth + 1)
             return
             
-        if isinstance(obj, AppointmentLineup):
-            for slot in obj.slots:
-                walk(slot.anchor, depth + 1)
-                walk(slot.fillers, depth + 1)
-            return
-
-        if isinstance(obj, AppointmentBlock):
-            for key, _, _ in obj.seasons:
-                walk(key, depth + 1)
-            walk(obj.off_season_content, depth + 1)
-            return
-
-        if isinstance(obj, SeriesRelay):
-            for key, _ in obj.items:
-                walk(key, depth + 1)
+        if isinstance(obj, Program):
+            walk(obj.content, depth + 1)
+            walk(obj.filler, depth + 1)
+            if obj.intro: resolver.resolve(obj.intro)
+            if obj.outro: resolver.resolve(obj.outro)
+            if obj.scheduling and "generated_queries" in obj.scheduling:
+                for key, query in obj.scheduling["generated_queries"].items():
+                    config.logger.debug(f"Pre-registering Program query: {key}")
+                    resolver.register_dynamic_query(key, query, order="Chronological")
             return
 
         # Skip seasonal block references (strings in seasonal_blocks dict)
@@ -267,11 +261,15 @@ def _resolve_day_schedule(config: ScheduleConfig, boss: DayDirector, holiday_ctx
             is_holiday_day = boss.has(holiday_label)
             
             # Resolve Profile Set
-            first_val = next(iter(config.block_profiles.values()), None)
-            if isinstance(first_val, dict):
-                profile_set = config.block_profiles.get(holiday_label, config.block_profiles.get("default", {}))
+            # Check if we have a HolidayProfile object or a raw dict
+            profile_obj = config.block_profiles.get(holiday_label, config.block_profiles.get("default"))
+            
+            if isinstance(profile_obj, HolidayProfile):
+                profile_set = profile_obj.blocks
+            elif isinstance(profile_obj, dict):
+                profile_set = profile_obj
             else:
-                profile_set = config.block_profiles
+                profile_set = {}
 
             for slot, content in holiday_sched.items():
                 if slot not in day_schedule:
@@ -290,6 +288,170 @@ def _resolve_day_schedule(config: ScheduleConfig, boss: DayDirector, holiday_ctx
                     day_schedule[slot] = content
                     
     return day_schedule
+
+def _play_schedule_slot(api: Any, build_id: str, context: Any, result: Any, current_slot_tuple: Tuple[int, int], day_schedule: Dict[Tuple[int, int], Any], config: ScheduleConfig, resolver: ContentResolver, boss: DayDirector, holiday_ctx: HolidayContext) -> Any:
+    """
+    Handles the playback logic for a single resolved schedule slot.
+    Dispatches to the correct engine (Block, Program, etc.) or plays simple content.
+    """
+    # Check for Block (Resolved)
+    if result.wrapper and isinstance(result.wrapper, Block):
+        return play_block(
+            api, build_id, context, result.wrapper, MASTER_SOURCES, config.logger,
+            current_slot_tuple[0], current_slot_tuple[1],
+            boss=boss,
+            holiday_ctx=holiday_ctx,
+            config=config
+        )
+
+    # Check for PlayOnce wrapper (Resolved)
+    if result.wrapper and isinstance(result.wrapper, PlayOnce):
+        # Play once
+        play_once = result.wrapper
+        
+        # Standard single item
+        real_result = resolve_target(play_once.content, boss, holiday_ctx, config, resolver, config.logger)
+        if real_result:
+            context = play_with_fallback(api, build_id, real_result.resolved_content, config.logger, context=context, count=1)
+        else:
+            config.logger.warn(f"Skipping PlayOnce slot {current_slot_tuple} due to resolution failure.")
+        
+        # Fill rest with next block
+        return handle_single_play_slot(
+            api, build_id, context, current_slot_tuple,
+            day_schedule, boss, holiday_ctx, config, resolver, config.logger
+        )
+
+    # Check for CommercialBreak wrapper (Resolved)
+    if result.wrapper and isinstance(result.wrapper, CommercialBreak):
+        cb = result.wrapper
+        # Resolve the content of the break (e.g. "commercials_spot")
+        cb_res = resolve_target(cb.content, boss, holiday_ctx, config, resolver, config.logger)
+        cb_key = cb_res.resolved_content
+        
+        if isinstance(cb_key, Fallback):
+            cb_key = cb_key.primary
+
+        target_dt = context.current_time + timedelta(seconds=cb.duration_seconds)
+        target_time_str = target_dt.strftime("%H:%M")
+        is_tomorrow = target_dt.day > context.current_time.day
+        
+        config.logger.info(f"☕ Commercial Break ({cb.duration_seconds}s) until {target_time_str}")
+        
+        return fill_until_time(
+            api, build_id, context, config.logger, target_time_str, filler_key=cb_key, tomorrow=is_tomorrow
+        )
+    
+    # Check for Program wrapper (Resolved)
+    if result.wrapper and isinstance(result.wrapper, Program):
+        return play_program(
+            api, build_id, context, result.wrapper, resolver, config.logger, 
+            boss, holiday_ctx, 
+            current_slot_tuple[0], current_slot_tuple[1],
+            config=config
+        )
+
+    # Handle Standard Content (Key or Fallback)
+    final_content = result.resolved_content
+    
+    if final_content:
+        config.logger.info(
+            f"{context.current_time.strftime('%a %H:%M')} | {final_content} (Source: {result.source})"
+        )
+
+        context = play_with_fallback(api, build_id, final_content, config.logger, context=context, count=1)
+        
+        # --- AUTO COMMERCIALS (CHANNEL LEVEL) ---
+        if config.commercial_duration > 0:
+            # Resolve commercial content
+            comm_res = resolve_target(config.commercial_content, boss, holiday_ctx, config, resolver, config.logger)
+            comm_key = comm_res.resolved_content
+            if isinstance(comm_key, Fallback):
+                comm_key = comm_key.primary
+
+            target_dt = context.current_time + timedelta(seconds=config.commercial_duration)
+            target_time_str = target_dt.strftime("%H:%M")
+            is_tomorrow = target_dt.day > context.current_time.day
+            
+            config.logger.info(f"☕ Auto Commercials ({config.commercial_duration}s)")
+            
+            context = fill_until_time(api, build_id, context, config.logger, target_time_str, filler_key=comm_key, tomorrow=is_tomorrow)
+    else:
+        config.logger.warn(f"Skipping slot {current_slot_tuple} due to resolution failure.")
+        
+    return context
+
+def _find_active_marathon(config: ScheduleConfig, boss: DayDirector, holiday_ctx: HolidayContext) -> Tuple[Optional[Marathon], Any, Optional[Tuple[int, int]]]:
+    """
+    Checks triggers to see if a marathon should run today.
+    Returns (marathon_obj, resolved_key, (start_hour, end_hour)).
+    """
+    # NOTE: Marathons are disabled during holiday ramp-up periods.
+    if holiday_ctx.is_holiday_season:
+        return None, None, None
+
+    for m in sorted(config.marathons, key=lambda x: x.priority, reverse=True):
+        if m.trigger(boss):
+            marathon_to_run = m
+            
+            # Default to full day if not specified
+            active_marathon_hours = marathon_to_run.hours or (8, 24)
+            
+            # Resolve key early to check for metadata overrides
+            collection = marathon_to_run.collection
+            if hasattr(collection, "pick"):
+                marathon_key = collection.pick(boss) # Pass boss to collection.pick
+            elif isinstance(collection, MarathonSequence):
+                marathon_key = collection # Pass the sequence object directly
+            elif isinstance(collection, list):
+                marathon_key = boss.pick(f"marathon_{marathon_to_run.name}", collection)
+            else:
+                marathon_key = collection
+
+            # Check for start_hour override in source definition
+            if isinstance(marathon_key, str):
+                source_data = MASTER_SOURCES.get(marathon_key)                    
+                if isinstance(source_data, MarathonDefinition) and source_data.start_hour is not None:
+                    active_marathon_hours = (source_data.start_hour, active_marathon_hours[1])
+
+            config.logger.info(
+                f"  {m.name} ACTIVE TODAY"
+            )
+            return marathon_to_run, marathon_key, active_marathon_hours
+            
+    return None, None, None
+
+def _handle_end_of_slot_maintenance(api: Any, build_id: str, context: Any, last_time: Any, config: ScheduleConfig, boss: DayDirector, holiday_ctx: HolidayContext, resolver: ContentResolver) -> Any:
+    """
+    Handles fallback logic, circuit breaking, and filler at hour boundaries.
+    """
+    # Resolve fallback content only if stalled (to avoid side effects on collections)
+    fallback_key = None
+    if context.current_time <= last_time and config.fallback_content:
+        try:
+            fb_res = resolve_target(config.fallback_content, boss, holiday_ctx, config, resolver, config.logger)
+            # resolve_target handles Fallback unwrapping if it returns a key, 
+            # but if it returns a wrapper, we need to be careful.
+            # For global fallback, we expect a simple content key.
+            if isinstance(fb_res.resolved_content, str):
+                fallback_key = fb_res.resolved_content
+        except Exception as e:
+            config.logger.warn(f"Failed to resolve fallback content: {e}")
+
+    context = circuit_breaker(api, build_id, context, last_time, config.logger, fallback_content=fallback_key)
+
+    if config.filler_content and is_approaching_hour_boundary(context):
+        # Resolve filler content using full pipeline (holidays, etc)
+        filler_result = resolve_target(config.filler_content, boss, holiday_ctx, config, resolver, config.logger)
+        filler_content = filler_result.resolved_content
+        
+        # Handle Fallback (use primary/holiday version)
+        if isinstance(filler_content, Fallback):
+            filler_content = filler_content.primary
+
+        context = fill_until_next_hour(api, build_id, context, config.logger, filler_content)
+        
+    return context
 
 # 8. MAIN ORCHESTRATION
 
@@ -318,40 +480,7 @@ def run_daily_schedule(api: Any, context: Any, build_id: str, config: ScheduleCo
             f"Holidays: {', '.join(holiday_ctx.active_holidays) or 'None'}"
         )
 
-        marathon_to_run = None
-        marathon_key = None
-        active_marathon_hours = None
-
-        # NOTE: Marathons are disabled during holiday ramp-up periods.
-        if not holiday_ctx.is_holiday_season:
-            for m in sorted(config.marathons, key=lambda x: x.priority, reverse=True):
-                if m.trigger(boss):
-                    marathon_to_run = m
-                    
-                    # Default to full day if not specified
-                    active_marathon_hours = marathon_to_run.hours or (8, 24)
-                    
-                    # Resolve key early to check for metadata overrides
-                    collection = marathon_to_run.collection
-                    if hasattr(collection, "pick"):
-                        marathon_key = collection.pick(boss) # Pass boss to collection.pick
-                    elif isinstance(collection, MarathonSequence):
-                        marathon_key = collection # Pass the sequence object directly
-                    elif isinstance(collection, list):
-                        marathon_key = boss.pick(f"marathon_{marathon_to_run.name}", collection)
-                    else:
-                        marathon_key = collection
-
-                    # Check for start_hour override in source definition
-                    if isinstance(marathon_key, str):
-                        source_data = MASTER_SOURCES.get(marathon_key)                    
-                        if isinstance(source_data, MarathonDefinition) and source_data.start_hour is not None:
-                            active_marathon_hours = (source_data.start_hour, active_marathon_hours[1])
-
-                    config.logger.info(
-                        f"  {m.name} ACTIVE TODAY"
-                    )
-                    break
+        marathon_to_run, marathon_key, active_marathon_hours = _find_active_marathon(config, boss, holiday_ctx)
 
         while context.current_time.day == start_day and not context.is_done:
             hour = context.current_time.hour
@@ -386,119 +515,11 @@ def run_daily_schedule(api: Any, context: Any, build_id: str, config: ScheduleCo
                     target = entry
                     break
 
+            # Resolve the target for the current slot
             result = resolve_target(target, boss, holiday_ctx, config, resolver, config.logger)
-
-            # Check for BrandedBlock (Resolved)
-            if result.wrapper and isinstance(result.wrapper, BrandedBlock):
-                block = result.wrapper
-                if block.has_branding(MASTER_SOURCES):
-                    context = play_branded_block(
-                        api, build_id, context, block, MASTER_SOURCES, config.logger,
-                        current_slot_tuple[0], current_slot_tuple[1],
-                        boss=boss,
-                        holiday_ctx=holiday_ctx,
-                    )
-                    last_time = context.current_time
-                    continue
-                else:
-                    # Fallback to just playing the content if branding missing
-                    # Resolve the inner content to a key (recursively)
-                    inner_result = resolve_target(block.content, boss, holiday_ctx, config, resolver, config.logger)
-                    result = inner_result
-
-            # Check for PlayOnce wrapper (Resolved)
-            if result.wrapper and isinstance(result.wrapper, PlayOnce):
-                # Play once
-                play_once = result.wrapper
-                
-                # Check if the inner content is an AppointmentLineup
-                if isinstance(play_once.content, AppointmentLineup):
-                    # Execute the lineup once
-                    context = play_appointment_lineup(api, build_id, context, play_once.content, resolver, config.logger, boss, holiday_ctx, config, current_slot_tuple[0])
-                else:
-                    # Standard single item
-                    real_result = resolve_target(play_once.content, boss, holiday_ctx, config, resolver, config.logger)
-                    if real_result:
-                        context = play_with_fallback(api, build_id, real_result.resolved_content, config.logger, context=context, count=1)
-                    else:
-                        config.logger.warn(f"Skipping PlayOnce slot {current_slot_tuple} due to resolution failure.")
-                
-                # Fill rest with next block
-                context = handle_single_play_slot(
-                    api, build_id, context, current_slot_tuple,
-                    day_schedule, boss, holiday_ctx, config, resolver, config.logger
-                )
-                last_time = context.current_time
-                continue
-
-            # Check for CommercialBreak wrapper (Resolved)
-            if result.wrapper and isinstance(result.wrapper, CommercialBreak):
-                cb = result.wrapper
-                # Resolve the content of the break (e.g. "commercials_spot")
-                cb_res = resolve_target(cb.content, boss, holiday_ctx, config, resolver, config.logger)
-                cb_key = cb_res.resolved_content
-                
-                if isinstance(cb_key, Fallback):
-                    cb_key = cb_key.primary
-
-                target_dt = context.current_time + timedelta(seconds=cb.duration_seconds)
-                target_time_str = target_dt.strftime("%H:%M")
-                is_tomorrow = target_dt.day > context.current_time.day
-                
-                config.logger.info(f"☕ Commercial Break ({cb.duration_seconds}s) until {target_time_str}")
-                
-                context = fill_until_time(
-                    api, build_id, context, config.logger, target_time_str, filler_key=cb_key, tomorrow=is_tomorrow
-                )
-                last_time = context.current_time
-                continue
             
-            # Check for AppointmentBlock wrapper (Resolved)
-            if result.wrapper and isinstance(result.wrapper, AppointmentBlock):
-                context = play_appointment_block(api, build_id, context, result.wrapper, resolver, config.logger, boss=boss)
-                last_time = context.current_time
-                continue
-            
-            # Check for SeriesRelay wrapper (Resolved)
-            if result.wrapper and isinstance(result.wrapper, SeriesRelay):
-                context = play_series_relay(api, build_id, context, result.wrapper, resolver, config.logger, boss=boss)
-                last_time = context.current_time
-                continue
-
-            # Check for AppointmentLineup wrapper (Resolved)
-            if result.wrapper and isinstance(result.wrapper, AppointmentLineup):
-                context = play_appointment_lineup(api, build_id, context, result.wrapper, resolver, config.logger, boss, holiday_ctx, config, current_slot_tuple[0])
-                last_time = context.current_time
-                continue
-
-            # Handle Standard Content (Key or Fallback)
-            final_content = result.resolved_content
-            
-            if final_content:
-                config.logger.info(
-                    f"{context.current_time.strftime('%a %H:%M')} | {final_content} (Source: {result.source})"
-                )
-
-                context = play_with_fallback(api, build_id, final_content, config.logger, context=context, count=1)
-                
-                # --- AUTO COMMERCIALS (CHANNEL LEVEL) ---
-                if config.commercials_between_items > 0:
-                    # Resolve commercial content
-                    comm_res = resolve_target(config.commercial_content, boss, holiday_ctx, config, resolver, config.logger)
-                    comm_key = comm_res.resolved_content
-                    if isinstance(comm_key, Fallback):
-                        comm_key = comm_key.primary
-
-                    target_dt = context.current_time + timedelta(seconds=config.commercials_between_items)
-                    target_time_str = target_dt.strftime("%H:%M")
-                    is_tomorrow = target_dt.day > context.current_time.day
-                    
-                    config.logger.info(f"☕ Auto Commercials ({config.commercials_between_items}s)")
-                    
-                    context = fill_until_time(api, build_id, context, config.logger, target_time_str, filler_key=comm_key, tomorrow=is_tomorrow)
-                    last_time = context.current_time
-            else:
-                config.logger.warn(f"Skipping slot {current_slot_tuple} due to resolution failure.")
+            # Delegate playback to the slot handler
+            context = _play_schedule_slot(api, build_id, context, result, current_slot_tuple, day_schedule, config, resolver, boss, holiday_ctx)
 
             # Handle Single Play Slots (Play one item, then wait/fill until slot ends)
             if current_slot_tuple in config.single_play_tuples:
@@ -508,33 +529,7 @@ def run_daily_schedule(api: Any, context: Any, build_id: str, config: ScheduleCo
                 last_time = context.current_time
                 continue
             
-            # Resolve fallback content only if stalled (to avoid side effects on collections)
-            fallback_key = None
-            if context.current_time <= last_time and config.fallback_content:
-                try:
-                    fb_res = resolve_target(config.fallback_content, boss, holiday_ctx, config, resolver, config.logger)
-                    content = fb_res.resolved_content
-                    if isinstance(content, Fallback):
-                        content = content.primary
-                    if isinstance(content, str):
-                        fallback_key = content
-                except Exception as e:
-                    config.logger.warn(f"Failed to resolve fallback content: {e}")
-
-            context = circuit_breaker(api, build_id, context, last_time, config.logger, fallback_content=fallback_key)
+            context = _handle_end_of_slot_maintenance(api, build_id, context, last_time, config, boss, holiday_ctx, resolver)
             last_time = context.current_time
-
-            if config.filler_content and is_approaching_hour_boundary(context):
-                # Resolve filler content using full pipeline (holidays, etc)
-                filler_result = resolve_target(config.filler_content, boss, holiday_ctx, config, resolver, config.logger)
-                filler_content = filler_result.resolved_content
-                
-                # Handle Fallback (use primary/holiday version)
-                if isinstance(filler_content, Fallback):
-                    filler_content = filler_content.primary
-
-                context = fill_until_next_hour(api, build_id, context, config.logger, filler_content
-                )
-                last_time = context.current_time
 
     return context

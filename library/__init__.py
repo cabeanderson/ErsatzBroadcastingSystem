@@ -12,5 +12,6 @@ from . import animation
 from . import scifi
 from . import sitcoms
 from . import movies
+from . import eighties
 
-__all__ = ['sources', 'branding', 'marathons', 'common', 'detective', 'animation', 'scifi', 'sitcoms', 'movies']
+__all__ = ['sources', 'branding', 'marathons', 'common', 'detective', 'animation', 'scifi', 'sitcoms', 'movies', 'eighties']

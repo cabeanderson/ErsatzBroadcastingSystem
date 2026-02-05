@@ -19,9 +19,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from scripts.schedule import run_daily_schedule, ScheduleConfig, SeasonalBlock, pre_register_all_content
 from scripts.logic.resolver import ContentResolver
 from scripts.library.sources import MASTER_SOURCES
+from scripts.logic.structures import Block
 from scripts.logic.holidays import with_holidays
-from scripts.logic.triggers import with_probability, when_has, combine, on_date_range
-from scripts.logic.models import Marathon, BrandedBlock, BlockProfile
+from scripts.logic.triggers import chance, has_label, on_date
+from scripts.logic.models import Marathon, BlockProfile
 from scripts.logic.seasonal import feather, swap
 from scripts.core.logger import ChannelLogger
 # In a real channel, you would import your collections:
@@ -50,14 +51,13 @@ MY_TIMESLOTS = {
 # --- Branded Block ---
 # A block with intro, outro, and bumpers between items.
 # Content keys must exist in library/sources.py
-SATURDAY_MORNING_BLOCK = BrandedBlock(
+SATURDAY_MORNING_BLOCK = Block(
     name="Saturday Morning Cartoons",
-    content="collection_80s_cartoons",  # Reference to a collection or key
+    items="collection_80s_cartoons",  # Reference to a collection or key
     intro="intro_saturday_morning",     # Key for intro video
     outro="outro_saturday_morning",     # Key for outro video
     bumpers="bumpers_cartoons",         # Key for bumpers
-    commercials_between_items=120,      # 2 minutes of commercials
-    commercial_content="commercials_80s"
+    use_epg_group=True
 )
 
 # --- Seasonal Block ---
@@ -90,10 +90,7 @@ MARATHONS = [
     Marathon(
         name="Sci-Fi Saturday",
         # Trigger: 20% chance, but ONLY on Saturdays
-        trigger=combine(
-            when_has("SATURDAY"),
-            with_probability(0.20, key="scifi_marathon")
-        ),
+        trigger=lambda boss: boss.has("SATURDAY") and boss.roll(0.20, "scifi_marathon"),
         collection="collection_scifi_series",
         hours=(12, 24),  # Runs from noon to midnight
         priority=10      # Higher priority overrides other marathons
@@ -101,7 +98,7 @@ MARATHONS = [
     Marathon(
         name="Star Wars May 4th",
         # Trigger: Specific date range
-        trigger=on_date_range(5, 4, 5, 4),
+        trigger=on_date(5, 4),
         collection="collection_star_wars",
         hours=(8, 24),
         priority=50

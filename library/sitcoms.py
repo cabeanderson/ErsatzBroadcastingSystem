@@ -4,10 +4,10 @@ Collections, Blocks, and Special Programming.
 """
 
 from datetime import date
-from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection, SeriesRelay
+from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection, Block
 from scripts.logic.factories import annual_show
 from scripts.logic.queries import show_by_title
-from scripts.logic.models import BrandedBlock, Swap, Feather
+from scripts.logic.models import Swap, Feather
 from scripts.logic.seasonal import SeasonalBlock
 from . import branding
 
@@ -122,9 +122,9 @@ QUIRKY_COMEDIES = RandomCollection([
 
 # --- BLOCKS ---
 
-TGIF_BLOCK = BrandedBlock(
+TGIF_BLOCK = Block(
     name="TGIF on Ersatz",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Full House", "query": show_by_title("Full House"), "order": "Shuffle"},
         {"title": "Family Matters", "query": show_by_title("Family Matters"), "order": "Shuffle"},
         {"title": "Perfect Strangers", "query": show_by_title("Perfect Strangers"), "order": "Shuffle"},
@@ -132,7 +132,7 @@ TGIF_BLOCK = BrandedBlock(
         {"title": "Sister, Sister", "query": show_by_title("Sister, Sister"), "order": "Shuffle"},
         {"title": "Dinosaurs", "query": show_by_title("Dinosaurs"), "order": "Shuffle"},
     ]),
-    branding=branding.BRANDING_TGIF,
+    bumpers=branding.BRANDING_TGIF.bumpers,
     use_epg_group=False
 )
 
@@ -177,10 +177,7 @@ SITCOM_WEEKEND_PRIME = SeasonalBlock(
 
 # 1. THE OFFICE (Slot 1)
 # Filler: Seinfeld (180 eps)
-OFFICE_FILLERS = SeriesRelay(
-    items=[("seinfeld_tv", 180)],
-    start_date=date(2025, 9, 1)
-)
+OFFICE_FILLERS = OrderedCollection(["seinfeld_tv"])
 
 OFFICE_BLOCK = annual_show(
     show_title="The Office",
@@ -194,10 +191,7 @@ OFFICE_BLOCK = annual_show(
 
 # 2. PARKS AND REC (Slot 2)
 # Filler: 3rd Rock (139 eps)
-PARKS_FILLERS = SeriesRelay(
-    items=[("3rd_rock_tv", 139)],
-    start_date=date(2025, 9, 1)
-)
+PARKS_FILLERS = OrderedCollection(["3rd_rock_tv"])
 
 PARKS_BLOCK = annual_show(
     show_title="Parks and Recreation",
@@ -211,10 +205,7 @@ PARKS_BLOCK = annual_show(
 
 # 3. COMMUNITY (Slot 3)
 # Filler: Fresh Prince (148 eps)
-COMMUNITY_FILLERS = SeriesRelay(
-    items=[("fresh_prince_tv", 148)],
-    start_date=date(2025, 9, 1)
-)
+COMMUNITY_FILLERS = OrderedCollection(["fresh_prince_tv"])
 
 COMMUNITY_BLOCK = annual_show(
     show_title="Community",
@@ -228,10 +219,7 @@ COMMUNITY_BLOCK = annual_show(
 
 # 4. 30 ROCK (Slot 4)
 # Filler: Newsradio (97 eps)
-THIRTY_ROCK_FILLERS = SeriesRelay(
-    items=[("newsradio_tv", 97)],
-    start_date=date(2025, 9, 1)
-)
+THIRTY_ROCK_FILLERS = OrderedCollection(["newsradio_tv"])
 
 THIRTY_ROCK_BLOCK = annual_show(
     show_title="30 Rock",

@@ -6,11 +6,10 @@ import traceback
 from scripts.core import registry
 from scripts.core.logger import ChannelLogger
 from scripts.logic.seasonal import SeasonalBlock, resolve_seasonal_block
-from scripts.logic.models import Fallback, PlayOnce, BrandedBlock, ResolutionResult, CommercialBreak
+from scripts.logic.models import Fallback, PlayOnce, ResolutionResult, CommercialBreak
 from scripts.logic.holidays import get_holiday_target, apply_holiday_injection
 from typing import Any, Union
-from scripts.logic.structures import AppointmentBlock, SeriesRelay, AppointmentLineup, AppointmentSlot
-from scripts.logic.sequencing import find_active_season
+from scripts.logic.structures import Block, Program
 
 # Keys that should be handled by the holiday system, not the generic label loop
 # Dynamically derived from registry to ensure consistency
@@ -63,7 +62,7 @@ def resolve_target(target: Any, boss: Any, holiday_ctx: Any, config: Any, resolv
                 target = variants.get(boss.season_vibe, variants.get("default"))
                 changed = True
                 
-            elif isinstance(target, (Fallback, BrandedBlock)):
+            elif isinstance(target, (Fallback, Block, Program)):
                 # Fallback objects are final; stop resolving
                 break
                 
@@ -86,7 +85,7 @@ def resolve_target(target: Any, boss: Any, holiday_ctx: Any, config: Any, resolv
             return ResolutionResult(wrapper=target, source=source)
 
         # Return wrappers directly so schedule.py can handle their logic
-        if isinstance(target, (PlayOnce, BrandedBlock, CommercialBreak, AppointmentBlock, SeriesRelay, AppointmentLineup)):
+        if isinstance(target, (PlayOnce, Block, Program, CommercialBreak)):
             return ResolutionResult(wrapper=target, source=source)
 
         # Safety check: If target is still a complex object (duck type check for SeasonalBlock)

@@ -1,46 +1,42 @@
 # scripts/engines/blocks.py
 """
-Branded programming blocks with optional intro/outro/bumpers.
-Gracefully handles missing assets.
+Unified Program and Block Engine.
 """
 
-import re
 from datetime import timedelta
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Union, TYPE_CHECKING
 from scripts.logic.resolver import ContentResolver
+from scripts.logic.resolution import resolve_target
 from scripts.core.logger import ChannelLogger
-from scripts.playout import play_item, toggle_marathon_branding, fill_until_time, play_with_fallback, play_smart_bumper
-from scripts.logic.models import BrandedBlock, Fallback, CommercialBreak
-from scripts.logic.holidays import apply_holiday_injection
-from scripts.logic.playback import hour_in_window
-from scripts.logic.queries import extract_title_from_query
+from scripts.playout import play_item, toggle_marathon_branding, fill_until_time, play_with_fallback, play_smart_bumper, wait_until_time
+from scripts.logic.models import Fallback, CommercialBreak
+from scripts.logic.structures import Block, Program
+from scripts.logic.playback import hour_in_window, calculate_boundary_dt
+from scripts.logic.queries import extract_title_from_query, extract_episode_range
+from etv_client.models import ControlSkipToItem
+from scripts.logic.sequencing import resolve_scheduled_content
 
+if TYPE_CHECKING:
+    from scripts.schedule import ScheduleConfig
+
+def _play_branding_element(api: Any, build_id: str, context: Any, key: Optional[str], element_type: str, resolver: Any, logger: ChannelLogger, boss: Any) -> Any:
+    """Generic helper to play a branding element like an intro or outro."""
+    if key and key in resolver.registry:
+        try:
+            resolved_key = resolver.resolve(key, boss)
+            logger.info(f"   ↳ Playing {element_type}")
+            context = play_item(api, build_id, resolved_key, logger)
+        except Exception as e:
+            logger.warn(f"Failed to play {element_type}: {e}")
+    return context
 
 def play_block_intro(api: Any, build_id: str, context: Any, intro: Optional[str], resolver: Any, logger: ChannelLogger, boss: Any = None) -> Any:
-    """
-    Helper to play a block intro if it exists in the registry.
-    """
-    if intro and intro in resolver.registry:
-        try:
-            intro_key = resolver.resolve(intro, boss)
-            logger.info(f"   ↳ Playing intro")
-            context = play_item(api, build_id, intro_key, logger)
-        except Exception as e:
-            logger.warn(f"Failed to play intro: {e}")
-    return context
+    """Helper to play a block intro."""
+    return _play_branding_element(api, build_id, context, intro, "intro", resolver, logger, boss)
 
 def play_block_outro(api: Any, build_id: str, context: Any, outro: Optional[str], resolver: Any, logger: ChannelLogger, boss: Any = None) -> Any:
-    """
-    Helper to play a block outro if it exists in the registry.
-    """
-    if outro and outro in resolver.registry:
-        try:
-            outro_key = resolver.resolve(outro, boss)
-            logger.info(f"   ↳ Playing outro")
-            context = play_item(api, build_id, outro_key, logger)
-        except Exception as e:
-            logger.warn(f"Failed to play outro: {e}")
-    return context
+    """Helper to play a block outro."""
+    return _play_branding_element(api, build_id, context, outro, "outro", resolver, logger, boss)
 
 def _get_content_title(resolver: Any, content_key: str) -> Optional[str]:
     """Extract show title from a content key's query."""
@@ -56,212 +52,209 @@ def _get_content_title(resolver: Any, content_key: str) -> Optional[str]:
     return None
 
 
-def play_branded_block(api: Any, build_id: str, context: Any, block: BrandedBlock, sources_registry: Dict[str, Any], logger: ChannelLogger, start_hour: int, end_hour: int, boss: Any = None, holiday_ctx: Any = None) -> Any:
-    """
-    Play a branded programming block with optional intro/outro/bumpers.
-    
-    Args:
-        api: ErsatzTV API instance
-        build_id: Build UUID
-        context: Current playout context
-        block: BrandedBlock instance
-        sources_registry: MASTER_SOURCES dict
-        logger: ChannelLogger instance
-        start_hour: Block start hour
-        end_hour: Block end hour
-        boss: DayDirector instance (optional, for injection)
-        holiday_ctx: HolidayContext instance (optional, for injection)
-    
-    Returns:
-        Updated context after block completes
-    """
+def play_block(api: Any, build_id: str, context: Any, item: Union[Block, Program], sources_registry: Dict[str, Any], logger: ChannelLogger, start_hour: int, end_hour: int, boss: Any, holiday_ctx: Any, config: "ScheduleConfig") -> Any:
+    """Unified engine to play a Block or a single Program."""
     resolver = ContentResolver(api, build_id, sources_registry, logger)
     
+    if isinstance(item, Program):
+        return play_program(api, build_id, context, item, resolver, logger, boss, holiday_ctx, start_hour, end_hour, config)
+    
+    if isinstance(item, Block):
+        return _play_block_internal(api, build_id, context, item, resolver, logger, start_hour, end_hour, boss, holiday_ctx, config)
+
+    logger.warn(f"play_block received an unsupported type: {type(item)}")
+    return context
+
+def _play_block_internal(api: Any, build_id: str, context: Any, block: Block, resolver: Any, logger: ChannelLogger, start_hour: int, end_hour: int, boss: Any, holiday_ctx: Any, config: "ScheduleConfig") -> Any:
+    """Internal logic to play a Block object (a container of Programs/content)."""
     logger.info(f"🎬 {block.name} ({start_hour}:00-{end_hour}:00)")
-    
-    # Start EPG group if enabled
-    if block.use_epg_group:
-        toggle_marathon_branding(api, build_id, name=block.name, start=True)
-    
-    # Play intro if it exists
+
+    if block.use_epg_group: toggle_marathon_branding(api, build_id, name=block.name, start=True)
     context = play_block_intro(api, build_id, context, block.intro, resolver, logger, boss)
     
-    # Play main content
-    last_time = context.current_time
     items_played = 0
-    consecutive_failures = 0
+    last_time = context.current_time
+    
+    iterator = block.items
+    is_collection = hasattr(block.items, "pick")
     
     while not context.is_done:
         hour = context.current_time.hour
-        
-        # Check time bounds
-        if not hour_in_window(hour, start_hour, end_hour):
-            logger.info(f"🕒 Block time window ended at {context.current_time.strftime('%H:%M')}")
-            break
-        
-        # Play content
-        try:
-            content_key = resolver.resolve(block.content, boss)
-            if content_key is None:
-                logger.warn(f"Resolver returned None for block content. Skipping.")
-                consecutive_failures += 1
-                continue
+        if not hour_in_window(hour, start_hour, end_hour): logger.info(f"🕒 Block time window ended at {context.current_time.strftime('%H:%M')}"); break
             
-            # Apply holiday injection if context is available
-            if boss and holiday_ctx:
-                # apply_holiday_injection now returns ResolutionResult
-                result = apply_holiday_injection(content_key, resolver, holiday_ctx, boss, logger)
-                content_key = result.resolved_content
+        item_to_play = None
+        if is_collection:
+            item_to_play = iterator.pick(boss)
+        else:
+            if items_played < len(iterator): item_to_play = iterator[items_played]
+            else: logger.info("Block items exhausted."); break
+        
+        if isinstance(item_to_play, Program):
+            context = play_program(api, build_id, context, item_to_play, resolver, logger, boss, holiday_ctx, start_hour, end_hour, config)
+        else:
+            context = _play_raw_content_in_block(api, build_id, context, item_to_play, block, resolver, logger, boss, holiday_ctx, config)
 
-        except Exception as e:
-            logger.warn(f"Error resolving content: {e}")
-            consecutive_failures += 1
-            continue
+        items_played += 1
+        if context.current_time <= last_time: logger.warn("Block item failed to advance time. Breaking block."); break
+        last_time = context.current_time
 
-        # Handle CommercialBreak objects (from collections)
-        if isinstance(content_key, CommercialBreak):
-            # Resolve commercial content
-            comm_key = resolver.resolve(content_key.content, boss)
-            
-            target_dt = context.current_time + timedelta(seconds=content_key.duration_seconds)
+    # After loop, handle fill strategy for the block itself
+    context = _handle_fill_strategy(api, build_id, context, block.fill_strategy, block.filler, start_hour, end_hour, config, resolver, logger, boss, holiday_ctx, log_indent="   ")
+
+    context = play_block_outro(api, build_id, context, block.outro, resolver, logger, boss)
+    if block.use_epg_group: toggle_marathon_branding(api, build_id, start=False)
+    logger.info(f"🏁 {block.name} - {items_played} items played")
+    return context
+
+
+def _play_commercials(api: Any, build_id: str, context: Any, commercials_key: Optional[str], duration: int, config: "ScheduleConfig", resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, log_indent: str = "     ", log_prefix: str = "Program") -> Any:
+    """Helper to play commercials (duration-based or content-based)."""
+    if duration > 0:
+        # Duration-based break. Use specific ad pool or channel default.
+        ad_pool_key = commercials_key or config.commercial_content
+        
+        res = resolve_target(ad_pool_key, boss, holiday_ctx, config, resolver, logger)
+        filler_key = res.resolved_content
+        
+        if filler_key:
+            target_dt = context.current_time + timedelta(seconds=duration)
             target_time_str = target_dt.strftime("%H:%M")
             is_tomorrow = target_dt.day > context.current_time.day
             
-            logger.info(f"   ☕ Commercial Break ({content_key.duration_seconds}s)")
-            context = fill_until_time(api, build_id, context, logger, target_time_str, filler_key=comm_key, tomorrow=is_tomorrow)
-            last_time = context.current_time
-            continue
+            logger.info(f"{log_indent}☕ {log_prefix} Commercials ({duration}s from '{filler_key}')")
+            context = fill_until_time(api, build_id, context, logger, target_time_str, filler_key=filler_key, tomorrow=is_tomorrow)
+        else:
+            logger.warn(f"Commercial break skipped: ad pool '{ad_pool_key}' could not be resolved.")
+    elif commercials_key:
+        # Content-based break (play entire block)
+        res = resolve_target(commercials_key, boss, holiday_ctx, config, resolver, logger)
+        if res.resolved_content:
+            logger.info(f"{log_indent}↳ Playing {log_prefix.lower()} commercials: {res.resolved_content}")
+            context = play_item(api, build_id, res.resolved_content, logger)
+            
+    return context
 
-        # Log content for visibility
-        display_key = content_key
-        if isinstance(content_key, Fallback):
-            display_key = f"{content_key.primary} (fallback: {content_key.secondary})"
-        elif isinstance(content_key, tuple):
-            display_key = f"{content_key[0]} (fallback: {content_key[1]})"
-        logger.info(f"{context.current_time.strftime('%H:%M')} | {display_key}")
-            
-        # Determine base key for intro lookup (unwrap Fallback/tuple)
-        base_key = content_key
-        if isinstance(content_key, Fallback):
-            base_key = content_key.secondary
-        elif isinstance(content_key, tuple):
-            base_key = content_key[1]
-            
-        # Check for specific intro (Explicit or Auto-discovered)
-        intro_key = None
-        is_dynamic_intro = False
+def _play_bumper(api: Any, build_id: str, context: Any, bumper_key: Optional[str], content_key: Any, resolver: Any, logger: ChannelLogger, boss: Any) -> Any:
+    """Helper to play a bumper (smart or generic)."""
+    # Try Smart Bumper first
+    base_key = content_key.primary if isinstance(content_key, Fallback) else content_key
+    title = _get_content_title(resolver, base_key)
+    
+    played_smart = False
+    if title:
+        context, played_smart = play_smart_bumper(api, build_id, context, title, resolver, logger, required_tags=["bumpers"])
         
-        specific_intros = getattr(block, "specific_intros", None)
-        if specific_intros and base_key in specific_intros:
-            intro_key = specific_intros[base_key]
-        elif isinstance(base_key, str):
-            # 1. Try explicit key convention (cowboy_bebop_tv -> cowboy_bebop_intro)
-            candidate = None
-            if base_key.endswith("_tv"):
-                candidate = base_key.replace("_tv", "_intro")
-            elif base_key.endswith("_movie"):
-                candidate = base_key.replace("_movie", "_intro")
-            
-            if candidate and candidate in sources_registry:
-                intro_key = candidate
-            
-            # 2. Try dynamic generation from title
-            if not intro_key and base_key in sources_registry:
-                source_data = sources_registry[base_key]
-                query = None
-                if isinstance(source_data, dict):
-                    query = source_data.get("query")
-                elif isinstance(source_data, str):
-                    query = source_data
-                
-                title = _get_content_title(resolver, base_key)
-                if title:
-                    # Create a dynamic key for this specific show intro
-                    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
-                    dyn_key = f"auto_intro_{safe_title}"
-                    
-                    # Construct query: type:"other_videos" AND tag:"Title" AND (tag:intro OR tag:bumper)
-                    dyn_query = f'type:"other_video" AND tag:"{title}" AND (tag:intro OR tag:bumper)'
-                    
-                    resolver.register_dynamic_query(dyn_key, dyn_query)
-                    intro_key = dyn_key
-                    is_dynamic_intro = True
-
-        if intro_key and (intro_key in sources_registry or intro_key in resolver.active_keys):
-            logger.info(f"   ↳ Playing intro: {intro_key}")
-            # Note: We don't inject flavor into specific intros as they are usually show-specific
-            try:
-                context = play_item(api, build_id, intro_key, logger, suppress_errors=is_dynamic_intro)
-            except Exception as e:
-                logger.warn(f"Failed to play specific intro: {e}")
-
-        # Handle content playback
+    # Fallback to generic bumper
+    if not played_smart and bumper_key and bumper_key in resolver.registry:
         try:
-            context = play_with_fallback(api, build_id, content_key, logger, context=context)
+            resolved_key = resolver.resolve(bumper_key, boss)
+            logger.info(f"   ↳ Playing bumper: {resolved_key}")
+            context = play_item(api, build_id, resolved_key, logger)
         except Exception as e:
-            logger.warn(f"Failed to play content '{content_key}': {e}")
-            # Fall through to progress check
-        
-        # Check progress
-        if context.current_time <= last_time:
-            logger.warn(f"Content '{content_key}' failed to advance time (missing/invalid?)")
-            consecutive_failures += 1
-            if consecutive_failures >= 5:
-                logger.warn(f"🛑 Too many consecutive failures. Aborting block.")
-                break
-            continue # Try next item
-        
-        consecutive_failures = 0 # Reset on success
-        last_time = context.current_time
-        items_played += 1
-        
-        # Play Auto Commercials (if configured)
-        if block.commercials_between_items > 0:
-            # Resolve commercial content using resolver (handles collections and registration)
-            comm_key = resolver.resolve(block.commercial_content, boss)
-            
-            if comm_key:
-                target_dt = context.current_time + timedelta(seconds=block.commercials_between_items)
-                target_time_str = target_dt.strftime("%H:%M")
-                is_tomorrow = target_dt.day > context.current_time.day
-                
-                logger.info(f"   ☕ Auto Commercials ({block.commercials_between_items}s)")
-                context = fill_until_time(api, build_id, context, logger, target_time_str, filler_key=comm_key, tomorrow=is_tomorrow)
-        
-        # Play bumper between items (if exists and not last item)
-        # Check if we are still within the block's window
-        h = context.current_time.hour
-        if hour_in_window(h, start_hour, end_hour):
-            bumper_played = False
-            
-            # 1. Try Smart Bumper (Show-Specific)
-            title = _get_content_title(resolver, base_key)
-            context, bumper_played = play_smart_bumper(api, build_id, context, title, resolver, logger, required_tags=["bumpers"])
+            logger.warn(f"Failed to play bumper: {e}")
+    return context
 
-            # 2. Fallback to Block Bumper
-            if not bumper_played and block.bumpers:
-                if block.bumpers not in sources_registry:
-                    logger.warn(f"Bumper key '{block.bumpers}' not found in registry")
-                else:
-                    try:
-                        bumper_key = resolver.resolve(block.bumpers, boss)
-                        logger.info(f"   ↳ Playing block bumper: {bumper_key}")
-                        old_time = context.current_time
-                        context = play_item(api, build_id, bumper_key, logger)
-                    except Exception as e:
-                        logger.warn(f"Failed to play bumper: {e}")
+def _handle_fill_strategy(api: Any, build_id: str, context: Any, fill_strategy: str, filler: Any, start_hour: int, end_hour: int, config: "ScheduleConfig", resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, log_indent: str = "     ") -> Any:
+    """Helper to handle fill strategies (gap, fill, yield) at the end of a slot."""
+    if fill_strategy == "yield":
+        logger.info(f"{log_indent}Fill Strategy: 'yield'. Stopping.")
+        return context
+
+    boundary_dt = calculate_boundary_dt(context, start_hour, end_hour)
     
-    # Play outro if it exists and we are at the end of the window
-    if block.outro:
-        h = context.current_time.hour
-        should_play = hour_in_window(h, start_hour, end_hour) or (h == end_hour and context.current_time.minute < 15)
-        if should_play:
-            context = play_block_outro(api, build_id, context, block.outro, resolver, logger, boss)
+    if context.current_time < boundary_dt:
+        target_ts = boundary_dt.strftime("%H:%M")
+        is_tomorrow = boundary_dt.day > context.current_time.day
+        if fill_strategy == "gap":
+            logger.info(f"{log_indent}Fill Strategy: 'gap'. Waiting until slot end at {target_ts}.")
+            context = wait_until_time(api, build_id, context, logger, target_ts, tomorrow=is_tomorrow)
+        elif fill_strategy == "fill":
+            res = resolve_target(filler, boss, holiday_ctx, config, resolver, logger)
+            if res.resolved_content:
+                logger.info(f"{log_indent}Fill Strategy: 'fill'. Filling with '{res.resolved_content}' until {target_ts}.")
+                context = fill_until_time(api, build_id, context, logger, target_ts, filler_key=res.resolved_content, tomorrow=is_tomorrow)
+            else:
+                logger.warn(f"{log_indent}Fill Strategy: 'fill' failed, filler '{filler}' not resolved. Waiting instead.")
+                context = wait_until_time(api, build_id, context, logger, target_ts, tomorrow=is_tomorrow)
     
-    # End EPG group
-    if block.use_epg_group:
-        toggle_marathon_branding(api, build_id, start=False)
+    return context
+
+def play_program(api: Any, build_id: str, context: Any, program: Program, resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, start_hour: int, end_hour: int, config: "ScheduleConfig") -> Any:
+    """Executes a Program. Handles scheduling, branding, content playback, and fill strategy."""
+    logger.info(f"   ▶ Program: {program.name}")
     
-    logger.info(f"🏁 {block.name} - {items_played} items played")
+    content_key, count = None, 1
+    scheduled_result = resolve_scheduled_content(program, boss.now.date())
     
+    if scheduled_result:
+        key, ep_count, ep_num = scheduled_result
+        ep_per_slot = program.scheduling.get("episodes_per_slot", 1)
+        end_ep = min(ep_num + ep_per_slot - 1, ep_count)
+        ep_str = f"{ep_num}" if ep_num == end_ep else f"{ep_num}-{end_ep}"
+        logger.info(f"     Scheduling active: Playing '{key}' (Episode {ep_str}/{ep_count})")
+        content_key, count = resolver.resolve(key), ep_per_slot
+        try:
+            q_data = resolver.get_query_data(key)
+            query = q_data.get("query") if isinstance(q_data, dict) else q_data
+            if query and (q_season := extract_episode_range(query)[0]) is not None:
+                api.skip_to_item(build_id, ControlSkipToItem(content=key, season=q_season, episode=ep_num))
+        except Exception as e: logger.warn(f"Failed to force sequence for '{key}': {e}")
+    else:
+        logger.info(f"     Playing static content for '{program.name}'")
+        res = resolve_target(program.content, boss, holiday_ctx, config, resolver, logger)
+        content_key = res.resolved_content
+
+    if not content_key: logger.warn(f"Could not resolve content for Program '{program.name}'. Skipping."); return context
+
+    context = play_block_intro(api, build_id, context, program.intro, resolver, logger, boss)
+    
+    context = _play_bumper(api, build_id, context, program.bumpers, content_key, resolver, logger, boss)
+
+    last_time = context.current_time
+    context = play_with_fallback(api, build_id, content_key, logger, context=context, count=count)
+    
+    context = _play_commercials(api, build_id, context, program.commercials, program.commercial_duration, config, resolver, logger, boss, holiday_ctx, log_indent="     ", log_prefix="Program")
+
+    if context.current_time > last_time:
+        context = _handle_fill_strategy(api, build_id, context, program.fill_strategy, program.filler, start_hour, end_hour, config, resolver, logger, boss, holiday_ctx, log_indent="     ")
+
+    context = play_block_outro(api, build_id, context, program.outro, resolver, logger, boss)
+    return context
+
+def _play_raw_content_in_block(api: Any, build_id: str, context: Any, content: Any, block: Block, resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, config: "ScheduleConfig") -> Any:
+    """Plays raw content (string, collection) within a Block, applying block-level branding."""
+    res = resolve_target(content, boss, holiday_ctx, config, resolver, logger)
+    content_key = res.resolved_content
+
+    # Handle CommercialBreak items within a block
+    if isinstance(content_key, CommercialBreak):
+        cb = content_key
+        # Resolve the content of the break
+        cb_res = resolve_target(cb.content, boss, holiday_ctx, config, resolver, logger)
+        cb_key = cb_res.resolved_content
+        
+        if isinstance(cb_key, Fallback):
+            cb_key = cb_key.primary
+            
+        if cb.duration_seconds > 0:
+            target_dt = context.current_time + timedelta(seconds=cb.duration_seconds)
+            target_time_str = target_dt.strftime("%H:%M")
+            is_tomorrow = target_dt.day > context.current_time.day
+            
+            logger.info(f"   ☕ Block Item: Commercial Break ({cb.duration_seconds}s)")
+            context = fill_until_time(api, build_id, context, logger, target_time_str, filler_key=cb_key, tomorrow=is_tomorrow)
+            return context
+        # If duration is 0, treat as regular content (fall through)
+    
+    if not content_key:
+        logger.warn(f"Could not resolve raw content in block '{block.name}'. Skipping.")
+        return context
+
+    context = play_with_fallback(api, build_id, content_key, logger, context=context)
+
+    context = _play_bumper(api, build_id, context, block.bumpers, content_key, resolver, logger, boss)
+
+    # Block-level Commercials (between items)
+    context = _play_commercials(api, build_id, context, block.commercials, block.commercial_duration, config, resolver, logger, boss, holiday_ctx, log_indent="   ", log_prefix="Block")
+        
     return context

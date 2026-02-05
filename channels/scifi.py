@@ -120,7 +120,7 @@ EVENING_BLOCK = {
 # Prime Block (20:00 - 23:00)
 PRIME_BLOCK = {
     "SATURDAY": movies.SCI_FI_SHOWCASE,
-    "SUNDAY": PlayOnce(scifi.SCIFI_SUNDAY_BLOCK),
+    "SUNDAY": scifi.SCIFI_SUNDAY_BLOCK,
     "default": SCIFI_PRIME_SEASONAL
 }
 

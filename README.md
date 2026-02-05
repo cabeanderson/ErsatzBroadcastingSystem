@@ -13,7 +13,7 @@ This framework separates **scheduling logic** from **channel configuration**. In
 *   **Dynamic Scheduling:**
     *   **Seasonal Blending:** Slowly transition content from Summer to Fall.
     *   **Holiday Takeovers:** Automatically switch to Halloween or Christmas programming.
-    *   **Marathons:** Probability-based triggers (e.g., 5% chance of a DBZ marathon on Saturdays).
+    *   **Marathons:** Trigger special events based on probability, date, or day of the week (e.g., a 5% chance of a DBZ marathon on Saturdays, or a guaranteed Star Wars marathon on May 4th).
     *   **Appointment TV:** Schedule specific seasons of shows to premiere on exact dates (e.g., "Lost Season 1 starts Fall 2026").
 *   **Smart Content Resolution:** Handles collections, fillers, intros/outros, and bumpers.
 *   **Safety First:** Includes circuit breakers, fallbacks, and pre-flight checks to ensure continuous playback.
@@ -33,7 +33,7 @@ scripted-schedules/
 │   ├── library/        # Content queries and collections (User Data)
 │   ├── core/           # Date math and state
 │   ├── logic/          # Scheduling decisions
-│   ├── engines/        # Playback behaviors (Marathons, Blocks)
+│   ├── engines/        # Playback behaviors (Marathons, Blocks, Programs)
 │   ├── testing/        # Simulator
 │   └── requirements.txt
 └── README.md

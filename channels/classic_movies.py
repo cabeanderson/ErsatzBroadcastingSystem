@@ -23,7 +23,6 @@ from scripts.schedule import run_daily_schedule, ScheduleConfig
 from scripts.logic.models import Marathon, Swap, Feather
 from scripts.logic import triggers
 from scripts.logic.seasonal import SeasonalBlock
-from scripts.logic.profiles import CHRISTMAS_PROFILES, STANDARD_PROFILES # TODO: Use specific profiles
 from scripts.library import movies
 from scripts.logic.factories import themed_marathon
 from scripts.core.logger import ChannelLogger
@@ -105,11 +104,7 @@ def build_playout(api, context, build_id):
             "HALLOWEEN": HALLOWEEN_SCHEDULE,
             "CHRISTMAS": CHRISTMAS_SCHEDULE
         },
-        block_profiles={
-            "HALLOWEEN": STANDARD_PROFILES, # TODO: Use specific Halloween profile
-            "CHRISTMAS": CHRISTMAS_PROFILES,
-            "GROUNDHOGS_DAY": STANDARD_PROFILES
-        },
+        block_profiles={},
         timeslot_preset="movies",
         logger=ChannelLogger(prefix="[MOVIES]"),
         fallback_content=movies.GOLDEN_AGE_CINEMA

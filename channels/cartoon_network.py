@@ -27,8 +27,7 @@ from scripts.schedule import run_daily_schedule, ScheduleConfig
 # Framework - Logic
 from scripts.logic.models import Marathon
 from scripts.logic.seasonal import SeasonalBlock
-from scripts.logic import triggers, Swap
-from scripts.logic.profiles import STANDARD_PROFILES, CHRISTMAS_PROFILES
+from scripts.logic import triggers, Swap, profiles
 
 # Framework - Content
 from scripts.library import animation, common
@@ -63,7 +62,7 @@ MARATHONS = [
     Marathon(
         name="Toonami Takeover",
         trigger=triggers.chance(0.01, "toonami_takeover"),
-        collection=animation.TOONAMI_BLOCK.content,
+        collection=animation.TOONAMI_BLOCK.items,
         hours=(12, 24),
         priority=2
     ),
@@ -217,10 +216,7 @@ def build_playout(api, context, build_id):
         marathons=MARATHONS,
         holiday_schedules=HOLIDAY_SCHEDULES,
         timeslot_preset="default",
-        block_profiles={
-            "HALLOWEEN": STANDARD_PROFILES, # TODO: Use a specific Halloween profile
-            "CHRISTMAS": CHRISTMAS_PROFILES # TODO: Use a specific Christmas profile
-        },
+        block_profiles={}, # Use defaults from HOLIDAY_PROFILES
         filler_content=None,  # TODO: Add collections.BUMPERS when available
         logger=ChannelLogger(prefix="[CARTOONS]"),
         fallback_content=animation.CLASSIC_CARTOONS

@@ -4,7 +4,7 @@ Collections, Blocks, and Special Programming.
 """
 
 from datetime import date
-from scripts.logic.structures import RandomCollection, OrderedCollection, SeriesRelay, AppointmentLineup, AppointmentSlot
+from scripts.logic.structures import RandomCollection, OrderedCollection, Block, Program
 from scripts.logic.factories import annual_show
 
 # --- COLLECTIONS ---
@@ -86,49 +86,32 @@ SCIFI_GRITTY = OrderedCollection([
 # --- APPOINTMENT TV BLOCKS ---
 
 # --- Fillers ---
-LOST_FILLERS = SeriesRelay(
-    items=[
-        {"title": "Devs", "order": "Chronological", "count": 8},
-        {"title": "The OA", "order": "Chronological", "count": 16},
-        {"title": "Black Mirror", "order": "Chronological", "count": 15}
-    ],
-    start_date=date(2026, 3, 20) # Fixed Anchor: Spring 2026
-)
+LOST_FILLERS = OrderedCollection([
+    {"title": "Devs", "order": "Chronological"},
+    {"title": "The OA", "order": "Chronological"},
+    {"title": "Black Mirror", "order": "Chronological"}
+])
 
-ALIAS_FILLERS = SeriesRelay(
-    items=[
-        {"title": "Terminator: The Sarah Connor Chronicles", "order": "Chronological", "count": 31},
-        {"title": "Dark Angel", "order": "Chronological", "count": 42}
-    ],
-    start_date=date(2026, 6, 21) # Fixed Anchor: Summer 2026
-)
+ALIAS_FILLERS = OrderedCollection([
+    {"title": "Terminator: The Sarah Connor Chronicles", "order": "Chronological"},
+    {"title": "Dark Angel", "order": "Chronological"}
+])
 
-FRINGE_FILLERS = SeriesRelay(
-    items=[
-        {"title": "Firefly", "order": "Chronological", "count": 14},
-        {"title": "Cleopatra 2525", "order": "Chronological", "count": 28}
-    ],
-    start_date=date(2025, 9, 22) # Fixed Anchor: Fall 2025 (to establish history for 2026)
-)
+FRINGE_FILLERS = OrderedCollection([
+    {"title": "Firefly", "order": "Chronological"},
+    {"title": "Cleopatra 2525", "order": "Chronological"}
+])
 
 # --- Sunday Night Appointment Lineup ---
 
-SCIFI_SUNDAY_BLOCK = AppointmentLineup(
-    slots=[
+SCIFI_SUNDAY_BLOCK = Block(
+    name="Sci-Fi Sunday Night",
+    items=[
         # 8:00pm Slot
-        AppointmentSlot(
-            anchor=annual_show(show_title="Lost", seasons=6, episodes_per_season=[25, 24, 23, 14, 17, 18], premiere_year=2026, premiere_season="FALL", reruns=LOST_FILLERS, loop=True),
-            fillers=LOST_FILLERS
-        ),
+        annual_show(show_title="Lost", seasons=6, episodes_per_season=[25, 24, 23, 14, 17, 18], premiere_year=2026, premiere_season="FALL", reruns=LOST_FILLERS, loop=True),
         # 9:00pm Slot
-        AppointmentSlot(
-            anchor=annual_show(show_title="Alias", seasons=5, episodes_per_season=[22, 22, 22, 22, 17], premiere_year=2027, premiere_season="WINTER", reruns=ALIAS_FILLERS, loop=True),
-            fillers=ALIAS_FILLERS
-        ),
+        annual_show(show_title="Alias", seasons=5, episodes_per_season=[22, 22, 22, 22, 17], premiere_year=2026, premiere_season="WINTER", reruns=ALIAS_FILLERS, loop=True),
         # 10:00pm Slot
-        AppointmentSlot(
-            anchor=annual_show(show_title="Fringe", seasons=5, episodes_per_season=[20, 23, 22, 22, 13], premiere_year=2027, premiere_season="SPRING", reruns=FRINGE_FILLERS, loop=True),
-            fillers=FRINGE_FILLERS
-        )
+        annual_show(show_title="Fringe", seasons=5, episodes_per_season=[20, 23, 22, 22, 13], premiere_year=2027, premiere_season="SPRING", reruns=FRINGE_FILLERS, loop=True)
     ]
 )

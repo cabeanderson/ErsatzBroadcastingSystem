@@ -3,9 +3,9 @@
 Factory functions to build complex scheduling structures like AppointmentBlock.
 """
 
-from typing import List, Optional, Tuple, Union, Dict
+from typing import List, Optional, Tuple, Union, Dict, Any
 import re
-from .structures import AppointmentBlock, SeriesRelay, OrderedCollection
+from .structures import Program, OrderedCollection
 from .models import MarathonDefinition
 from .queries import show_by_title, _escape_quotes
 
@@ -16,13 +16,13 @@ def annual_show(
     content_pattern: Optional[str] = None,
     show_title: Optional[str] = None,
     premiere_season: str = "FALL",
-    reruns: Optional[Union[str, Dict[str, str], SeriesRelay]] = None,
+    reruns: Optional[Any] = None,
     finale: Optional[str] = None,
     frequency: str = "weekly",
     episodes_per_slot: int = 1,
     loop: bool = False,
     loop_restart_season: Union[str, bool, None] = None
-) -> AppointmentBlock:
+) -> Program:
     """
     Helper to create an AppointmentBlock for a show that airs annually.
     
@@ -61,15 +61,17 @@ def annual_show(
         year = premiere_year + i
         season_list.append((key, count, (year, premiere_season)))
         
-    return AppointmentBlock(
-        seasons=season_list,
-        off_season_content=reruns,
-        generated_queries=generated_queries if generated_queries else None,
-        finale_content=finale,
-        frequency=frequency,
-        episodes_per_slot=episodes_per_slot,
-        loop=loop,
-        loop_restart_season=loop_restart_season
+    return Program(
+        name=show_title or "Annual Show",
+        content=reruns,
+        scheduling={
+            "seasons": season_list,
+            "frequency": frequency,
+            "episodes_per_slot": episodes_per_slot,
+            "loop": loop,
+            "loop_restart_season": loop_restart_season,
+            "generated_queries": generated_queries
+        }
     )
 
 def alternating_seasons(
@@ -79,7 +81,7 @@ def alternating_seasons(
     reruns: Optional[Union[str, Dict[str, str]]] = None,
     frequency: str = "weekly",
     loop: bool = False
-) -> AppointmentBlock:
+) -> Program:
     """
     Interleaves seasons of multiple shows annually.
     
@@ -98,11 +100,14 @@ def alternating_seasons(
                 season_list.append((key, count, (current_year, start_season)))
                 current_year += 1
                 
-    return AppointmentBlock(
-        seasons=season_list,
-        off_season_content=reruns,
-        frequency=frequency,
-        loop=loop
+    return Program(
+        name="Alternating Seasons",
+        content=reruns,
+        scheduling={
+            "seasons": season_list,
+            "frequency": frequency,
+            "loop": loop
+        }
     )
 
 def themed_marathon(

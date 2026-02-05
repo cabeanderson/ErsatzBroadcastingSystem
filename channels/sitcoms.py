@@ -10,9 +10,9 @@ Features:
 
 from etv_client.models import ControlWaitUntil
 from scripts.schedule import run_daily_schedule, ScheduleConfig
-from scripts.logic.profiles import HOLIDAY_PROFILES
 from scripts.logic.seasonal import SeasonalBlock
 from scripts.logic.models import Swap, Feather
+from scripts.logic.structures import RandomCollection
 from scripts.library import sitcoms, common
 from scripts.core.logger import ChannelLogger
 
@@ -69,6 +69,11 @@ SCHEDULES = {
 # These blocks will probabilistically replace the regular schedule
 # as the holiday approaches.
 
+CHRISTMAS_AFTERNOON_MOVIES = RandomCollection([
+    "christmas_80s_movie",
+    "christmas_90s_movie"
+])
+
 HALLOWEEN_SCHEDULE = {
     "overnight": common.HALLOWEEN_TV_EVENT,
     "early": common.HALLOWEEN_TV_EVENT,
@@ -82,15 +87,10 @@ HALLOWEEN_SCHEDULE = {
 }
 
 CHRISTMAS_SCHEDULE = {
-    "overnight": common.CHRISTMAS_TV_EVENT,
-    "early": common.CHRISTMAS_TV_EVENT,
-    "morning": common.CHRISTMAS_TV_EVENT,
     "midday": common.CHRISTMAS_TV_EVENT,
-    "noon": common.CHRISTMAS_TV_EVENT,
-    "afternoon": common.CHRISTMAS_TV_EVENT,
-    "evening": common.CHRISTMAS_TV_EVENT,
+    "afternoon": CHRISTMAS_AFTERNOON_MOVIES,
     "prime": common.CHRISTMAS_TV_EVENT,
-    "night": common.CHRISTMAS_TV_EVENT
+    "night": "christmas_classic_movie",
 }
 
 # Reuse Christmas logic for others for now, or create specific collections
@@ -121,7 +121,7 @@ def build_playout(api, context, build_id):
             "CHRISTMAS": CHRISTMAS_SCHEDULE,
             "VALENTINES_DAY": VALENTINES_SCHEDULE,
         },
-        block_profiles=HOLIDAY_PROFILES,
+        block_profiles={},
         # filler_content="commercials_spot", # TODO: Add collections.BUMPERS when available
         logger=ChannelLogger(prefix="[SITCOMS]"),
         fallback_content=sitcoms.CLASSIC_SITCOMS_60s_70s

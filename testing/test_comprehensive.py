@@ -25,9 +25,10 @@ from scripts.logic.resolver import ContentResolver
 from scripts.core.logger import ChannelLogger
 from scripts.core import DayDirector
 from scripts.logic.holidays import HolidayContext
-from scripts.schedule import ScheduleConfig
-from scripts.logic.structures import AppointmentBlock
-from scripts.logic.sequencing import find_active_season
+from scripts.schedule import ScheduleConfig, _find_active_marathon
+from scripts.logic.structures import Program
+from scripts.logic.sequencing import resolve_scheduled_content
+from scripts.logic.models import Marathon, MarathonDefinition
 
 # Import channels to test
 from scripts.channels import cartoon_network, detective, scifi, sitcoms, classic_movies
@@ -90,16 +91,20 @@ class TestComprehensive(unittest.TestCase):
                     check_content(target.base)
                     for v in target.seasonal.values():
                         check_content(v)
-                elif hasattr(target, 'content'): # BrandedBlock / PlayOnce
+                elif hasattr(target, 'content'): # Program / PlayOnce
                     check_content(target.content)
-                elif hasattr(target, 'items'): # Collections
-                    for item in target.items:
-                        if isinstance(item, dict) and "query" in item:
-                            pass # Inline query
-                        elif hasattr(item, "query"): # ContentItem
-                            pass
-                        else:
-                            check_content(item)
+                elif hasattr(target, 'items'): # Block or Collection
+                    # Distinguish between a Block (which contains content) and a Collection (which is a list wrapper)
+                    if hasattr(target, 'pick'): # It's a Collection (Random, Ordered, etc.)
+                        for item in target.items:
+                            if isinstance(item, dict) and "query" in item:
+                                pass # Inline query
+                            elif hasattr(item, "query"): # ContentItem
+                                pass
+                            else:
+                                check_content(item)
+                    else: # It's a Block
+                        check_content(target.items)
 
             for day_sched in channel.SCHEDULES.values():
                 for slot_content in day_sched.values():
@@ -140,24 +145,99 @@ class TestComprehensive(unittest.TestCase):
         print("\n[Test] Appointment Logic")
         
         # Simple weekly show
-        block = AppointmentBlock(
-            seasons=[("show_s1", 5, date(2026, 1, 1))], # 5 eps, starts Jan 1
-            frequency="weekly"
+        block = Program(
+            name="Test Show",
+            content=None,
+            scheduling={
+                "seasons": [("show_s1", 5, date(2026, 1, 1))], # 5 eps, starts Jan 1
+                "frequency": "weekly"
+            }
         )
         
         # Week 1
-        res = find_active_season(block, date(2026, 1, 1))
+        res = resolve_scheduled_content(block, date(2026, 1, 1))
         self.assertEqual(res, ("show_s1", 5, 1))
         
         # Week 3
-        res = find_active_season(block, date(2026, 1, 15))
+        res = resolve_scheduled_content(block, date(2026, 1, 15))
         self.assertEqual(res, ("show_s1", 5, 3))
         
         # Week 6 (Finished)
-        res = find_active_season(block, date(2026, 2, 10))
+        res = resolve_scheduled_content(block, date(2026, 2, 10))
         self.assertIsNone(res)
         
         print("✅ Appointment logic verified.")
+
+    def test_05_marathon_priority(self):
+        """Verify marathon priority selection logic."""
+        print("\n[Test] Marathon Priority")
+        
+        # Mock holiday context to allow setting properties
+        mock_holiday_ctx = MagicMock()
+        
+        # Mock Marathons
+        # Priority 1: Low (e.g. Random Daily)
+        m1 = Marathon(name="Low Priority", trigger=lambda b: True, collection="low", priority=1)
+        # Priority 10: High (e.g. Weekly Event)
+        m2 = Marathon(name="High Priority", trigger=lambda b: True, collection="high", priority=10)
+        # Priority 5: Medium (e.g. Monthly)
+        m3 = Marathon(name="Medium Priority", trigger=lambda b: True, collection="med", priority=5)
+        
+        # Scenario 1: All active
+        config = ScheduleConfig(schedules={}, marathons=[m1, m2, m3])
+        # Mock holiday context (inactive)
+        mock_holiday_ctx.is_holiday_season = False
+        
+        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        self.assertEqual(marathon.name, "High Priority", "Should pick highest priority")
+        
+        # Scenario 2: High inactive
+        m2_inactive = Marathon(name="High Priority", trigger=lambda b: False, collection="high", priority=10)
+        config = ScheduleConfig(schedules={}, marathons=[m1, m2_inactive, m3])
+        
+        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        self.assertEqual(marathon.name, "Medium Priority", "Should pick next highest priority")
+        
+        # Scenario 3: Holiday Season (Marathons Disabled)
+        mock_holiday_ctx.is_holiday_season = True
+        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        self.assertIsNone(marathon, "Should disable marathons during holiday season")
+        
+        # Reset holiday context
+        mock_holiday_ctx.is_holiday_season = False
+        
+        # Scenario 4: No active marathons
+        config = ScheduleConfig(schedules={}, marathons=[])
+        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        self.assertIsNone(marathon)
+        
+        print("✅ Marathon priority logic verified.")
+
+    def test_06_marathon_start_hour_override(self):
+        """Verify marathon start_hour override logic."""
+        print("\n[Test] Marathon Start Hour Override")
+        
+        # Mock holiday context to ensure marathons are enabled
+        mock_holiday_ctx = MagicMock()
+        mock_holiday_ctx.is_holiday_season = False
+        
+        # Mock Marathon Definition with start_hour override
+        marathon_def = MarathonDefinition(
+            name="Late Start Marathon",
+            query="query",
+            start_hour=14 # Starts at 2 PM
+        )
+        
+        # Register it in MASTER_SOURCES (mocked via resolver registry)
+        MASTER_SOURCES["late_start_marathon"] = marathon_def
+        
+        m = Marathon(name="Late Start", trigger=lambda b: True, collection="late_start_marathon", hours=(8, 24))
+        config = ScheduleConfig(schedules={}, marathons=[m])
+        
+        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        
+        self.assertEqual(hours, (14, 24), "Should override start hour to 14")
+        print("✅ Marathon start_hour override verified.")
 
 if __name__ == "__main__":
     unittest.main()

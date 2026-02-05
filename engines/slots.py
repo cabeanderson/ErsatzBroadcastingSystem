@@ -9,9 +9,9 @@ from typing import Any, Dict, Tuple, Optional
 from scripts.core.logger import ChannelLogger
 from scripts.playout import fill_until_time, circuit_breaker, play_with_fallback
 from scripts.logic.resolution import resolve_target
-from scripts.logic.models import BrandedBlock, Fallback, PlayOnce, CommercialBreak
-from scripts.logic.structures import AppointmentBlock, SeriesRelay, AppointmentLineup
-from scripts.engines.sequential import play_appointment_block, play_series_relay, play_appointment_lineup
+from scripts.logic.models import Fallback, PlayOnce, CommercialBreak
+from scripts.logic.structures import Block, Program
+from scripts.logic.playback import calculate_boundary_dt
 
 
 def handle_single_play_slot(api: Any, build_id: str, context: Any, current_slot_tuple: Tuple[int, int], day_schedule: Dict[Tuple[int, int], Any], boss: Any, holiday_ctx: Any, config: Any, resolver: Any, logger: ChannelLogger) -> Any:
@@ -37,17 +37,7 @@ def handle_single_play_slot(api: Any, build_id: str, context: Any, current_slot_
     start, end = current_slot_tuple
     
     # Calculate boundary datetime for the end of this slot
-    boundary_dt = context.current_time.replace(minute=0, second=0, microsecond=0)
-    
-    if end == 24:
-        boundary_dt = boundary_dt.replace(hour=0) + timedelta(days=1)
-    elif end < start:  # Wraps over midnight
-        if context.current_time.hour >= start:
-            boundary_dt = boundary_dt.replace(hour=end) + timedelta(days=1)
-        else:
-            boundary_dt = boundary_dt.replace(hour=end)
-    else:
-        boundary_dt = boundary_dt.replace(hour=end)
+    boundary_dt = calculate_boundary_dt(context, start, end)
     
     # Find next slot (once)
     next_slot_entry = None
@@ -66,10 +56,15 @@ def handle_single_play_slot(api: Any, build_id: str, context: Any, current_slot_
             try:
                 logger.info(f"  Starting next block early to fill gap")
                 
-                # Handle BrandedBlock in fallthrough (unwrap to content)
+                # Handle Block/Program in fallthrough
                 target_for_resolution = next_slot_entry
-                if isinstance(target_for_resolution, BrandedBlock):
-                    target_for_resolution = target_for_resolution.content
+                if isinstance(target_for_resolution, Block):
+                    # If it's a block, try to grab the first item or just use the block itself?
+                    # For gap filling, we usually want the *content*.
+                    # If Block has items, pick one?
+                    # Simplest approach: Treat Block as a collection source if possible, or unwrap.
+                    if target_for_resolution.items:
+                        target_for_resolution = target_for_resolution.items
                 
                 next_result = resolve_target(target_for_resolution, boss, holiday_ctx, config, resolver, logger)
                 next_key = next_result.resolved_content
@@ -79,10 +74,15 @@ def handle_single_play_slot(api: Any, build_id: str, context: Any, current_slot_
                     next_key = next_result.wrapper
                 
                 # Unwrap wrappers for simple playback
-                if isinstance(next_key, BrandedBlock):
-                    # If filling a gap into a BrandedBlock, just play its content (skip intro/branding)
-                    inner_res = resolve_target(next_key.content, boss, holiday_ctx, config, resolver, logger)
-                    next_key = inner_res.resolved_content
+                if isinstance(next_key, Block):
+                    # Attempt to extract content from the Block to fill the gap
+                    if next_key.items:
+                        # If items is a collection (has pick), use it
+                        if hasattr(next_key.items, 'pick'):
+                            next_key = next_key.items.pick(boss)
+                        # If items is a list, pick the first one (or random?)
+                        elif isinstance(next_key.items, list) and len(next_key.items) > 0:
+                            next_key = next_key.items[0]
 
                 if isinstance(next_key, PlayOnce):
                     # If we resolved to a PlayOnce, just take its content (we are already playing once)
@@ -95,17 +95,9 @@ def handle_single_play_slot(api: Any, build_id: str, context: Any, current_slot_
                     inner_res = resolve_target(next_key.content, boss, holiday_ctx, config, resolver, logger)
                     next_key = inner_res.resolved_content
 
-                if isinstance(next_key, AppointmentBlock):
-                    context = play_appointment_block(api, build_id, context, next_key, resolver, logger, boss=boss)
-                    next_key = None # Handled by engine
-                
-                if isinstance(next_key, SeriesRelay):
-                    context = play_series_relay(api, build_id, context, next_key, resolver, logger, boss=boss)
-                    next_key = None # Handled by engine
-                
-                if isinstance(next_key, AppointmentLineup):
-                    context = play_appointment_lineup(api, build_id, context, next_key, resolver, logger, boss, holiday_ctx, config, lookup_start)
-                    next_key = None # Handled by engine
+                if isinstance(next_key, Program):
+                    # Programs are complex; for gap filling, we might just want their content
+                    next_key = next_key.content
 
                 if next_key:
                     context = play_with_fallback(api, build_id, next_key, logger, context=context)

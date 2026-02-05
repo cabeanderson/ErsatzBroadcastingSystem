@@ -3,9 +3,8 @@ Detective Channel Content
 Collections, Blocks, and Special Programming.
 """
 
-from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection
+from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection, Block
 from scripts.logic.queries import show_by_title
-from scripts.logic.models import BrandedBlock
 from scripts.logic.factories import annual_show
 
 # --- COLLECTIONS ---
@@ -74,9 +73,9 @@ NOIR_NOVEMBER_COLLECTION = RandomCollection([
 
 # --- BLOCKS ---
 
-DETECTIVE_MONDAY_BRITISH = BrandedBlock(
+DETECTIVE_MONDAY_BRITISH = Block(
     name="British Parlour Mystery",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Agatha Christie's Poirot", "query": show_by_title("Agatha Christie's Poirot"), "order": "Shuffle"},
         {"title": "Miss Marple", "query": show_by_title("Miss Marple"), "order": "Shuffle"},
         {"title": "Agatha Christie's Poirot", "query": show_by_title("Agatha Christie's Poirot"), "order": "Shuffle"}, # Encore
@@ -84,9 +83,9 @@ DETECTIVE_MONDAY_BRITISH = BrandedBlock(
     use_epg_group=False
 )
 
-DETECTIVE_TUESDAY_BLUESKY = BrandedBlock(
+DETECTIVE_TUESDAY_BLUESKY = Block(
     name="Blue Sky Dramedy",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Monk", "query": show_by_title("Monk"), "order": "Shuffle"},
         {"title": "Psych", "query": show_by_title("Psych"), "order": "Shuffle"},
         {"title": "Elsbeth", "query": show_by_title("Elsbeth"), "order": "Shuffle"},
@@ -94,9 +93,9 @@ DETECTIVE_TUESDAY_BLUESKY = BrandedBlock(
     use_epg_group=False
 )
 
-DETECTIVE_WEDNESDAY_HARDBOILED = BrandedBlock(
+DETECTIVE_WEDNESDAY_HARDBOILED = Block(
     name="Hardboiled Crime",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Bosch", "query": show_by_title("Bosch"), "order": "Chronological"},
         {"title": "Homicide: Life on the Street", "query": show_by_title("Homicide: Life on the Street"), "order": "Shuffle"},
         {"title": "Mindhunter", "query": show_by_title("Mindhunter"), "order": "Chronological"},
@@ -104,9 +103,9 @@ DETECTIVE_WEDNESDAY_HARDBOILED = BrandedBlock(
     use_epg_group=False
 )
 
-DETECTIVE_THURSDAY_WHODUNIT = BrandedBlock(
+DETECTIVE_THURSDAY_WHODUNIT = Block(
     name="The Whodunit Club",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Murder, She Wrote", "query": show_by_title("Murder, She Wrote"), "order": "Shuffle"},
         {"title": "Poker Face", "query": show_by_title("Poker Face"), "order": "Shuffle"},
         {"title": "Bored to Death", "query": show_by_title("Bored to Death"), "order": "Shuffle"},
@@ -114,9 +113,9 @@ DETECTIVE_THURSDAY_WHODUNIT = BrandedBlock(
     use_epg_group=False
 )
 
-DETECTIVE_FRIDAY_RETRO = BrandedBlock(
+DETECTIVE_FRIDAY_RETRO = Block(
     name="Retro P.I. Night",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Magnum P.I.", "query": show_by_title("Magnum P.I."), "order": "Shuffle"},
         {"title": "Moonlighting", "query": show_by_title("Moonlighting"), "order": "Shuffle"},
         {"title": "Remington Steele", "query": show_by_title("Remington Steele"), "order": "Shuffle"},

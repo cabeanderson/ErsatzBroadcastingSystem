@@ -74,7 +74,12 @@ class DailyOrderedCollection:
         Args:
             items: List of content keys or objects to cycle through.
         """
-        self.items: List[Any] = items
+        self.items: List[Any] = []
+        for item in items:
+            if isinstance(item, dict):
+                self.items.append(ContentItem(**item))
+            else:
+                self.items.append(item)
         self.index: int = 0
         self.last_date: Optional[date] = None
     
@@ -129,76 +134,42 @@ class MarathonSequence:
         self.items = new_items
 
 @dataclass
-class SeriesRelay:
-    """
-    Plays items in order based on a fixed schedule from a start date.
-    Used for "Series Relay" (Show A finishes, then Show B starts).
-    
-    NOTE: This timeline runs continuously based on the start_date. It does NOT
-    pause when the slot is taken over by an Anchor show. It behaves like a 
-    syndicated rerun cycle running in the background.
-    """
-    items: List[Any] # List of (content, count) tuples OR dicts with "count" key
-    start_date: Union[date, str]
-    frequency: str = "weekly"
-    episodes_per_slot: int = 1
+class Program:
+    name: str
+    content: Any
     intro: Optional[str] = None
     outro: Optional[str] = None
+    bumpers: Optional[str] = None
+    epg_title: Optional[str] = None
+    commercials: Optional[str] = None
+    commercial_duration: int = 0
+    scheduling: Optional[Dict[str, Any]] = None
+    fill_strategy: str = "yield" # "fill", "yield", "gap"
+    filler: Optional[Any] = None
 
     def __post_init__(self):
-        # Normalize items to List[Tuple[Content, int]]
-        normalized = []
-        for item in self.items:
-            # 1. Handle clean dict syntax: {"title": "Show", "count": 5}
-            if isinstance(item, dict) and "count" in item:
-                # Extract count, use rest for ContentItem
-                item_copy = item.copy()
-                count = item_copy.pop("count")
-                normalized.append((ContentItem(**item_copy), count))
-            
-            # 2. Handle legacy tuple syntax: ("key", 5) or ({"title":...}, 5)
-            elif isinstance(item, tuple) and len(item) == 2:
-                content, count = item
-                if isinstance(content, dict):
-                    content = ContentItem(**content)
-                normalized.append((content, count))
-            
-            else:
-                normalized.append(item)
-        
-        self.items = normalized
+        if self.fill_strategy not in ["fill", "yield", "gap"]:
+            raise ValueError(f"Program '{self.name}': Invalid fill_strategy '{self.fill_strategy}'. Must be 'fill', 'yield', or 'gap'.")
+        if self.fill_strategy == "fill" and not self.filler:
+            raise ValueError(f"Program '{self.name}': fill_strategy='fill' requires 'filler' content.")
+        if not self.content and not self.scheduling:
+            raise ValueError(f"Program '{self.name}': Must have either 'content' or 'scheduling'.")
 
 @dataclass
-class AppointmentBlock:
-    """
-    Plays specific seasons starting on specific absolute dates (Appointment TV).
-    Falls back to off_season_content when no season is active.
-    """
-    seasons: List[Tuple[str, int, Union[date, Tuple[int, str]]]]
-    off_season_content: Optional[Union[str, Dict[str, str], "SeriesRelay"]] = None
-    generated_queries: Optional[Dict[str, str]] = None
-    finale_content: Optional[str] = None
-    frequency: str = "weekly"
-    loop: bool = False
+class Block:
+    name: str
+    items: List[Any] # List of Programs or content
     intro: Optional[str] = None
     outro: Optional[str] = None
-    episodes_per_slot: int = 1
-    loop_restart_season: Union[str, bool, None] = None
-    
+    bumpers: Optional[str] = None
+    commercials: Optional[str] = None
+    commercial_duration: int = 0
+    use_epg_group: bool = False
+    fill_strategy: str = "yield" # "fill", "yield", "gap"
+    filler: Optional[Any] = None
+
     def __post_init__(self):
-        # Validation logic omitted for brevity, but should be here
-        pass
-
-@dataclass
-class AppointmentSlot:
-    """A single time-slot within a larger AppointmentLineup."""
-    anchor: AppointmentBlock
-    fillers: Optional[Union[str, List[str], Dict[str, str], "SeriesRelay", "RandomCollection", "OrderedCollection"]] = None
-
-@dataclass
-class AppointmentLineup:
-    """
-    A container for multiple, hour-specific appointment slots, creating a sequential block.
-    """
-    slots: List[AppointmentSlot]
-    mode: str = "sequential" # "sequential" (no gaps) or "hourly" (strict slots)
+        if self.fill_strategy not in ["fill", "yield", "gap"]:
+            raise ValueError(f"Block '{self.name}': Invalid fill_strategy '{self.fill_strategy}'. Must be 'fill', 'yield', or 'gap'.")
+        if self.fill_strategy == "fill" and not self.filler:
+            raise ValueError(f"Block '{self.name}': fill_strategy='fill' requires 'filler' content.")

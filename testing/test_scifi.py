@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Test script for Sci-Fi Channel - Full Week Prime Time.
-Verifies the daily themed rotation and the Sunday AppointmentLineup.
+Test script for Sci-Fi Channel - Appointment TV Verification.
+Tests the transition between Active Seasons and Off-Season Fillers.
 """
 import sys
 import os
@@ -16,43 +16,61 @@ install_mocks()
 from scripts.channels import scifi
 
 def run_test():
-    print("Testing Sci-Fi Channel - Prime Time Week (October 2026)")
+    print("Testing Sci-Fi Channel - Appointment TV Logic")
     print("="*60)
-    
-    # Start on a Monday in October 2026 to test the 'Lost' anchor
-    start_date = date(2026, 10, 5) # Monday
     
     # Define realistic durations for the test
     durations = {
         "__auto_lost_s1": 44,
-        "the_killing_tv": 45,
-        "awake_tv": 43,
-        "dollhouse_tv": 44,
-        "pushing_daisies_tv": 42,
-        "terriers_tv": 45
+        "__auto_alias_s1": 44,
+        "__auto_fringe_s1": 44,
     }
     
     sim = ChannelSimulator(scifi, content_durations=durations)
     
-    for i in range(7):
-        current_date = start_date + timedelta(days=i)
-        day_name = current_date.strftime("%A")
-        print(f"\n{day_name} ({current_date})")
-        print("-" * 40)
+    # Test Dates (Sundays)
+    scenarios = [
+        ("Fall 2026 (Oct 11)", date(2026, 10, 11), 
+         "Lost Active, Alias Filler, Fringe Filler"),
+         
+        ("Winter 2027 (Jan 10)", date(2027, 1, 10), 
+         "Lost Active, Alias Active, Fringe Filler"),
+         
+        ("Spring 2027 (May 16)", date(2027, 5, 16), 
+         "Lost Filler, Alias Active, Fringe Active")
+    ]
+    
+    for name, test_date, expected in scenarios:
+        print(f"\n--- {name} ---")
+        print(f"Expectation: {expected}")
         
-        schedule = sim.simulate_day(current_date)
+        # Ensure it's a Sunday
+        if test_date.weekday() != 6:
+            print(f"WARNING: {test_date} is not a Sunday!")
         
-        # Filter for Prime Time (20:00 - 23:00)
+        schedule = sim.simulate_day(test_date)
+        
+        # Filter for Prime Time Block (20:00 - 23:00)
         prime_items = [e for e in schedule if 20 <= e['time'].hour < 23 and e['type'] == 'content']
         
         if not prime_items:
             print("❌ No prime time content found.")
-        else:
-            for item in prime_items:
-                print(f"{item['time'].strftime('%H:%M')} | {item['content']}")
+            continue
+            
+        for item in prime_items:
+            time_str = item['time'].strftime('%H:%M')
+            content = item['content']
+            
+            # Add helpful annotations
+            note = ""
+            if "__auto_lost" in content: note = " <-- ✅ Lost (Active)"
+            elif "__auto_alias" in content: note = " <-- ✅ Alias (Active)"
+            elif "__auto_fringe" in content: note = " <-- ✅ Fringe (Active)"
+            elif "auto_gen_" in content: note = " <-- Filler (Generated)"
+            
+            print(f"{time_str} | {content}{note}")
 
     print("\n" + "="*60)
-    print("Test complete. Verify Sunday's lineup resolves the 'Lost' anchor.")
 
 if __name__ == "__main__":
     run_test()

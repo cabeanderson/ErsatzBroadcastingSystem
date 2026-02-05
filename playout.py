@@ -12,9 +12,9 @@ from etv_client.models import (
     ControlStartEpgGroup
 )
 from datetime import datetime, timedelta
-from typing import Any, Optional, Callable, Tuple, List
+from typing import Any, Optional, Callable, Tuple, List, Union
 
-from scripts.logic.models import Fallback
+from scripts.logic.models import Fallback, CommercialBreak
 from scripts.core.logger import ChannelLogger
 from scripts.config import ENABLE_SMART_BUMPERS
 
@@ -66,6 +66,10 @@ def play_with_fallback(api: Any, build_id: str, content: Any, logger: ChannelLog
     Returns:
         Updated context
     """
+    if isinstance(content, CommercialBreak):
+        # If a CommercialBreak object leaks through, treat it as its content key
+        content = content.content
+
     if isinstance(content, Fallback):
         # Get baseline time
         if context is None:
@@ -87,14 +91,16 @@ def play_with_fallback(api: Any, build_id: str, content: Any, logger: ChannelLog
     return play_item(api, build_id, content, logger, count=count)
 
 
-def align_to_time(api: Any, build_id: str, target_time: str = "10:00", tomorrow: bool = False) -> Any:
+def wait_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger, target_time: str, tomorrow: bool = False) -> Any:
     """
-    Creates a hard jump in the timeline (gap/dead air).
-    Use when you want to skip time without filler.
+    Waits (dead air) until target_time.
+    Creates a hard jump in the timeline.
     
     Args:
         api: ErsatzTV API instance
         build_id: Build UUID
+        context: Current playout context (unused but kept for signature consistency)
+        logger: ChannelLogger instance (unused but kept for signature consistency)
         target_time: Time to jump to (HH:MM format)
         tomorrow: If True, jumps to next day
     
@@ -108,7 +114,7 @@ def align_to_time(api: Any, build_id: str, target_time: str = "10:00", tomorrow:
 def fill_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger, target_time: str, filler_key: Optional[str] = None, tomorrow: bool = False) -> Any:
     """
     Pads until target_time with filler content.
-    Falls back to align_to_time if no filler or if padding fails.
+    Falls back to wait_until_time if no filler or if padding fails.
     
     Args:
         api: ErsatzTV API instance
@@ -132,10 +138,10 @@ def fill_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger
             return api.get_context(build_id)
         except Exception as e:
             logger.warn(f"Pad until failed: {e}. Using wait instead.")
-            # Fall through to align_to_time
+            # Fall through to wait_until_time
     
     # No filler or filler failed - just wait (dead air)
-    return align_to_time(api, build_id, target_time, tomorrow=tomorrow)
+    return wait_until_time(api, build_id, context, logger, target_time, tomorrow=tomorrow)
 
 
 def fill_until_next_hour(api: Any, build_id: str, context: Any, logger: ChannelLogger, filler_key: str) -> Any:

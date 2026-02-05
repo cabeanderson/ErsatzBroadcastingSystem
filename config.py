@@ -3,6 +3,7 @@ Configuration settings for the ErsatzTV Scheduling Framework.
 """
 import os
 from pathlib import Path
+from datetime import date
 
 # ==========================================
 # PATH CONFIGURATION
@@ -22,8 +23,15 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # FRAMEWORK BEHAVIOR
 # ==========================================
 
-# Default playback order for collections/searches ("Shuffle" or "Chronological")
-DEFAULT_ORDER = "Shuffle"
+# Default playback order for collections/searches
+# Used by logic/queries.py playback_order() function
+DEFAULT_ORDER = "Shuffle"  # "Shuffle" or "Chronological"
+
+# Program & Block Defaults
+DEFAULT_FILL_STRATEGY = "yield"
+DEFAULT_APPOINTMENT_START_DATE = date(2026, 1, 1)
+DEFAULT_COMMERCIALS_ENABLED = True
+DEFAULT_BLOCK_EPG_GROUPING = False
 
 # Feature Flags
 ENABLE_SMART_BUMPERS = True

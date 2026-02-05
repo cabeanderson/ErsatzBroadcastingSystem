@@ -3,9 +3,9 @@ Animation Content
 Collections, Blocks, and Special Programming for Cartoon Network & Adult Swim.
 """
 
-from scripts.logic.structures import RandomCollection, OrderedCollection, MarathonSequence
+from scripts.logic.structures import RandomCollection, OrderedCollection, MarathonSequence, Block
 from scripts.logic.queries import show_by_title
-from scripts.logic.models import BrandedBlock, Swap, ContentItem
+from scripts.logic.models import Swap, ContentItem
 from scripts.logic.seasonal import SeasonalBlock
 from . import branding
 
@@ -172,9 +172,9 @@ COWBOY_BEBOP_COMPLETE = MarathonSequence([
 # --- ADULT SWIM PRIME (8pm - 11pm) ---
 # Vibe: Comedy, Sitcoms, Story-driven
 
-AS_PRIME_A = BrandedBlock(
+AS_PRIME_A = Block(
     name="Adult Swim Prime A",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "King of the Hill", "query": show_by_title("King of the Hill"), "order": "Shuffle"},
         {"title": "Family Guy", "query": show_by_title("Family Guy"), "order": "Shuffle"},
         {"title": "Rick and Morty", "query": show_by_title("Rick and Morty"), "order": "Chronological"},
@@ -182,13 +182,14 @@ AS_PRIME_A = BrandedBlock(
         {"title": "Home Movies", "query": show_by_title("Home Movies"), "order": "Shuffle"},
         {"title": "Metalocalypse", "query": show_by_title("Metalocalypse"), "order": "Shuffle"},
     ]),
-    branding=branding.BRANDING_ADULT_SWIM,
+    intro=branding.BRANDING_ADULT_SWIM.intro,
+    bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
     use_epg_group=False
 )
 
-AS_PRIME_B = BrandedBlock(
+AS_PRIME_B = Block(
     name="Adult Swim Prime B",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Bob's Burgers", "query": show_by_title("Bob's Burgers"), "order": "Shuffle"},
         {"title": "Futurama", "query": show_by_title("Futurama"), "order": "Shuffle"},
         {"title": "Rick and Morty", "query": show_by_title("Rick and Morty"), "order": "Chronological"},
@@ -196,16 +197,17 @@ AS_PRIME_B = BrandedBlock(
         {"title": "Home Movies", "query": show_by_title("Home Movies"), "order": "Shuffle"},
         {"title": "Metalocalypse", "query": show_by_title("Metalocalypse"), "order": "Shuffle"},
     ]),
-    branding=branding.BRANDING_ADULT_SWIM,
+    intro=branding.BRANDING_ADULT_SWIM.intro,
+    bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
     use_epg_group=False
 )
 
 # --- ADULT SWIM NIGHT (11pm - 2am) ---
 # Vibe: Weird, Anime, Experimental
 
-AS_NIGHT_A = BrandedBlock(
+AS_NIGHT_A = Block(
     name="Adult Swim Night A",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Aqua Teen Hunger Force", "query": show_by_title("Aqua Teen Hunger Force"), "order": "Shuffle"},
         {"title": "Harvey Birdman", "query": show_by_title("Harvey Birdman, Attorney at Law"), "order": "Shuffle"},
         {"title": "The Eric Andre Show", "query": show_by_title("The Eric Andre Show"), "order": "Shuffle"},
@@ -213,13 +215,14 @@ AS_NIGHT_A = BrandedBlock(
         {"title": "Black Dynamite", "query": show_by_title("Black Dynamite"), "order": "Shuffle"},
         {"title": "12 oz. Mouse", "query": show_by_title("12 oz. Mouse"), "order": "Shuffle"},
     ]),
-    branding=branding.BRANDING_ADULT_SWIM,
+    intro=branding.BRANDING_ADULT_SWIM.intro,
+    bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
     use_epg_group=False
 )
 
-AS_NIGHT_B = BrandedBlock(
+AS_NIGHT_B = Block(
     name="Adult Swim Night B",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Robot Chicken", "query": show_by_title("Robot Chicken"), "order": "Shuffle"},
         {"title": "Sealab 2021", "query": show_by_title("Sealab 2021"), "order": "Shuffle"},
         {"title": "Steve Brule", "query": show_by_title("Check It Out! with Dr. Steve Brule"), "order": "Shuffle"},
@@ -227,14 +230,15 @@ AS_NIGHT_B = BrandedBlock(
         {"title": "Frisky Dingo", "query": show_by_title("Frisky Dingo"), "order": "Shuffle"},
         {"title": "12 oz. Mouse", "query": show_by_title("12 oz. Mouse"), "order": "Shuffle"},
     ]),
-    branding=branding.BRANDING_ADULT_SWIM,
+    intro=branding.BRANDING_ADULT_SWIM.intro,
+    bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
     use_epg_group=False
 )
 
 
-TOONAMI_BLOCK = BrandedBlock(
+TOONAMI_BLOCK = Block(
     name="Toonami",
-    content=OrderedCollection([
+    items=OrderedCollection([
         {"title": "Sailor Moon", "query": 'show_title:"sailor moon" AND NOT show_title:"sailor moon crystal"', "order": "Shuffle"},
         {"title": "Dragon Ball", "query": 'show_title:"Dragon Ball" AND release_date:[1980-01-01 TO 1989-04-21]', "order": "Chronological"},
         {"title": "Dragon Ball Z", "order": "Chronological"},
@@ -243,14 +247,18 @@ TOONAMI_BLOCK = BrandedBlock(
         {"title": "Inuyasha", "order": "Chronological"},
         {"title": "Naruto", "order": "Chronological"}
     ]),
-    branding=branding.BRANDING_TOONAMI,
+    intro=branding.BRANDING_TOONAMI.intro,
+    outro=branding.BRANDING_TOONAMI.outro,
+    bumpers=branding.BRANDING_TOONAMI.bumpers,
     use_epg_group=False
 )
 
-FOX_KIDS_BLOCK = BrandedBlock(
+FOX_KIDS_BLOCK = Block(
     name="Fox Kids",
-    content=MARVEL_HOUR,
-    branding=branding.BRANDING_90S_KIDS,
+    items=MARVEL_HOUR,
+    intro=branding.BRANDING_90S_KIDS.intro,
+    outro=branding.BRANDING_90S_KIDS.outro,
+    bumpers=branding.BRANDING_90S_KIDS.bumpers,
     use_epg_group=False
 )
 
