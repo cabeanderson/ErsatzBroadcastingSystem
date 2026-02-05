@@ -31,143 +31,141 @@ from scripts.logic import triggers, Swap
 from scripts.logic.profiles import STANDARD_PROFILES, CHRISTMAS_PROFILES
 
 # Framework - Content
-from scripts.library import collections, blocks
-from scripts.playout import ChannelLogger
+from scripts.library import animation, common
+from scripts.core.logger import ChannelLogger
 
-# MARATHONS - Special event programming
+# ==============================================================================
+# 1. MARATHONS - Special event programming
+# ==============================================================================
 
 MARATHONS = [
     Marathon(
         name="Cowboy Bebop",
-        trigger=triggers.chance(0.01, "bebop_marathon"),
-        collection="cowboy_bebop_complete",
+        trigger=triggers.chance(1.0, "bebop_marathon"),
+        collection=animation.COWBOY_BEBOP_COMPLETE,
         hours=(10, 24),
         priority=2
     ),
     Marathon(
         name="DBZ Marathon",
         trigger=triggers.chance(0.02, "dbz_takeover"),
-        collection=collections.DBZ_SAGAS,
+        collection=animation.DBZ_SAGAS,
         hours=(10, 24),  # 10am-midnight takeover
         priority=2
     ),
     Marathon(
         name="Simpsons Marathon",
         trigger=triggers.chance(0.01, "simpsons_takeover"),
-        collection=collections.SIMPSONS_MARATHON,
+        collection=animation.SIMPSONS_MARATHON,
         hours=(16, 22),  # 4pm-10pm takeover
         priority=1
     ),
     Marathon(
         name="Toonami Takeover",
         trigger=triggers.chance(0.01, "toonami_takeover"),
-        collection=collections.TOONAMI_MAIN,
+        collection=animation.TOONAMI_BLOCK.content,
         hours=(12, 24),
         priority=2
     ),
     Marathon(
         name="Star Wars Animation Day",
         trigger=triggers.has_label("STAR_WARS_DAY"),
-        collection=collections.STAR_WARS_ANIMATION,
+        collection=animation.STAR_WARS_ANIMATION,
         hours=(8, 22),
         priority=2
     )
 ]
 
-# SEASONAL VARIANTS - Content that changes with seasons
+# ==============================================================================
+# 2. SEASONAL VARIANTS - Content that changes with seasons
+# ==============================================================================
 
-SEASONAL_HEROES = SeasonalBlock(
-    base=collections.SUPERHERO_HOUR,
-    seasonal={
-        "SPRING": Swap(collections.MARVEL_HOUR)
-    }
-)
-
-SEASONAL_AFTERNOON = SeasonalBlock(
-    base=collections.DISNEY_AFTERNOON,
-    seasonal={
-        "SPRING": Swap(collections.WB_AFTERNOON)
-    }
-)
+# Use pre-defined seasonal blocks from animation library
+SEASONAL_HEROES = animation.CN_MORNING_HERO
+SEASONAL_AFTERNOON = animation.CN_AFTERNOON_BLOCK
 
 # ==============================================================================
-# 1. BLOCK DEFINITIONS (Chronological)
+# 3. BLOCK DEFINITIONS (Chronological)
 # ==============================================================================
 
 # Early Block (06:00 - 08:00)
 EARLY_BLOCK = {
-    "WEEKDAY": collections.DISNEY_MORNING,
-    "default": collections.CLASSIC_CARTOONS
+    "WEEKDAY": animation.DISNEY_MORNING,
+    "default": animation.CLASSIC_CARTOONS
 }
 
 # Morning Block (08:00 - 10:00)
 MORNING_BLOCK = {
-    "SATURDAY": collections.SATURDAY_MORNING,
-    "SUNDAY": collections.CLASSIC_CARTOONS,
+    "SATURDAY": animation.SATURDAY_MORNING,
+    "SUNDAY": animation.CLASSIC_CARTOONS,
     "default": SEASONAL_HEROES
 }
 
 # Midday Block (10:00 - 12:00)
 MIDDAY_BLOCK = {
     "SATURDAY": SEASONAL_HEROES,
-    "SUNDAY": collections.CLASSIC_CARTOONS,
-    "default": collections.CARTOON_NETWORK_CLASSICS
+    "SUNDAY": animation.CLASSIC_CARTOONS,
+    "default": animation.CARTOON_NETWORK_CLASSICS
 }
 
 # Noon Block (12:00 - 14:00)
 NOON_BLOCK = {
-    "SUNDAY": collections.ANIMATION_SHOWCASE,
-    "default": collections.NICKTOONS_VAULT
+    "SUNDAY": animation.ANIMATION_SHOWCASE,
+    "default": animation.NICKTOONS_VAULT
 }
 
 # Afternoon Block (14:00 - 18:00)
 AFTERNOON_BLOCK = {
-    "SUNDAY": collections.ANIMATION_SHOWCASE,
+    "SUNDAY": animation.ANIMATION_SHOWCASE,
     "default": SEASONAL_AFTERNOON
 }
 
 # Evening Block (18:00 - 20:00)
 EVENING_BLOCK = {
-    "SATURDAY": collections.ANIME_BLOCK,
-    "SUNDAY": collections.ANIMATION_SHOWCASE,
-    "default": blocks.TOONAMI_BLOCK
+    "SATURDAY": animation.ANIME_BLOCK,
+    "SUNDAY": animation.ANIMATION_SHOWCASE,
+    "default": animation.TOONAMI_BLOCK
 }
 
 # Prime Block (20:00 - 23:00)
 PRIME_BLOCK = {
-    "SATURDAY": collections.ANIMATION_SHOWCASE,
-    "SUNDAY": collections.FOX_PRIMETIME,
-    "default": blocks.ADULT_SWIM_BLOCK
+    "SATURDAY": animation.ANIMATION_SHOWCASE,
+    "SUNDAY": animation.FOX_PRIMETIME,
+    "WEEKDAY_A": animation.AS_PRIME_A, # Mon/Wed/Fri
+    "WEEKDAY_B": animation.AS_PRIME_B, # Tue/Thu
+    "default": animation.AS_PRIME_B
 }
 
 # Night Block (23:00 - 02:00)
 NIGHT_BLOCK = {
-    "SATURDAY": collections.ANIME_BLOCK,
-    "SUNDAY": blocks.ADULT_SWIM_BLOCK,
-    "default": blocks.ADULT_SWIM_WEIRD
+    "SATURDAY": animation.ANIME_BLOCK,
+    "WEEKDAY_A": animation.AS_NIGHT_A, # Mon/Wed/Fri
+    "default": animation.AS_NIGHT_B    # Tue/Thu/Sun
 }
 
-# HOLIDAY OVERRIDES - Applied globally
+# ==============================================================================
+# 4. HOLIDAY OVERRIDES - Applied globally
+# ==============================================================================
 
 HALLOWEEN_SCHEDULE = {
-    "overnight": collections.HALLOWEEN_ADULT_SCARES,
-    "morning": collections.HALLOWEEN_KIDS_SPOOKFEST,
-    "midday": collections.HALLOWEEN_TEEN_FRIGHTS,
-    "afternoon": collections.HALLOWEEN_TEEN_FRIGHTS,
-    "evening": collections.HALLOWEEN_TEEN_FRIGHTS,
-    "prime": collections.HALLOWEEN_TV_EVENT,
-    "night": collections.HALLOWEEN_ADULT_SCARES,
+    "overnight": common.HALLOWEEN_ADULT_SCARES,
+    "morning": common.HALLOWEEN_KIDS_SPOOKFEST,
+    "midday": common.HALLOWEEN_TEEN_FRIGHTS,
+    "afternoon": common.HALLOWEEN_TEEN_FRIGHTS,
+    "evening": common.HALLOWEEN_TEEN_FRIGHTS,
+    "prime": common.HALLOWEEN_TV_EVENT,
+    "night": common.HALLOWEEN_ADULT_SCARES,
 }
 
 # For Christmas, take over all default timeslots with the Christmas event collection
 CHRISTMAS_SCHEDULE = {
-    "overnight": collections.CHRISTMAS_TV_EVENT,
-    "morning": collections.CHRISTMAS_TV_EVENT,
-    "midday": collections.CHRISTMAS_TV_EVENT,
-    "afternoon": collections.CHRISTMAS_TV_EVENT,
-    "evening": collections.CHRISTMAS_TV_EVENT,
+    "overnight": common.CHRISTMAS_TV_EVENT,
+    "morning": common.CHRISTMAS_TV_EVENT,
+    "midday": common.CHRISTMAS_TV_EVENT,
+    "afternoon": common.CHRISTMAS_TV_EVENT,
+    "evening": common.CHRISTMAS_TV_EVENT,
     "prime": "christmas_animated_movie",
-    "night": collections.CHRISTMAS_TV_EVENT,
+    "night": common.CHRISTMAS_TV_EVENT,
 }
 
 HOLIDAY_SCHEDULES = {
@@ -175,11 +173,11 @@ HOLIDAY_SCHEDULES = {
 }
 
 # ==============================================================================
-# 2. SCHEDULE DEFINITIONS
+# 5. SCHEDULE DEFINITIONS
 # ==============================================================================
 
 DAILY_SCHEDULE = {
-    "overnight": collections.CLASSIC_CARTOONS,
+    "overnight": animation.CLASSIC_CARTOONS,
     "early": EARLY_BLOCK,
     "morning": MORNING_BLOCK,
     "midday": MIDDAY_BLOCK,
@@ -196,7 +194,9 @@ SCHEDULES = {
 }
 
 
-# ERSATZTV INTEGRATION
+# ==============================================================================
+# 6. ERSATZTV INTEGRATION
+# ==============================================================================
 
 def define_content(api, context, build_id):
     """ErsatzTV content definition hook (unused in scripted mode)."""
@@ -223,7 +223,7 @@ def build_playout(api, context, build_id):
         },
         filler_content=None,  # TODO: Add collections.BUMPERS when available
         logger=ChannelLogger(prefix="[CARTOONS]"),
-        fallback_content=collections.CLASSIC_CARTOONS
+        fallback_content=animation.CLASSIC_CARTOONS
     )
     
     return run_daily_schedule(api, context, build_id, config)

@@ -1,11 +1,12 @@
-# scripts/library/builders.py
+# scripts/logic/queries.py
 """
 Query builder functions and constants for the content library.
 Shared by sources and marathons to prevent circular dependencies.
 """
 
-from typing import Optional, Union, Dict
 import re
+from typing import Optional, Union, Dict, Tuple
+from scripts.config import DEFAULT_ORDER
 
 # 1. CORE DEFINITIONS & GLOBAL FILTERS
 
@@ -16,60 +17,11 @@ ANIMATED = "genre:animation"
 ANIME = "genre:anime"
 NOT_ANIMATED = "NOT genre:animation"
 
-# Logic Filters
-NO_SITCOM = "NOT tag:sitcom"
-NO_FANTASY = "NOT genre:fantasy"
-NO_SCIFI = 'NOT genre:"science fiction"'
-NO_COMEDY = "NOT genre:comedy"
-NO_BBC = "NOT studio:bbc"
-SHORT = "minutes:[* TO 40]"
-
-# 2. ERA DEFINITIONS
-
-# --- MOVIE ERAS ---
-SILENT_ERA = "release_date:[* TO 1929-12-31]"
-GOLDEN_AGE = "release_date:[1930-01-01 TO 1949-12-31]"
-CLASSIC_ERA = "release_date:[1950-01-01 TO 1969-12-31]"
-SEVENTIES = "release_date:[1970-01-01 TO 1979-12-31]"
-EIGHTIES = "release_date:[1980-01-01 TO 1989-12-31]"
-NINETIES = "release_date:[1990-01-01 TO 1999-12-31]"
-Y2K_ERA = "release_date:[2000-01-01 TO 2009-12-31]"
-TENS = "release_date:[2010-01-01 TO 2019-12-31]"
-TWENTIES = "release_date:[2020-01-01 TO 2029-12-31]"
-STREAMING_ERA = "release_date:[2010-01-01 TO *]"
-
-# --- TV ERAS ---
-TV_VINTAGE = "release_date:[* TO 1975-12-31]"
-TV_CLASSIC = "release_date:[1976-01-01 TO 1989-12-31]"
-TV_GOLDEN_AGE = "release_date:[1985-01-01 TO 2009-12-31]"
-TV_HD = "release_date:[2010-01-01 TO *]"
-
-# --- SITCOM VIBES ---
-SITCOM_80S_VIBE = "release_date:[1979-01-01 TO 1989-12-31]"
-SITCOM_90S_VIBE = "release_date:[1988-01-01 TO 1999-12-31]"
-
-# --- DECADE RANGES ---
-SIXTIES = "release_date:[1960-01-01 TO 1969-12-31]"
-
-# --- SEASONAL TAGS ---
-WINTER_TAGS = "(tag:snow OR tag:ice OR tag:blizzard OR tag:cold OR tag:winter OR tag:mountain OR tag:arctic OR tag:alaska OR tag:antarctica OR tag:glacier OR tag:ski OR tag:cabin OR tag:fireplace OR tag:storm OR tag:isolation OR tag:survival OR tag:holiday OR tag:christmas OR tag:newyear)"
-FALL_TAGS = "(tag:rain OR tag:fog OR tag:overcast OR tag:autumn OR tag:fall OR tag:leaves OR tag:harvest OR tag:small-town OR tag:noir OR tag:detective OR tag:mystery OR tag:thriller OR tag:psychological OR tag:gothic OR tag:halloween OR tag:witch OR tag:ghost OR tag:haunted OR tag:school OR tag:college OR tag:campus)"
-SPRING_TAGS = "(tag:spring OR tag:flowers OR tag:bloom OR tag:garden OR tag:nature OR tag:hiking OR tag:exploration OR tag:travel OR tag:roadtrip OR tag:romance OR tag:dating OR tag:wedding OR tag:coming-of-age OR tag:youth OR tag:festival OR tag:fair OR tag:farm OR tag:countryside OR tag:animals)"
-SUMMER_TAGS = "(tag:summer OR tag:beach OR tag:ocean OR tag:lake OR tag:island OR tag:vacation OR tag:resort OR tag:cruise OR tag:camp OR tag:camping OR tag:amusement-park OR tag:festival OR tag:concert OR tag:roadtrip OR tag:sports OR tag:surf OR tag:pool OR tag:heat OR tag:desert OR tag:jungle OR tag:tropical OR tag:teen OR tag:party)"
-
-SEASONAL_TAG_QUERIES = {
-    "WINTER": WINTER_TAGS, "FALL": FALL_TAGS, "SPRING": SPRING_TAGS, "SUMMER": SUMMER_TAGS
-}
-
-# DEFINE ORDER
-SHUFFLE_MODE_ON = True
-
 def playback_order(query, force=None):
     """Returns a dictionary containing the search query and the playback order."""
     if force:
         return {"query": query, "order": force}
-    order_logic = "Shuffle" if SHUFFLE_MODE_ON else "Chronological"
-    return {"query": query, "order": order_logic}
+    return {"query": query, "order": DEFAULT_ORDER}
 
 # 3. BUILDER FUNCTIONS
 
@@ -135,11 +87,6 @@ def show_by_title(title: str) -> str:
     safe_title = _escape_quotes(title)
     return f'show_title:"{safe_title}"'
 
-def collection_source(name: str) -> str:
-    """Build a search query for a specific collection (Jellyfin/Plex/Emby)."""
-    safe_name = _escape_quotes(name)
-    return f'collection:"{safe_name}"'
-
 def playlist_ref(name: str, group: str) -> Dict[str, str]:
     """Reference an existing ErsatzTV playlist."""
     return {"type": "playlist", "playlist": name, "group": group}
@@ -173,8 +120,9 @@ def apply_tags(base_query: str, tag_query: str) -> str:
     """Helper to combine a base query string with a seasonal tag query string."""
     return f"({base_query}) AND {tag_query}"
 
+# 4. PARSING UTILITIES
 
-def extract_episode_range(query):
+def extract_episode_range(query: str) -> Tuple[Optional[int], Optional[int]]:
     """
     Extracts start season and episode from a Lucene query.
     Example: '... season_number:1 AND episode_number:[21 TO 36]' -> (1, 21)
@@ -196,7 +144,7 @@ def extract_episode_range(query):
     return season, episode
 
 
-def count_episodes_in_range(query):
+def count_episodes_in_range(query: str) -> int:
     """
     Calculates total episodes in a range query.
     Example: '... episode_number:[21 TO 36]' -> 16
@@ -215,3 +163,34 @@ def count_episodes_in_range(query):
         return 1
         
     return 0
+
+def is_movie_query(query: str) -> bool:
+    """
+    Heuristic to check if a query targets a movie.
+    Used to determine default play count (1 for movies, all for shows).
+    """
+    if not query: return False
+    return "type:movie" in query or "type:\"movie\"" in query
+
+def get_play_count(query: str) -> Optional[int]:
+    """
+    Determines how many items a query represents.
+    Returns 1 for movies or single episodes.
+    Returns count for episode ranges.
+    Returns None for unbounded queries (entire shows/collections).
+    """
+    if not query:
+        return None
+    if is_movie_query(query):
+        return 1
+    count = count_episodes_in_range(query)
+    return count if count > 0 else None
+
+def extract_title_from_query(query: str) -> Optional[str]:
+    """Extract show/movie title from a Lucene query."""
+    if not query: return None
+    # Handles: title:"Foo Bar", show_title:"Foo Bar", title:Foo
+    match = re.search(r'(?:show_)?title:(?:"([^"]+)"|([^\s]+))', query)
+    if match:
+        return match.group(1) or match.group(2)
+    return None

@@ -4,6 +4,7 @@ from typing import Dict, Tuple, List, Set, Any
 # 1. STATIC HOLIDAYS (Fixed Dates)
 HOLIDAYS: Dict[Tuple[int, int], str] = {
     (1, 1):   "NEW_YEARS_DAY",
+    (2, 2):  "GROUNDHOGS_DAY",
     (2, 14):  "VALENTINES_DAY",
     (3, 17):  "ST_PATRICKS_DAY",
     (4, 1):   "APRIL_FOOLS",

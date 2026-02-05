@@ -41,8 +41,8 @@ scripts/
 │   ├── __init__.py
 │   ├── marathon.py          # run_marathon - Sequential episode playback
 │   ├── blocks.py            # BrandedBlock, play_branded_block
-│   └── events.py            # MultiDayEvent, get_active_events
 │   └── sequential.py        # AppointmentBlock, SeriesRelay execution
+│   └── slots.py             # Single play slot orchestration
 │
 ├── channels/                # THE PERSONALITIES - Channel configs
 │   ├── cartoon_network.py   # ~130 lines - Kids programming with marathons
@@ -98,8 +98,8 @@ scripts/
 
 - `marathon.py` - Sequential episode marathons with EPG grouping
 - `blocks.py` - Branded blocks with intro/outro/bumpers
-- `events.py` - Multi-day themed events (Shark Week, etc.)
 - `sequential.py` - Appointment TV and Series Relay execution
+- `slots.py` - Single-play slot logic and gap filling
 
 ### Layer 5: Orchestration (Top Level)
 **Purpose:** Main execution loop  
@@ -465,13 +465,72 @@ Start simple, add features as needed:
 - +Holidays: Holiday takeovers
 - +Marathons: Special events
 - +Blocks: Branded programming
-- +Events: Multi-day themes
 
 ### 6. Fail-Safe
 Multiple fallback layers:
 - Fallback content if no schedule match
 - Circuit breaker if content stalls
 - Default values in all configs
+
+---
+
+## 8. Appointment TV (Sequential Scheduling)
+
+### What It Is
+A system for simulating "Event Television" where shows premiere on specific dates and air sequentially (weekly or daily).
+
+**Example:**
+> "Lost Season 1 premieres in Fall 2026. Season 2 premieres in Fall 2027."
+
+### What It Is Not
+- It is **not** a watch-state tracker. It does not care if *you* have watched Episode 3.
+- It is **not** a playlist. It is a calendar calculation.
+
+### Core Principles
+
+#### 1. Calendar-Driven (Absolute Time)
+The episode to play is calculated mathematically from the current date.
+
+```python
+# Logic:
+weeks_since_premiere = (current_date - premiere_date).days // 7
+episode_to_play = weeks_since_premiere + 1
+```
+
+**Why?**
+If your server is offline for a week, the schedule "moves on" without you, just like real broadcast TV. When you tune back in, you've missed an episode. This preserves the global timeline.
+
+#### 2. Statelessness
+The system stores **zero state** about what played last week.
+- **Pros:** Robust. Rebuilding the container doesn't break the schedule.
+- **Cons:** Requires precise date math.
+
+#### 3. Holiday Exclusion
+Appointment Blocks are **immune** to holiday overrides.
+- **Why?** Narrative continuity. You don't want a random "Halloween Special" interrupting the serialized plot of *Breaking Bad* or *Lost*.
+- **Implementation:** The `AppointmentBlock` engine bypasses the standard resolution pipeline where holiday injection happens.
+
+#### 4. Filler Drift
+When a show is off-season, the slot is filled by a `SeriesRelay` (a rotating list of filler shows).
+
+**Behavior:**
+- Filler shows (e.g., *Seinfeld*) track their own progress based on a fixed anchor date.
+- They do **not** reset when the main show returns.
+- **Result:** If *Lost* runs for 25 weeks, *Seinfeld* pauses. When *Lost* ends, *Seinfeld* picks up exactly where it left off (e.g., Episode 42), ensuring you eventually see every episode of the filler, even if it takes years.
+
+### Data Structures
+
+**AppointmentBlock:**
+```python
+LOST_BLOCK = annual_show(
+    show_title="Lost",
+    seasons=6,
+    premiere_year=2026,
+    premiere_season="FALL",
+    reruns=LOST_FILLERS,  # SeriesRelay
+    loop=True             # Loops back to S1 in 2032
+)
+```
 
 ---
 
@@ -566,30 +625,6 @@ Resolution order may be unexpected:
 
 ---
 
-## File Size Reference
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `schedule.py` | ~300 | Main orchestration loop |
-| `playout.py` | ~150 | API utilities |
-| `core/director.py` | ~250 | DayDirector class |
-| `core/registry.py` | ~90 | Data definitions |
-| `core/states.py` | ~140 | Date math |
-| `core/signals.py` | ~50 | Probability math |
-| `logic/holidays.py` | ~130 | Holiday system |
-| `logic/seasonal.py` | ~90 | Seasonal blending |
-| `logic/timeslots.py` | ~100 | Timeslot system |
-| `logic/triggers.py` | ~150 | Trigger classes |
-| `logic/resolution.py` | ~100 | Resolution pipeline |
-| `logic/playback.py` | ~150 | Playback strategies |
-| `library/sources.py` | ~500+ | All content queries |
-| `library/collections.py` | ~200 | Collection classes |
-| `library/resolver.py` | ~100 | Content resolver |
-| `engines/marathon.py` | ~150 | Marathon execution |
-| `engines/blocks.py` | ~150 | Branded blocks |
-| `engines/events.py` | ~100 | Multi-day events |
-| Channel files | 60-130 | Pure configuration |
-
 **Total Framework:** ~2,500 lines  
 **Total Channels:** ~100 lines each  
 **Ratio:** 25:1 framework to channel code
@@ -603,7 +638,6 @@ This means adding a new channel is ~100 lines vs ~2,500 lines if built from scra
 - **v1.0** - Initial framework with basic scheduling
 - **v1.5** - Added seasonal blending and holiday overrides
 - **v2.0** - Marathon system with EPG grouping
-- **v2.5** - Trigger system and multi-day events
 - **v3.0** - Current: Full feature set, production-ready
 
 ---

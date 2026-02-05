@@ -11,11 +11,16 @@ Features:
 
 from etv_client.models import ControlWaitUntil
 from scripts.schedule import run_daily_schedule, ScheduleConfig
-from scripts.library import collections, blocks
+from scripts.library import animation, scifi, movies
 from scripts.logic.seasonal import SeasonalBlock
 from scripts.logic.models import Swap, PlayOnce, Marathon
 from scripts.logic import triggers
-from scripts.playout import ChannelLogger
+from scripts.logic.structures import RandomCollection, OrderedCollection
+from scripts.core.logger import ChannelLogger
+
+# ==============================================================================
+# 1. MARATHONS - Special event programming
+# ==============================================================================
 
 MARATHONS = [
     # Star Wars Day - May 4th
@@ -38,107 +43,100 @@ MARATHONS = [
 ]
 
 # ==============================================================================
-# 1. BLOCK DEFINITIONS (Chronological)
+# 2. BLOCK DEFINITIONS (Chronological)
 # ==============================================================================
-
-# Sunday Appointment Block: Lost -> Alias -> Fringe
-SCIFI_SUNDAY_BLOCK = collections.DailyOrderedCollection([
-    blocks.LOST_APPOINTMENT_BLOCK,
-    "alias_chronological_tv",
-    "fringe_chronological_tv"
-])
 
 SCIFI_PRIME_SEASONAL = SeasonalBlock(
     base={
         "MONDAY": "star_trek_all_playlist",
-        "TUESDAY": collections.SCIFI_INVESTIGATION,
-        "WEDNESDAY": collections.SCIFI_SPACE_OPERA,
-        "THURSDAY": collections.SCIFI_MODERN_EPIC,
-        "FRIDAY": collections.SCIFI_GRITTY,
-        "default": collections.MODERN_SCIFI_BLOCK
+        "TUESDAY": scifi.SCIFI_INVESTIGATION,
+        "WEDNESDAY": scifi.SCIFI_SPACE_OPERA,
+        "THURSDAY": scifi.SCIFI_MODERN_EPIC,
+        "FRIDAY": scifi.SCIFI_GRITTY,
+        "default": scifi.MODERN_SCIFI_BLOCK
     },
     seasonal={
         "SUMMER": {
-            "FRIDAY": Swap(collections.SCI_FI_SHOWCASE) # Blockbuster Summer on most days...
+            "FRIDAY": Swap(movies.SCI_FI_SHOWCASE) # Blockbuster Summer on most days...
         },
-        "SPRING": Swap(collections.MODERN_SCIFI_BLOCK)    # Discovery Season
+        "SPRING": Swap(scifi.MODERN_SCIFI_BLOCK)    # Discovery Season
     }
 )
 
 # Early Block (06:00 - 08:00)
 EARLY_BLOCK = {
-    "WEEKEND": collections.SCIFI_CLASSICS_TV,
+    "WEEKEND": scifi.SCIFI_CLASSICS_TV,
     "WEEKDAY_B": "classic_scifi_movie", # Tue/Thu
     "WEEKDAY_A": {                      # Mon/Wed/Fri
-        "WEDNESDAY": collections.RandomCollection(["orville_tv", "farscape_chronological_tv"]),
-        "default": collections.STAR_WARS_ANIMATION
+        "WEDNESDAY": RandomCollection(["orville_tv", "farscape_chronological_tv"]),
+        "default": animation.STAR_WARS_ANIMATION
     },
-    "default": collections.FANTASY_ADVENTURE
+    "default": scifi.FANTASY_ADVENTURE
 }
 
 # Morning Block (08:00 - 10:00)
 MORNING_BLOCK = {
-    "SATURDAY": collections.SCIFI_MYTHS,
+    "SATURDAY": scifi.SCIFI_MYTHS,
     "SUNDAY": "star_trek_all_playlist",
     "WEEKDAY_A": "action_scifi_movie",
-    "WEEKDAY_B": collections.HERCULES_XENA,
-    "default": collections.SCIFI_CLASSICS_TV
+    "WEEKDAY_B": scifi.HERCULES_XENA,
+    "default": scifi.SCIFI_CLASSICS_TV
 }
 
 # Midday Block (10:00 - 12:00)
 MIDDAY_BLOCK = {
-    "SATURDAY": collections.CREATURE_FEATURE,
+    "SATURDAY": movies.CREATURE_FEATURE,
     "SUNDAY": "space_opera_tv",
-    "WEEKDAY_A": collections.MODERN_SCIFI_BLOCK, # Mon/Wed/Fri
+    "WEEKDAY_A": scifi.MODERN_SCIFI_BLOCK, # Mon/Wed/Fri
     "WEEKDAY_B": "star_trek_all_playlist",  # Tue/Thu
     "default": "scifi_fantasy_tv"
 }
 
 # Noon Block (12:00 - 14:00)
 NOON_BLOCK = {
-    "SATURDAY": collections.CREATURE_FEATURE,
+    "SATURDAY": movies.CREATURE_FEATURE,
     "SUNDAY": "space_opera_tv",
-    "WEEKDAY_A": collections.OrderedCollection(["knight_rider_tv", "quantum_leap_chronological_tv"]),
+    "WEEKDAY_A": OrderedCollection(["knight_rider_tv", "quantum_leap_chronological_tv"]),
     "default": PlayOnce("comedy_scifi_movie")
 }
 
 # Afternoon Block (14:00 - 18:00)
 AFTERNOON_BLOCK = {
-    "SATURDAY": collections.FANTASY_ADVENTURE,
-    "SUNDAY": collections.MODERN_SCIFI_BLOCK,
-    "WEEKDAY_A": collections.PARANORMAL_FILES,
+    "SATURDAY": scifi.FANTASY_ADVENTURE,
+    "SUNDAY": scifi.MODERN_SCIFI_BLOCK,
+    "WEEKDAY_A": scifi.PARANORMAL_FILES,
     "WEEKDAY_B": "scifi_fantasy_tv",
-    "default": collections.PARANORMAL_FILES
+    "default": scifi.PARANORMAL_FILES
 }
 
 # Evening Block (18:00 - 20:00)
 EVENING_BLOCK = {
-    "WEEKEND": collections.PARANORMAL_FILES,
+    "WEEKEND": scifi.PARANORMAL_FILES,
     "WEEKDAY_A": "space_opera_tv",
-    "WEEKDAY_B": collections.WHEDONVERSE_SAGA,
+    "WEEKDAY_B": scifi.WHEDONVERSE_SAGA,
     "default": "space_opera_tv"
 }
 
 # Prime Block (20:00 - 23:00)
 PRIME_BLOCK = {
-    "SATURDAY": collections.SCI_FI_SHOWCASE,
-    "SUNDAY": SCIFI_SUNDAY_BLOCK,
+    "SATURDAY": movies.SCI_FI_SHOWCASE,
+    "SUNDAY": PlayOnce(scifi.SCIFI_SUNDAY_BLOCK),
     "default": SCIFI_PRIME_SEASONAL
 }
 
 # Night Block (23:00 - 02:00)
 NIGHT_BLOCK = {
-    "SATURDAY": collections.UNDEAD_CINEMA,
-    "SUNDAY": collections.SCIFI_CLASSICS_TV,
-    "default": collections.SCI_FI_SHOWCASE
+    "SATURDAY": movies.UNDEAD_CINEMA,
+    "SUNDAY": scifi.SCIFI_CLASSICS_TV,
+    "default": movies.SCI_FI_SHOWCASE
 }
 
 # ==============================================================================
-# 2. SCHEDULE DEFINITIONS
+# 3. SCHEDULE DEFINITIONS
 # ==============================================================================
 
 DAILY_SCHEDULE = {
-    "overnight": collections.SCIFI_CLASSICS_TV,
+    "overnight": scifi.SCIFI_CLASSICS_TV,
     "early": EARLY_BLOCK,
     "morning": MORNING_BLOCK,
     "midday": MIDDAY_BLOCK,
@@ -153,6 +151,10 @@ SCHEDULES = {
     "WEEKDAY": DAILY_SCHEDULE,
     "WEEKEND": DAILY_SCHEDULE
 }
+
+# ==============================================================================
+# 4. ERSATZTV INTEGRATION
+# ==============================================================================
 
 def define_content(api, context, build_id):
     pass

@@ -17,26 +17,30 @@ from scripts.core import DayDirector
 from scripts.logic.holidays import HolidayContext
 from scripts.logic.resolution import resolve_target
 from scripts.logic.seasonal import SeasonalBlock
-from scripts.logic.playback import (
-    handle_single_play_slot, is_approaching_hour_boundary, fill_until_next_hour,
+from scripts.logic.playback import is_approaching_hour_boundary, hour_in_window
+from scripts.engines.slots import (
+    handle_single_play_slot
 )
-from scripts.library import ContentResolver
-from scripts.playout import (ChannelLogger,
+from scripts.logic.resolver import ContentResolver
+from scripts.core.logger import ChannelLogger
+from scripts.playout import (
     circuit_breaker,
     fill_until_time,
-    play_item, play_with_fallback,
+    play_item, play_with_fallback, fill_until_next_hour
 )
-from scripts.engines import run_marathon, play_branded_block, play_appointment_block, play_series_relay
+from scripts.engines import run_marathon, play_branded_block
 from scripts.library.sources import MASTER_SOURCES
 from scripts.logic.timeslots import (
-    DEFAULT_TIMESLOTS, ALT_TIMESLOTS, hour_in_window, 
+    DEFAULT_TIMESLOTS, ALT_TIMESLOTS, 
     expand_timeslots, get_timeslot_map
 )
 from scripts.logic.models import (
-    BrandedBlock, Marathon, BlockProfile, PlayOnce, Fallback, Swap, Feather, CommercialBreak
+    BrandedBlock, Marathon, MarathonDefinition, BlockProfile, PlayOnce, Fallback, Swap, Feather, CommercialBreak
 )
 from scripts.logic.profiles import HOLIDAY_PROFILES
-from scripts.library.structures import AppointmentBlock, SeriesRelay
+from scripts.logic.structures import AppointmentBlock, SeriesRelay, AppointmentLineup, AppointmentSlot, MarathonSequence
+from scripts.engines.sequential import play_appointment_block, play_series_relay, play_appointment_lineup
+from scripts.config import ENABLE_SEASONAL_BLOCKS
 
 # 5. SCHEDULE CONFIGURATION
 
@@ -102,6 +106,13 @@ def pre_register_all_content(resolver: ContentResolver, config: ScheduleConfig) 
     """Register all content before playout begins."""
     visited = set()
     
+    # Create a dummy boss for collections that need it during pre-registration
+    class DummyContext:
+        def __init__(self):
+            from datetime import datetime
+            self.current_time = datetime.now()
+    dummy_boss = DayDirector(DummyContext())
+
     def walk(obj: Any, depth: int = 0) -> None:
         if obj is None or depth > 10:  # Prevent infinite recursion
             return
@@ -141,6 +152,23 @@ def pre_register_all_content(resolver: ContentResolver, config: ScheduleConfig) 
             if hasattr(obj, "specific_intros") and obj.specific_intros:
                 walk(obj.specific_intros, depth + 1)
             return
+            
+        if isinstance(obj, AppointmentLineup):
+            for slot in obj.slots:
+                walk(slot.anchor, depth + 1)
+                walk(slot.fillers, depth + 1)
+            return
+
+        if isinstance(obj, AppointmentBlock):
+            for key, _, _ in obj.seasons:
+                walk(key, depth + 1)
+            walk(obj.off_season_content, depth + 1)
+            return
+
+        if isinstance(obj, SeriesRelay):
+            for key, _ in obj.items:
+                walk(key, depth + 1)
+            return
 
         # Skip seasonal block references (strings in seasonal_blocks dict)
         if isinstance(obj, str) and obj in config.seasonal_blocks:
@@ -165,7 +193,7 @@ def pre_register_all_content(resolver: ContentResolver, config: ScheduleConfig) 
             return
 
         if hasattr(obj, "pick"):
-            resolver.resolve(obj)
+            resolver.resolve(obj, dummy_boss)
             return
 
         if isinstance(obj, (list, tuple, set)):
@@ -174,6 +202,12 @@ def pre_register_all_content(resolver: ContentResolver, config: ScheduleConfig) 
             return
 
         if isinstance(obj, dict):
+            # Special handling for inline content definitions (e.g. {"title": "Show"})
+            # Resolve them directly to generate the key, instead of walking values
+            if "title" in obj:
+                resolver.resolve(obj, dummy_boss)
+                return
+
             for v in obj.values():
                 walk(v, depth + 1)
             return
@@ -181,7 +215,7 @@ def pre_register_all_content(resolver: ContentResolver, config: ScheduleConfig) 
         if isinstance(obj, str):
             # Only register if it's not a seasonal block reference
             if obj not in config.seasonal_blocks:
-                resolver.resolve(obj)
+                resolver.resolve(obj, dummy_boss)
 
     walk(config.schedules)
     walk(config.seasonal_blocks)
@@ -192,6 +226,70 @@ def pre_register_all_content(resolver: ContentResolver, config: ScheduleConfig) 
     for m in config.marathons:
         walk(m.collection)
 
+def _resolve_day_schedule(config: ScheduleConfig, boss: DayDirector, holiday_ctx: HolidayContext) -> Dict[str, Any]:
+    """
+    Constructs the effective schedule for the day by applying:
+    1. Day-of-week selection
+    2. Global seasonal ramps
+    3. Holiday schedule swaps/overrides
+    """
+    # 1. Determine base day schedule
+    day_schedule = config.schedules.get("WEEKDAY", {})
+    for key in config.schedules:
+        if key != "WEEKDAY" and boss.has(key):
+            day_schedule = config.schedules[key]
+            break
+    
+    # Copy to avoid mutating master config
+    day_schedule = day_schedule.copy()
+
+    # 2. Apply global seasonal ramps
+    if config.global_seasonal_ramps and ENABLE_SEASONAL_BLOCKS:
+        active_ramp = False
+        for holiday_name in config.global_seasonal_ramps:
+            if holiday_ctx.envelope.get(holiday_name.lower(), 0.0) > 0 or \
+               holiday_ctx.envelope.get(f"{holiday_name.lower()}_hangover", 0.0) > 0:
+                active_ramp = True
+                break
+        
+        if active_ramp:
+            def wrap_values(d):
+                return {k: wrap_values(v) if isinstance(v, dict) 
+                        else SeasonalBlock(base=v, seasonal=config.global_seasonal_ramps, blend_ratio=1.0) 
+                        for k, v in d.items()}
+            day_schedule = wrap_values(day_schedule)
+
+    # 3. Apply Holiday Schedule Swaps
+    if config.holiday_schedules:
+        for holiday_name, holiday_sched in config.holiday_schedules.items():
+            holiday_label = holiday_name.upper()
+            holiday_key = holiday_name.lower()
+            is_holiday_day = boss.has(holiday_label)
+            
+            # Resolve Profile Set
+            first_val = next(iter(config.block_profiles.values()), None)
+            if isinstance(first_val, dict):
+                profile_set = config.block_profiles.get(holiday_label, config.block_profiles.get("default", {}))
+            else:
+                profile_set = config.block_profiles
+
+            for slot, content in holiday_sched.items():
+                if slot not in day_schedule:
+                    continue
+
+                if is_holiday_day:
+                    day_schedule[slot] = content
+                    continue
+
+                profile = profile_set.get(slot, BlockProfile())
+                ramp_signal = holiday_ctx.envelope.get(holiday_key, 0.0)
+                hangover_signal = holiday_ctx.envelope.get(f"{holiday_key}_hangover", 0.0)
+                final_prob = profile.respond(ramp_signal, hangover_signal)
+                
+                if final_prob > 0 and boss.roll(final_prob, key=f"swap_{holiday_key}_{slot}"):
+                    day_schedule[slot] = content
+                    
+    return day_schedule
 
 # 8. MAIN ORCHESTRATION
 
@@ -210,72 +308,7 @@ def run_daily_schedule(api: Any, context: Any, build_id: str, config: ScheduleCo
         start_day = context.current_time.day
         last_time = context.current_time
 
-        # Determine day schedule based on Director labels
-        # Priority: First matching key in config.schedules (excluding default)
-        day_schedule = config.schedules.get("WEEKDAY", {})
-        for key in config.schedules:
-            if key != "WEEKDAY" and boss.has(key):
-                day_schedule = config.schedules[key]
-                break
-        
-        # Create a copy to allow for holiday swaps without mutating the master config
-        day_schedule = day_schedule.copy()
-
-        # Apply global seasonal ramps if configured
-        if config.global_seasonal_ramps: # This feature seems experimental
-            active_ramp = False
-            for holiday_name in config.global_seasonal_ramps:
-                if holiday_ctx.envelope.get(holiday_name.lower(), 0.0) > 0 or \
-                   holiday_ctx.envelope.get(f"{holiday_name.lower()}_hangover", 0.0) > 0:
-                    active_ramp = True
-                    break
-            
-            if active_ramp:
-                def wrap_values(d):
-                    return {k: wrap_values(v) if isinstance(v, dict) 
-                            else SeasonalBlock(base=v, seasonal=config.global_seasonal_ramps, blend_ratio=1.0) 
-                            for k, v in d.items()}
-                day_schedule = wrap_values(day_schedule)
-
-        # Apply Holiday Schedule Swaps (Block Replacement)
-        if config.holiday_schedules:
-            for holiday_name, holiday_sched in config.holiday_schedules.items():
-                # Normalize casing for consistency
-                # Registry/Labels/Profiles use UPPERCASE
-                # Signals/Envelope use lowercase
-                holiday_label = holiday_name.upper()
-                holiday_key = holiday_name.lower()
-
-                # Check if today is the actual holiday (Day 0) - Force 100% takeover
-                is_holiday_day = boss.has(holiday_label)
-                
-                # Resolve Profile Set for this holiday
-                # The block_profiles can be a flat dict of profiles (e.g. STANDARD_PROFILES)
-                # or a nested dict mapping holiday names to profile sets (e.g. HOLIDAY_PROFILES)
-                first_val = next(iter(config.block_profiles.values()), None)
-                if isinstance(first_val, dict): # Nested structure
-                    profile_set = config.block_profiles.get(holiday_label, config.block_profiles.get("default", {}))
-                else:
-                    profile_set = config.block_profiles # Flat structure
-
-                for slot, content in holiday_sched.items():
-                    if slot not in day_schedule:
-                        continue
-
-                    if is_holiday_day:
-                        day_schedule[slot] = content
-                        continue
-
-                    # Calculate Ramp based on Block Profile
-                    profile = profile_set.get(slot, BlockProfile())
-                    
-                    ramp_signal = holiday_ctx.envelope.get(holiday_key, 0.0)
-                    hangover_signal = holiday_ctx.envelope.get(f"{holiday_key}_hangover", 0.0)
-                    
-                    final_prob = profile.respond(ramp_signal, hangover_signal)
-                    
-                    if final_prob > 0 and boss.roll(final_prob, key=f"swap_{holiday_key}_{slot}"):
-                        day_schedule[slot] = content
+        day_schedule = _resolve_day_schedule(config, boss, holiday_ctx)
 
         config.logger.info(
             f"=== {boss.now.strftime('%A, %B %d, %Y')} ==="
@@ -302,17 +335,18 @@ def run_daily_schedule(api: Any, context: Any, build_id: str, config: ScheduleCo
                     collection = marathon_to_run.collection
                     if hasattr(collection, "pick"):
                         marathon_key = collection.pick(boss) # Pass boss to collection.pick
+                    elif isinstance(collection, MarathonSequence):
+                        marathon_key = collection # Pass the sequence object directly
                     elif isinstance(collection, list):
                         marathon_key = boss.pick(f"marathon_{marathon_to_run.name}", collection)
                     else:
                         marathon_key = collection
 
                     # Check for start_hour override in source definition
-                    source_data = MASTER_SOURCES.get(marathon_key)
-                    if isinstance(source_data, dict) and "start_hour" in source_data:
-                        st_hour = source_data["start_hour"]
-                        if isinstance(st_hour, int):
-                            active_marathon_hours = (st_hour, active_marathon_hours[1])
+                    if isinstance(marathon_key, str):
+                        source_data = MASTER_SOURCES.get(marathon_key)                    
+                        if isinstance(source_data, MarathonDefinition) and source_data.start_hour is not None:
+                            active_marathon_hours = (source_data.start_hour, active_marathon_hours[1])
 
                     config.logger.info(
                         f"  {m.name} ACTIVE TODAY"
@@ -376,12 +410,18 @@ def run_daily_schedule(api: Any, context: Any, build_id: str, config: ScheduleCo
             if result.wrapper and isinstance(result.wrapper, PlayOnce):
                 # Play once
                 play_once = result.wrapper
-                real_result = resolve_target(play_once.content, boss, holiday_ctx, config, resolver, config.logger)
-                if real_result:
-                    real_key = real_result.resolved_content
-                    context = play_with_fallback(api, build_id, real_key, config.logger, context=context, count=1)
+                
+                # Check if the inner content is an AppointmentLineup
+                if isinstance(play_once.content, AppointmentLineup):
+                    # Execute the lineup once
+                    context = play_appointment_lineup(api, build_id, context, play_once.content, resolver, config.logger, boss, holiday_ctx, config, current_slot_tuple[0])
                 else:
-                    config.logger.warn(f"Skipping PlayOnce slot {current_slot_tuple} due to resolution failure.")
+                    # Standard single item
+                    real_result = resolve_target(play_once.content, boss, holiday_ctx, config, resolver, config.logger)
+                    if real_result:
+                        context = play_with_fallback(api, build_id, real_result.resolved_content, config.logger, context=context, count=1)
+                    else:
+                        config.logger.warn(f"Skipping PlayOnce slot {current_slot_tuple} due to resolution failure.")
                 
                 # Fill rest with next block
                 context = handle_single_play_slot(
@@ -422,6 +462,12 @@ def run_daily_schedule(api: Any, context: Any, build_id: str, config: ScheduleCo
             # Check for SeriesRelay wrapper (Resolved)
             if result.wrapper and isinstance(result.wrapper, SeriesRelay):
                 context = play_series_relay(api, build_id, context, result.wrapper, resolver, config.logger, boss=boss)
+                last_time = context.current_time
+                continue
+
+            # Check for AppointmentLineup wrapper (Resolved)
+            if result.wrapper and isinstance(result.wrapper, AppointmentLineup):
+                context = play_appointment_lineup(api, build_id, context, result.wrapper, resolver, config.logger, boss, holiday_ctx, config, current_slot_tuple[0])
                 last_time = context.current_time
                 continue
 

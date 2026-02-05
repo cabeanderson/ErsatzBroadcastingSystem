@@ -6,11 +6,14 @@ Gracefully handles missing assets.
 
 import re
 from datetime import timedelta
-from typing import Any, Dict, Optional
-from scripts.library import ContentResolver
-from scripts.playout import play_item, toggle_marathon_branding, ChannelLogger, fill_until_time, play_with_fallback
+from typing import Any, Dict, Optional, Tuple, List
+from scripts.logic.resolver import ContentResolver
+from scripts.core.logger import ChannelLogger
+from scripts.playout import play_item, toggle_marathon_branding, fill_until_time, play_with_fallback, play_smart_bumper
 from scripts.logic.models import BrandedBlock, Fallback, CommercialBreak
-from scripts.logic.resolution import apply_holiday_injection
+from scripts.logic.holidays import apply_holiday_injection
+from scripts.logic.playback import hour_in_window
+from scripts.logic.queries import extract_title_from_query
 
 
 def play_block_intro(api: Any, build_id: str, context: Any, intro: Optional[str], resolver: Any, logger: ChannelLogger, boss: Any = None) -> Any:
@@ -38,6 +41,20 @@ def play_block_outro(api: Any, build_id: str, context: Any, outro: Optional[str]
         except Exception as e:
             logger.warn(f"Failed to play outro: {e}")
     return context
+
+def _get_content_title(resolver: Any, content_key: str) -> Optional[str]:
+    """Extract show title from a content key's query."""
+    data = resolver.get_query_data(content_key)
+    query = None
+    if isinstance(data, dict):
+        query = data.get("query")
+    elif isinstance(data, str):
+        query = data
+    
+    if query:
+        return extract_title_from_query(query)
+    return None
+
 
 def play_branded_block(api: Any, build_id: str, context: Any, block: BrandedBlock, sources_registry: Dict[str, Any], logger: ChannelLogger, start_hour: int, end_hour: int, boss: Any = None, holiday_ctx: Any = None) -> Any:
     """
@@ -78,13 +95,7 @@ def play_branded_block(api: Any, build_id: str, context: Any, block: BrandedBloc
         hour = context.current_time.hour
         
         # Check time bounds
-        in_window = False
-        if start_hour < end_hour:
-            in_window = start_hour <= hour < end_hour
-        else: # Wraps midnight
-            in_window = hour >= start_hour or hour < end_hour
-            
-        if not in_window:
+        if not hour_in_window(hour, start_hour, end_hour):
             logger.info(f"🕒 Block time window ended at {context.current_time.strftime('%H:%M')}")
             break
         
@@ -163,23 +174,18 @@ def play_branded_block(api: Any, build_id: str, context: Any, block: BrandedBloc
                 elif isinstance(source_data, str):
                     query = source_data
                 
-                if query:
-                    # Extract title from query (show_title:"..." or title:"...")
-                    # Handles: title:"Foo Bar" and title:Foo
-                    match = re.search(r'(?:show_)?title:(?:"([^"]+)"|([^\s]+))', query)
-                    if match:
-                        title = match.group(1) or match.group(2)
-                        # Create a dynamic key for this specific show intro
-                        # Sanitize title for key
-                        safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
-                        dyn_key = f"auto_intro_{safe_title}"
-                        
-                        # Construct query: type:"other_videos" AND tag:"Title" AND (tag:intro OR tag:bumper)
-                        dyn_query = f'type:"other_video" AND tag:"{title}" AND (tag:intro OR tag:bumper)'
-                        
-                        resolver.register_dynamic_query(dyn_key, dyn_query)
-                        intro_key = dyn_key
-                        is_dynamic_intro = True
+                title = _get_content_title(resolver, base_key)
+                if title:
+                    # Create a dynamic key for this specific show intro
+                    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
+                    dyn_key = f"auto_intro_{safe_title}"
+                    
+                    # Construct query: type:"other_videos" AND tag:"Title" AND (tag:intro OR tag:bumper)
+                    dyn_query = f'type:"other_video" AND tag:"{title}" AND (tag:intro OR tag:bumper)'
+                    
+                    resolver.register_dynamic_query(dyn_key, dyn_query)
+                    intro_key = dyn_key
+                    is_dynamic_intro = True
 
         if intro_key and (intro_key in sources_registry or intro_key in resolver.active_keys):
             logger.info(f"   ↳ Playing intro: {intro_key}")
@@ -223,37 +229,32 @@ def play_branded_block(api: Any, build_id: str, context: Any, block: BrandedBloc
                 context = fill_until_time(api, build_id, context, logger, target_time_str, filler_key=comm_key, tomorrow=is_tomorrow)
         
         # Play bumper between items (if exists and not last item)
-        if block.bumpers:
-            if block.bumpers not in sources_registry:
-                logger.warn(f"Bumper key '{block.bumpers}' not found in registry")
-            else:
-                # Check if we are still within the block's window
-                h = context.current_time.hour
-                still_in_window = False
-                
-                if start_hour < end_hour:
-                    still_in_window = start_hour <= h < end_hour
-                else: # Wraps midnight
-                    still_in_window = h >= start_hour or h < end_hour
-                
-                if still_in_window:
+        # Check if we are still within the block's window
+        h = context.current_time.hour
+        if hour_in_window(h, start_hour, end_hour):
+            bumper_played = False
+            
+            # 1. Try Smart Bumper (Show-Specific)
+            title = _get_content_title(resolver, base_key)
+            context, bumper_played = play_smart_bumper(api, build_id, context, title, resolver, logger, required_tags=["bumpers"])
+
+            # 2. Fallback to Block Bumper
+            if not bumper_played and block.bumpers:
+                if block.bumpers not in sources_registry:
+                    logger.warn(f"Bumper key '{block.bumpers}' not found in registry")
+                else:
                     try:
                         bumper_key = resolver.resolve(block.bumpers, boss)
-                        logger.info(f"   ↳ Playing bumper: {bumper_key}")
+                        logger.info(f"   ↳ Playing block bumper: {bumper_key}")
                         old_time = context.current_time
                         context = play_item(api, build_id, bumper_key, logger)
-                        if context.current_time <= old_time:
-                            logger.warn(f"Bumper played but time didn't advance (0 duration? Check query results)")
                     except Exception as e:
                         logger.warn(f"Failed to play bumper: {e}")
     
     # Play outro if it exists and we are at the end of the window
     if block.outro:
         h = context.current_time.hour
-        if start_hour < end_hour:
-            should_play = h < end_hour or (h == end_hour and context.current_time.minute < 15)
-        else: # Wraps midnight
-            should_play = h >= start_hour or h < end_hour or (h == end_hour and context.current_time.minute < 15)
+        should_play = hour_in_window(h, start_hour, end_hour) or (h == end_hour and context.current_time.minute < 15)
         if should_play:
             context = play_block_outro(api, build_id, context, block.outro, resolver, logger, boss)
     

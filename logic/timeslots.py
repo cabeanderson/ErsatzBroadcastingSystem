@@ -24,11 +24,6 @@ ALT_TIMESLOTS = {
     },
 }
 
-def hour_in_window(hour, start, end):
-    if start < end:
-        return start <= hour < end
-    return hour >= start or hour < end
-
 def get_timeslot_map(timeslot_preset="default", custom_timeslots=None):
     """Resolves the final timeslot dictionary from presets and custom overrides."""
     if isinstance(timeslot_preset, dict):

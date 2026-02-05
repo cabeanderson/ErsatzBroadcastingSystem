@@ -6,16 +6,297 @@ Uses builder functions for consistency and maintainability.
 """
 
 from .marathons import MARATHONS
-from .builders import (
-    episode_source, movie_source, apply_tags,
-    NINETIES, EIGHTIES, STREAMING_ERA, CLASSIC_ERA,
-    WINTER_TAGS, SUMMER_TAGS
+# Import builder functions and core types from logic
+from scripts.logic.queries import (
+    episode_source, movie_source, show_source, show_by_title, 
+    playback_order, playlist_ref, apply_tags,
+    ANIME, MOVIE, SHOW
 )
-from .sources_movies import MOVIE_REGISTRY
-from .sources_tv import TV_REGISTRY
-from .sources_animated import ANIMATED_LIBRARY
+from scripts.logic.factories import episode_list
+# Import filter constants from our local library
+from .filters import (
+    NINETIES, EIGHTIES, STREAMING_ERA, CLASSIC_ERA,
+    WINTER_TAGS, SUMMER_TAGS,
+    SILENT_ERA, GOLDEN_AGE, SEVENTIES, Y2K_ERA, TENS, TWENTIES,
+    SHORT, NO_COMEDY,
+    TV_CLASSIC, TV_GOLDEN_AGE, TV_HD, TV_VINTAGE,
+    NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI,
+    SIXTIES, SITCOM_80S_VIBE, SITCOM_90S_VIBE
+)
 
-# 8. THEME & HOLIDAY REGISTRY
+# ============================================================================
+# 1. MOVIES
+# ============================================================================
+
+MOVIE_REGISTRY = {
+    # --- FILM HISTORY ---
+    "20s_silent_movie": movie_source(era=SILENT_ERA),
+    "30s_golden_age_movie": movie_source(era=GOLDEN_AGE),
+    "classic_hollywood_movie": movie_source(era=CLASSIC_ERA),
+    "film_history_all_movie": movie_source(era=CLASSIC_ERA),
+    "70s_movie": movie_source(era=SEVENTIES),
+    "80s_movie": movie_source(era=EIGHTIES),
+    "90s_movie": movie_source(era=NINETIES),
+    "00s_movie": movie_source(era=Y2K_ERA),
+    "10s_movie": movie_source(era=TENS),
+    "20s_movie": movie_source(era=TWENTIES),
+
+    # --- ANIMATION (FILM) ---
+    "animation_movie": movie_source(animated=True),
+    "classic_animation_movie": movie_source(animated=True, era=CLASSIC_ERA, extra=SHORT),
+    "anime_movie": f"{MOVIE} AND {ANIME}",
+    "ghibli_movie": movie_source(animated=True, extra='(studio:"Studio Ghibli" OR title:*Ghibli*)'),
+    "disney_movie": movie_source(animated=True, studio="Disney"),
+    "pixar_movie": movie_source(animated=True,studio="Pixar"),
+    "dreamworks_movie": movie_source(studio="Dreamworks"),
+
+    # --- FAMILY & RATING ---
+    "family_g_movie": movie_source(rating="content_rating:G"),
+    "family_pg_movie": movie_source(rating="content_rating:PG"),
+    "kids_safe_movie": movie_source(rating="(content_rating:TV-G OR content_rating:TV-Y)"),
+
+    # --- HORROR VAULT ---
+    "classic_horror_movie": movie_source(genre="horror", era=EIGHTIES, extra=NO_COMEDY),
+    "horror_zombies_movie": movie_source(genre="horror", tags="tag:zombie", extra=NO_COMEDY),
+    "horror_werewolf_movie": movie_source(genre="horror", tags="tag:werewolf", extra=NO_COMEDY),
+    "horror_vampire_movie": movie_source(genre="horror", tags="tag:vampire", extra=NO_COMEDY),
+    "horror_slasher_movie": movie_source(genre="horror", tags="tag:slasher", extra=NO_COMEDY),
+    "horror_aliens_movie": movie_source(genre="horror", tags="tag:alien", extra=NO_COMEDY),
+    "horror_kaiju_movie": movie_source(tags="(tag:kaiju OR title:*godzilla*)", extra=NO_COMEDY),
+    "horror_found_footage_movie": movie_source(genre="horror", tags='tag:"found footage"', extra=NO_COMEDY),
+
+    # --- HOLIDAYS ---
+    "christmas_movie": movie_source(tags="tag:christmas", extra="NOT genre:horror"),
+    "halloween_movie": movie_source(tags="tag:halloween"),
+
+    # --- GENRE BLOCKS ---
+    "80s_action_movie": movie_source(genre="action", era=EIGHTIES),
+    "90s_action_movie": movie_source(genre="action", era=NINETIES),
+    "blockbuster_action_movie": movie_source(genre="action", tags="(studio:Marvel OR studio:DC OR tag:superhero)"),
+    "80s_comedy_movie": movie_source(genre="comedy", era=EIGHTIES),
+    "90s_comedy_movie": movie_source(genre="comedy", era=NINETIES),
+    "western_movie": movie_source(genre="western"),
+    "musical_movie": movie_source(genre="musical"),
+    "war_movie": movie_source(genre="war"),
+
+    # --- SCI-FI / THRILLER ---
+    "classic_scifi_movie": movie_source(genre='"science fiction"', era=CLASSIC_ERA),
+    "modern_scifi_movie": movie_source(genre='"science fiction"', era=STREAMING_ERA),
+    "comedy_scifi_movie": movie_source(genre='"science fiction"', extra="genre:comedy"),
+    "action_scifi_movie": movie_source(genre='"science fiction"', extra="genre:action"),
+    "cyberpunk_movie": movie_source(tags="tag:cyberpunk"),
+    "psych_thriller_movie": movie_source(genre="(thriller OR mystery)", extra="(title:*Psycho* OR title:*Silence*)"),
+    "mystery_crime_movie": movie_source(genre="(mystery OR crime)", extra=NO_COMEDY),
+    "classic_noir_movie": movie_source(genre="crime", era=GOLDEN_AGE),
+
+    # --- SPECIALTY ---
+    "videogame_movie": movie_source(extra="(title:*Mario* OR title:*Sonic* OR title:*Kombat*)"),
+    "short_film_movie": movie_source(extra=SHORT),
+    
+    # --- FRANCHISES ---
+    "star_wars_saga_chronological": playback_order(movie_source(extra='title:"Star Wars"'), force="Chronological"),
+}
+
+# --- PLAYLISTS ---
+PLAYLIST_REGISTRY = {
+    "star_trek_all_playlist": playlist_ref(name="Star Trek Universe", group="ErsatzTV"),
+}
+
+# ============================================================================
+# 2. TV SHOWS (FILTERS & GENRES)
+# ============================================================================
+
+TV_REGISTRY = {
+    # --- SCI-FI ---
+    "classic_scifi_tv": show_source(genre='"science fiction"', era=TV_CLASSIC, extra=f"{NO_FANTASY} AND {NO_SITCOM}"),
+    "syndicated_scifi_tv": show_source(genre='"science fiction"', era=TV_GOLDEN_AGE, extra=f"{NO_FANTASY} AND {NO_SITCOM}"),
+    "golden_scifi_tv": show_source(genre='"science fiction"', era=TV_GOLDEN_AGE, extra=f"{NO_FANTASY} AND {NO_SITCOM}"),
+    "modern_scifi_tv": show_source(genre='"science fiction"', era=TV_HD, extra=f"{NO_FANTASY} AND {NO_SITCOM}"),
+    "scifi_tv": show_source(genre='"science fiction"', extra=f"{NO_FANTASY} AND {NO_SITCOM}"),
+    "scifi_fantasy_tv": show_source(genre='"science fiction"', extra=f"genre:fantasy AND {NO_SITCOM}"),
+    "space_opera_tv": show_source(genre='"science fiction"', extra=NO_SITCOM),
+    
+    # --- FANTASY ---
+    "fantasy_pure_tv": show_source(genre="fantasy", extra=f"{NO_SCIFI} AND {NO_SITCOM}"),
+    "fantasy_tv": show_source(genre="fantasy", extra=NO_SITCOM),
+    "epic_fantasy_tv": show_source(genre="fantasy", tags="(tag:epic OR tag:sword)", extra=NO_SITCOM),
+    
+    # --- SITCOMS BY ERA ---
+    "60s_sitcoms_tv": show_source(tags="tag:sitcom", era=SIXTIES, extra=NO_BBC),
+    "70s_sitcoms_tv": show_source(tags="tag:sitcom", era=SEVENTIES, extra=NO_BBC),
+    "80s_sitcoms_tv": show_source(tags="tag:sitcom", era=SITCOM_80S_VIBE, extra=NO_BBC),
+    "90s_sitcoms_tv": show_source(tags="tag:sitcom", era=SITCOM_90S_VIBE, extra=NO_BBC),
+    "00s_sitcoms_tv": show_source(tags="tag:sitcom", era=Y2K_ERA, extra=NO_BBC),
+    "10s_sitcoms_tv": show_source(tags="tag:sitcom", era=TENS, extra=NO_BBC),
+    "golden_sitcoms_tv": show_source(tags="tag:sitcom", era=TV_GOLDEN_AGE),
+    "classic_sitcoms_tv": show_source(tags="tag:sitcom", era=TV_CLASSIC),
+    "modern_sitcoms_tv": show_source(tags="tag:sitcom", era=TV_HD),
+    
+    # --- ACTION & DRAMA BY ERA ---
+    "60s_action_tv": show_source(genre="action", era=SIXTIES),
+    "80s_action_tv": show_source(genre="action", era=EIGHTIES),
+    "90s_action_tv": show_source(genre="action", era=NINETIES),
+    "classic_action_tv": show_source(genre="action", era=TV_CLASSIC),
+    "syndicated_action_tv": show_source(genre="action", era=TV_GOLDEN_AGE),
+    "modern_action_tv": show_source(genre="action", era=TV_HD),
+    
+    "80s_drama_tv": show_source(genre="drama", era=EIGHTIES, extra=NO_SITCOM),
+    "90s_drama_tv": show_source(genre="drama", era=NINETIES, extra=NO_SITCOM),
+    "00s_drama_tv": show_source(genre="drama", era=Y2K_ERA, extra=NO_SITCOM),
+    "golden_drama_tv": show_source(genre="drama", era=TV_GOLDEN_AGE, extra=NO_SITCOM),
+    "modern_drama_tv": show_source(genre="drama", era=TV_HD, extra=NO_SITCOM),
+    "prestige_drama_tv": show_source(genre="drama", studio="(HBO OR AMC OR Showtime OR FX)", extra=NO_SITCOM),
+    
+    # --- COMEDY & MYSTERY ---
+    "classic_comedy_tv": show_source(genre="comedy", era=TV_CLASSIC),
+    "modern_comedy_tv": show_source(genre="comedy", era=TV_HD),
+    "sketch_comedy_tv": show_source(tags="tag:sketch"),
+    "procedural_tv": show_source(genre="(mystery OR crime)", tags="tag:procedural"),
+    "detective_tv": show_source(genre="(mystery OR crime)", tags="(tag:detective OR tag:investigator)"),
+    "classic_mystery_tv": show_source(genre="(mystery OR crime)", era=TV_CLASSIC),
+    "modern_mystery_tv": show_source(genre="(mystery OR crime)", era=TV_HD),
+    "true_crime_tv": show_source(genre="documentary", extra="genre:crime"),
+    
+    # --- WESTERN, HORROR, THRILLER ---
+    "classic_western_tv": show_source(genre="western", era=TV_CLASSIC),
+    "modern_western_tv": show_source(genre="western", era=STREAMING_ERA),
+    "western_tv": show_source(genre="western"),
+    "horror_tv": show_source(genre="horror"),
+    "classic_horror_tv": show_source(genre="horror", era=TV_CLASSIC),
+    "modern_horror_tv": show_source(genre="horror", era=TV_HD),
+    "thriller_tv": show_source(genre="thriller"),
+    "supernatural_tv": show_source(genre="(supernatural OR tag:paranormal)"),
+    
+    # --- NETWORK SPECIFIC ---
+    "hbo_drama_tv": show_source(genre="drama", studio="HBO", extra=NO_SITCOM),
+    "hbo_comedy_tv": show_source(genre="comedy", studio="HBO"),
+    "showtime_drama_tv": show_source(genre="drama", studio="Showtime", extra=NO_SITCOM),
+    "amc_drama_tv": show_source(genre="drama", studio="AMC", extra=NO_SITCOM),
+    "fx_drama_tv": show_source(genre="drama", studio="FX", extra=NO_SITCOM),
+    "nbc_sitcoms_tv": show_source(tags="tag:sitcom", studio="NBC"),
+    "cbs_sitcoms_tv": show_source(tags="tag:sitcom", studio="CBS"),
+    "abc_sitcoms_tv": show_source(tags="tag:sitcom", studio="ABC"),
+    "fox_sitcoms_tv": show_source(tags="tag:sitcom", studio="Fox"),
+    
+    # --- INTERNATIONAL & SPECIALTY ---
+    "british_comedy_tv": show_source(genre="comedy", studio="(bbc OR itv)", tags="(tag:sitcom OR genre:comedy)"),
+    "british_mystery_tv": show_source(genre="mystery", studio="(bbc OR itv)"),
+    "british_drama_tv": show_source(genre="drama", studio="(bbc OR itv)"),
+    "bbc_classics_tv": show_source(studio="bbc", era=TV_CLASSIC),
+    "family_tv": show_source(rating="(content_rating:TV-G OR content_rating:TV-PG)"),
+    "mature_tv": show_source(rating="(content_rating:TV-MA OR content_rating:TV-14)"),
+    "kids_tv": show_source(rating="(content_rating:TV-Y OR content_rating:TV-Y7)"),
+    "unscripted_alt_tv": show_source(genre="(documentary OR tag:alternative)", extra="(title:*Wilson* OR title:*Nathan*)"),
+    "reality_classic_tv": show_source(genre="reality", era=TV_GOLDEN_AGE),
+    "reality_competition_tv": show_source(genre="reality", tags="tag:competition"),
+    "documentary_tv": show_source(genre="documentary"),
+    "talk_show_tv": show_source(tags="(tag:talk-show OR tag:late-night)"),
+    "legal_drama_tv": show_source(genre="drama", tags="(tag:legal OR tag:courtroom)", extra=NO_SITCOM),
+    "medical_drama_tv": show_source(genre="drama", tags="(tag:medical OR tag:hospital)", extra=NO_SITCOM),
+    "military_tv": show_source(tags="(tag:military OR tag:war)"),
+    "sports_drama_tv": show_source(genre="drama", tags="tag:sports", extra=NO_SITCOM),
+    "teen_drama_tv": show_source(genre="drama", tags="(tag:teen OR tag:high-school)", extra=NO_SITCOM),
+    "workplace_comedy_tv": show_source(tags="tag:sitcom", extra="tag:workplace"),
+    "family_drama_tv": show_source(genre="drama", tags="tag:family", extra=NO_SITCOM),
+    
+    # --- ERA CATCH-ALLS ---
+    "vintage_tv": show_source(era=TV_VINTAGE),
+    "retro_tv": show_source(era=TV_CLASSIC),
+    "golden_age_tv": show_source(era=TV_GOLDEN_AGE),
+    "hd_era_tv": show_source(era=TV_HD),
+
+    # --- SPECIFIC SHOWS (Legacy/Unrefactored) ---
+    # These should be moved to inline definitions in collections.py eventually
+    "i_love_lucy_tv": show_by_title("i love lucy"),
+    "andy_griffith_tv": show_by_title("the andy griffith show"),
+    "dick_van_dyke_tv": show_by_title("the dick van dyke show"),
+    "bewitched_tv": show_by_title("bewitched"),
+    "gilligans_island_tv": show_by_title("gilligan's island"),
+    "mary_tyler_moore_tv": show_by_title("the mary tyler moore show"),
+    "bob_newhart_tv": show_by_title("the bob newhart show"),
+    "mash_tv": show_by_title("m*a*s*h"),
+    "good_times_tv": show_by_title("good times"),
+    "sanford_and_son_tv": show_by_title("sanford and son"),
+    "taxi_tv": show_by_title("taxi"),
+    "cheers_tv": show_by_title("cheers"),
+    "wonder_years_tv": show_by_title("the wonder years"),
+    "family_matters_tv": show_by_title("family matters"),
+    "perfect_strangers_tv": show_by_title("perfect strangers"),
+    "full_house_tv": show_by_title("full house"),
+    "coach_tv": show_by_title("coach"),
+    "seinfeld_tv": show_by_title("seinfeld"),
+    "fresh_prince_tv": show_by_title("the fresh prince of bel-air"),
+    "saved_by_the_bell_tv": show_by_title("saved by the bell"),
+    "sister_sister_tv": show_by_title("sister, sister"),
+    "moesha_tv": show_by_title("moesha"),
+    "mr_cooper_tv": show_by_title("hangin' with mr. cooper"),
+    "home_improvement_tv": show_by_title("home improvement"),
+    "drew_carey_tv": show_by_title("the drew carey show"),
+    "newsradio_tv": show_by_title("newsradio"),
+    "3rd_rock_tv": show_by_title("3rd rock from the sun"),
+    "wings_tv": show_by_title("wings"),
+    "mad_about_you_tv": show_by_title("mad about you"),
+    "nanny_tv": show_by_title("the nanny"),
+    "married_children_tv": show_by_title("married... with children"),
+    "dinosaurs_tv": show_by_title("dinosaurs"),
+    "the_office_tv": show_by_title("the office"),
+    "parks_and_recreation_tv": show_by_title("parks and recreation"),
+    "30_rock_tv": show_by_title("30 rock"),
+    "community_tv": show_by_title("community"),
+
+    # --- SPECIFIC SHOWS (Chronological/Themed) ---
+    "devs_chronological_tv": playback_order(show_by_title("Devs"), force="Chronological"),
+    "the_oa_chronological_tv": playback_order(show_by_title("The OA"), force="Chronological"),
+    "black_mirror_chronological_tv": playback_order(show_by_title("Black Mirror"), force="Chronological"),
+    "terminator_scc_chronological_tv": playback_order(show_by_title("Terminator: The Sarah Connor Chronicles"), force="Chronological"),
+    "dark_angel_chronological_tv": playback_order(show_by_title("Dark Angel"), force="Chronological"),
+    "firefly_chronological_tv": playback_order(show_by_title("Firefly"), force="Chronological"),
+    "cleopetra_2525_chronological_tv": playback_order(show_by_title("Cleopatra 2525"), force="Chronological"),
+    "farscape_chronological_tv": playback_order(show_by_title("Farscape"), force="Chronological"),
+    "quantum_leap_chronological_tv": playback_order(show_by_title("Quantum Leap"), force="Chronological"),
+    "monk_chronological_tv": playback_order(show_by_title("Monk"), force="Chronological"),
+
+    # --- SPECIFIC SHOWS (Halloween/Themed) ---
+    "scooby_doo_tv": show_by_title("Scooby-Doo, Where Are You!"),
+    "gravity_falls_tv": show_by_title("Gravity Falls"),
+    "infinity_train_tv": show_by_title("Infinity Train"),
+    "courage_tv": show_by_title("Courage the Cowardly Dog"),
+    "metalocalypse_tv": show_by_title("Metalocalypse"),
+    "elsbeth_tv": show_by_title("Elsbeth"),
+    "moonlighting_tv": show_by_title("Moonlighting"),
+    "poirot_tv": show_by_title("Agatha Christie's Poirot"),
+    "miss_marple_tv": show_by_title("Miss Marple"),
+    "columbo_tv": show_by_title("Columbo"),
+    "orville_tv": show_by_title("The Orville"),
+    "knight_rider_tv": show_by_title("Knight Rider"),
+    "pushing_daisies_tv": show_by_title("Pushing Daisies"),
+    "the_killing_tv": show_by_title("The Killing"),
+    "terriers_tv": show_by_title("Terriers"),
+    "dollhouse_tv": show_by_title("Dollhouse"),
+    "awake_tv": show_by_title("Awake"),
+    "stargate_sg1_tv": show_by_title("Stargate SG-1"),
+}
+
+# ============================================================================
+# 3. ANIMATED (FILTERS & GENRES)
+# ============================================================================
+
+ANIMATED_REGISTRY = {
+    # --- BROAD TOOLS ---
+    "animated_sitcoms_tv": show_source(tags="tag:sitcom", animated=True),
+    "adult_animation_tv": show_source(tags="tag:sitcom", rating="(content_rating:TV-MA OR content_rating:TV-14)", animated=True),
+    "family_animation_tv": show_source(tags="tag:sitcom", rating="(content_rating:TV-G OR content_rating:TV-PG OR content_rating:TV-Y7)", animated=True),
+    "anime_tv": f"{SHOW} AND {ANIME}",
+    "anime_action_tv": f"{SHOW} AND {ANIME} AND genre:action",
+    "animated_action_tv": show_source(genre="action", animated=True, extra=NO_SITCOM),
+    "animated_90s_tv": show_source(era=NINETIES, animated=True),
+    "animated_classic_tv": show_source(era=TV_CLASSIC, animated=True),
+    "superhero_animated_tv": show_source(tags="(tag:superhero OR tag:marvel OR tag:dc)", animated=True),
+}
+
+# ============================================================================
+# 4. THEME & HOLIDAY REGISTRY
+# ============================================================================
 
 THEME_REGISTRY = {
     # --- THANKSGIVING ---
@@ -69,7 +350,7 @@ SEASONAL_VARIANTS = {
     "classic_hollywood_summer_movies": apply_tags(MOVIE_REGISTRY["classic_hollywood_movie"], SUMMER_TAGS),
 }
 
-# 9. FILLERS & BUMPERS
+# 5. FILLERS & BUMPERS
 FILLERS = {
     "commercials_spot": 'type:"other_video"',
     "commercials_90s_spot": 'type:"other_video" AND tag:90s',
@@ -81,14 +362,30 @@ FILLERS = {
     "cowboy_bebop_bumpers": 'type:"other_video" AND tag:"cowboy bebop"',
 }
 
-# 10. THE MASTER EXPORT
+# 7. TEST KEYS
+TEST_REGISTRY = {
+    "test_monk_morning": episode_list(
+        "Monk", 
+        seasons=[1, 2, 3, 4, 5, 6, 7, 8], 
+        counts=[13, 16, 16, 16, 16, 16, 16, 16]
+    ),
+    "test_monk_evening": episode_list(
+        "Monk", 
+        seasons=[1, 2, 3, 4, 5, 6, 7, 8], 
+        counts=[13, 16, 16, 16, 16, 16, 16, 16]
+    ),
+}
+
+# 6. THE MASTER EXPORT
 
 MASTER_SOURCES = {
     **MOVIE_REGISTRY,
+    **PLAYLIST_REGISTRY,
     **TV_REGISTRY,
-    **ANIMATED_LIBRARY,
+    **ANIMATED_REGISTRY,
     **THEME_REGISTRY,
     **MARATHONS,
     **SEASONAL_VARIANTS,
-    **FILLERS
+    **FILLERS,
+    **TEST_REGISTRY
 }

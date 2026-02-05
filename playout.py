@@ -4,6 +4,7 @@ The Engineer - Technical execution layer.
 Handles ErsatzTV API interaction, circuit breakers, and utilities.
 """
 
+import re
 from etv_client.models import (
     PlayoutCount, 
     ControlWaitUntil, 
@@ -11,29 +12,11 @@ from etv_client.models import (
     ControlStartEpgGroup
 )
 from datetime import datetime, timedelta
-from typing import Any, Optional, Callable
+from typing import Any, Optional, Callable, Tuple, List
 
 from scripts.logic.models import Fallback
-
-class ChannelLogger:
-    """Standardized logger for channel events."""
-    def __init__(self, prefix: str = "[TV]", verbose: bool = True):
-        self.prefix: str = prefix
-        self.verbose: bool = verbose
-
-    def info(self, msg: str) -> None:
-        print(f"{self.prefix} {msg}", flush=True)
-
-    def debug(self, msg: str) -> None:
-        if self.verbose:
-            print(f"{self.prefix} [DEBUG] {msg}", flush=True)
-            
-    def warn(self, msg: str) -> None:
-        print(f"{self.prefix} [WARN] {msg}", flush=True)
-
-    def error(self, msg: str) -> None:
-        print(f"{self.prefix} [ERROR] {msg}", flush=True)
-
+from scripts.core.logger import ChannelLogger
+from scripts.config import ENABLE_SMART_BUMPERS
 
 def play_item(api: Any, build_id: str, content_key: str, logger: ChannelLogger, count: int = 1, suppress_errors: bool = False) -> Any:
     """
@@ -155,6 +138,22 @@ def fill_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger
     return align_to_time(api, build_id, target_time, tomorrow=tomorrow)
 
 
+def fill_until_next_hour(api: Any, build_id: str, context: Any, logger: ChannelLogger, filler_key: str) -> Any:
+    """
+    Convenience wrapper - pads to next hour boundary.
+    
+    Args:
+        api: ErsatzTV API instance
+        build_id: Build UUID
+        context: Current playout context
+        logger: ChannelLogger instance
+        filler_key: Content key for filler content
+    """
+    next_hour = (context.current_time.hour + 1) % 24
+    tomorrow = (next_hour == 0)
+    return fill_until_time(api, build_id, context, logger, f"{next_hour:02d}:00", filler_key, tomorrow=tomorrow)
+
+
 def circuit_breaker(
     api: Any, 
     build_id: str, 
@@ -237,3 +236,36 @@ def toggle_marathon_branding(api: Any, build_id: str, name: Optional[str] = None
         # EPG grouping is cosmetic - log but don't fail
         action = "start" if start else "stop"
         print(f"[WARN] Failed to {action} EPG group: {e}", flush=True)
+
+def play_smart_bumper(api: Any, build_id: str, context: Any, title: Optional[str], resolver: Any, logger: ChannelLogger, required_tags: List[str] = None) -> Tuple[Any, bool]:
+    """
+    Attempts to play a smart bumper for a specific show title.
+    Returns (context, success_boolean).
+    """
+    if not title or not ENABLE_SMART_BUMPERS:
+        return context, False
+
+    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
+    
+    # Default tags if none provided
+    tags = required_tags if required_tags else ["bumpers"]
+    tag_queries = [f'tag:"{t}"' for t in tags]
+    
+    # Query: type:"other_video" AND tag:"{title}" AND tag:"{tag1}" ...
+    bumper_query = f'type:"other_video" AND tag:"{title}" AND {" AND ".join(tag_queries)}'
+    
+    tags_suffix = "_".join(tags).lower().replace(" ", "")
+    bumper_key = f"auto_bumper_{safe_title}_{tags_suffix}"
+    
+    resolver.register_dynamic_query(bumper_key, bumper_query)
+    
+    try:
+        old_time = context.current_time
+        context = play_item(api, build_id, bumper_key, logger, suppress_errors=True)
+        if context.current_time > old_time:
+            logger.info(f"   ↳ Playing smart bumper: {bumper_key}")
+            return context, True
+    except Exception:
+        pass
+        
+    return context, False

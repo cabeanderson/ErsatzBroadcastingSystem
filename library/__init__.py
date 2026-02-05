@@ -3,13 +3,14 @@
 Content library - collections and sources.
 """
 
-from . import collections
 from . import sources
 from . import branding
-from . import blocks
 from . import marathons
-from . import structures
-from .resolver import ContentResolver
-from .builders import extract_episode_range, count_episodes_in_range
+from . import common
+from . import detective
+from . import animation
+from . import scifi
+from . import sitcoms
+from . import movies
 
-__all__ = ['collections', 'sources', 'branding', 'blocks', 'marathons', 'structures', 'ContentResolver', 'extract_episode_range', 'count_episodes_in_range']
+__all__ = ['sources', 'branding', 'marathons', 'common', 'detective', 'animation', 'scifi', 'sitcoms', 'movies']

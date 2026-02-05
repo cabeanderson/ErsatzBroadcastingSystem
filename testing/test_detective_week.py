@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Test script for Sci-Fi Channel - Full Week Prime Time.
-Verifies the daily themed rotation and the Sunday AppointmentLineup.
+Test script for Detective Channel - Full Week Prime Time.
+Verifies the daily themed rotation.
 """
 import sys
 import os
@@ -13,26 +13,16 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 from scripts.testing.simulator import ChannelSimulator, install_mocks
 install_mocks()
 
-from scripts.channels import scifi
+from scripts.channels import detective
 
 def run_test():
-    print("Testing Sci-Fi Channel - Prime Time Week (October 2026)")
+    print("Testing Detective Channel - Prime Time Week")
     print("="*60)
     
-    # Start on a Monday in October 2026 to test the 'Lost' anchor
+    # Start on a Monday
     start_date = date(2026, 10, 5) # Monday
     
-    # Define realistic durations for the test
-    durations = {
-        "__auto_lost_s1": 44,
-        "the_killing_tv": 45,
-        "awake_tv": 43,
-        "dollhouse_tv": 44,
-        "pushing_daisies_tv": 42,
-        "terriers_tv": 45
-    }
-    
-    sim = ChannelSimulator(scifi, content_durations=durations)
+    sim = ChannelSimulator(detective)
     
     for i in range(7):
         current_date = start_date + timedelta(days=i)
@@ -52,7 +42,6 @@ def run_test():
                 print(f"{item['time'].strftime('%H:%M')} | {item['content']}")
 
     print("\n" + "="*60)
-    print("Test complete. Verify Sunday's lineup resolves the 'Lost' anchor.")
 
 if __name__ == "__main__":
     run_test()

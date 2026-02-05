@@ -3,7 +3,8 @@ Data models for marathons, events, and blocks.
 """
 
 from dataclasses import dataclass, field
-from typing import Callable, Tuple, Optional, Any, Dict, List
+from typing import Callable, Tuple, Optional, Any, Dict, List, Union
+from scripts.logic.queries import is_movie_query
 
 
 @dataclass
@@ -15,16 +16,33 @@ class Marathon:
     hours: Optional[Tuple[int, int]] = None
     priority: int = 1
 
-
 @dataclass
-class MultiDayEvent:
-    """Multi-day event configuration."""
-    name: str
-    trigger: Callable
-    duration_days: int
-    content: Any
-    timeslots: List[str] = field(default_factory=list)
-    priority: int = 1
+class MarathonDefinition:
+    """A self-contained definition for a marathon's content and metadata."""
+    name: str  # The EPG title for the marathon
+    query: str # The Lucene query for the content
+    description: Optional[str] = None
+    order: str = "Chronological"
+    start_hour: Optional[int] = None # Optional override for start time within the marathon window
+    # For skipping to a specific point
+    start_mode: str = "beginning" # "beginning" or "random"
+    start_season: Optional[Union[int, List[int]]] = None
+    start_episode: Optional[int] = None
+    episode_count: Optional[int] = None # For sagas that aren't a full season
+    media_type: Optional[str] = None # "movie" or "show"
+
+    def __post_init__(self):
+        if self.start_mode not in ["beginning", "random"]:
+            raise ValueError(f"start_mode must be 'beginning' or 'random', got '{self.start_mode}'")
+        if self.start_mode == "random" and self.start_season is None:
+            raise ValueError("Random start_mode requires start_season")
+
+    def is_movie(self) -> bool:
+        """Determine if this item is a movie based on metadata or query."""
+        if self.media_type == "movie":
+            return True
+        # Fallback to query inspection
+        return is_movie_query(self.query)
 
 
 @dataclass
@@ -34,6 +52,21 @@ class Branding:
     outro: Optional[str] = None
     bumpers: Optional[str] = None
 
+
+@dataclass
+class ContentItem:
+    """A single item of content within a collection or block."""
+    title: str
+    query: Optional[str] = None
+    order: str = "Shuffle"
+    media_type: Optional[str] = None # "movie" or "show"
+
+    def is_movie(self) -> bool:
+        """Determine if this item is a movie based on metadata or query."""
+        if self.media_type == "movie":
+            return True
+        # Fallback to query inspection
+        return is_movie_query(self.query)
 
 @dataclass
 class BrandedBlock:

@@ -19,6 +19,22 @@ LOG_DIR = BASE_DIR / "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # ==========================================
+# FRAMEWORK BEHAVIOR
+# ==========================================
+
+# Default playback order for collections/searches ("Shuffle" or "Chronological")
+DEFAULT_ORDER = "Shuffle"
+
+# Feature Flags
+ENABLE_SMART_BUMPERS = True
+ENABLE_HOLIDAY_INJECTION = True
+ENABLE_SEASONAL_BLOCKS = True
+
+# Logging
+LOG_LEVEL = "INFO"
+VERBOSE_LOGGING = False
+
+# ==========================================
 # LOCAL OVERRIDES
 # ==========================================
 # Create config_local.py to override settings without committing them

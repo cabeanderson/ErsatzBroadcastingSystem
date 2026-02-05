@@ -139,10 +139,12 @@ final_key = resolve_schedule_target(
 ### Playback Strategies
 ```python
 from scripts.logic.playback import (
-    handle_single_play_slot,     # Single-play slot logic
-    select_content_by_time,      # Choose content based on time remaining
-    align_to_scheduled_start,    # Ensure content starts at exact time
-    transition_to_next_block     # Handle block transitions
+    is_approaching_hour_boundary, # Check if near hour
+    hour_in_window                # Check time window
+)
+
+from scripts.engines.slots import (
+    handle_single_play_slot       # Single-play slot logic
 )
 ```
 

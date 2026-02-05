@@ -17,13 +17,13 @@ from datetime import datetime
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scripts.schedule import run_daily_schedule, ScheduleConfig, SeasonalBlock, pre_register_all_content
-from scripts.library import ContentResolver
+from scripts.logic.resolver import ContentResolver
 from scripts.library.sources import MASTER_SOURCES
 from scripts.logic.holidays import with_holidays
 from scripts.logic.triggers import with_probability, when_has, combine, on_date_range
-from scripts.logic.programming import Marathon, BrandedBlock, BlockProfile
+from scripts.logic.models import Marathon, BrandedBlock, BlockProfile
 from scripts.logic.seasonal import feather, swap
-from scripts.playout import ChannelLogger
+from scripts.core.logger import ChannelLogger
 # In a real channel, you would import your collections:
 # from scripts.library import collections
 

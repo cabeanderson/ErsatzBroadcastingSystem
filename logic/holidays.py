@@ -4,8 +4,16 @@ Holiday detection and override system.
 Provides both signal strengths and boolean flags for holiday programming.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 from scripts.logic.profiles import HOLIDAY_PROFILES
+from scripts.core import registry
+from scripts.logic.models import Fallback, ResolutionResult
+from scripts.config import ENABLE_HOLIDAY_INJECTION
+
+if TYPE_CHECKING:
+    from scripts.logic.resolver import ContentResolver
+    from scripts.core import DayDirector
+    from scripts.playout import ChannelLogger
 
 class HolidayContext:
     """
@@ -135,3 +143,36 @@ def with_holidays(default: Any, **overrides: Any) -> Dict[str, Any]:
         }
     """
     return {"default": default, **overrides}
+
+def apply_holiday_injection(final_key: Any, resolver: 'ContentResolver', holiday_ctx: HolidayContext, boss: 'DayDirector', logger: 'ChannelLogger', source: str = "schedule") -> ResolutionResult:
+    """Check if any major holiday is active and try to inject a tagged variant."""
+    if isinstance(final_key, str) and ENABLE_HOLIDAY_INJECTION:
+        active_tag = None
+        
+        for holiday in registry.HOLIDAY_PRIORITY:
+            strength = holiday_ctx.envelope.get(holiday, 0.0)
+            # Roll based on signal strength (e.g. 0.1 signal = 10% chance)
+            if strength > 0.01 and boss.roll(strength, key=f"inject_{holiday}_{final_key}"):
+                active_tag = holiday
+                break
+            
+        if active_tag:
+            # Get original query to see if we can modify it
+            data = resolver.get_query_data(final_key)
+            
+            base_query = None
+            order = "Shuffle"
+            if isinstance(data, dict):
+                base_query = data.get("query")
+                order = data.get("order", "Shuffle")
+            elif isinstance(data, str):
+                base_query = data
+                
+            # Only inject if it's a valid query and not already tagged
+            if base_query and f"tag:{active_tag}" not in base_query:
+                holiday_key = f"{final_key}_auto_{active_tag}"
+                holiday_query = f"({base_query}) AND tag:{active_tag}"
+                resolver.register_dynamic_query(holiday_key, holiday_query, order)
+                return ResolutionResult(wrapper=Fallback(primary=holiday_key, secondary=final_key), source="injection")
+
+    return ResolutionResult(key=final_key, source=source)

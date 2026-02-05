@@ -8,15 +8,6 @@ import calendar
 from typing import Tuple, Optional, Dict, Any, Union, Set
 from . import registry
 
-
-def get_season_transition(month: int) -> Tuple[str, str]:
-    """Returns the current and next season for a given month."""
-    if 12 == month or month <= 2: return "WINTER", "SPRING"
-    elif 3 <= month <= 5:      return "SPRING", "SUMMER"
-    elif 6 <= month <= 8:      return "SUMMER", "FALL"
-    else:                      return "FALL",   "WINTER"
-
-
 def is_nth_weekday(dt: Union[datetime, date], weekday: int, n: int) -> bool:
     """Check if today is the Nth occurrence of a weekday in the month."""
     return dt.weekday() == weekday and (dt.day - 1) // 7 + 1 == n

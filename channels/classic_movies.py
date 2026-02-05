@@ -24,65 +24,68 @@ from scripts.logic.models import Marathon, Swap, Feather
 from scripts.logic import triggers
 from scripts.logic.seasonal import SeasonalBlock
 from scripts.logic.profiles import CHRISTMAS_PROFILES, STANDARD_PROFILES # TODO: Use specific profiles
-from scripts.library import collections
-from scripts.playout import ChannelLogger
+from scripts.library import movies
+from scripts.logic.factories import themed_marathon
+from scripts.core.logger import ChannelLogger
 
-# 1. SPECIAL EVENTS
+# ==============================================================================
+# 1. MARATHONS - Special event programming
+# ==============================================================================
+
 MARATHONS = [
     Marathon(
         name="Christmas in July",
         trigger=triggers.on_date(7, 25),
-        collection=collections.CHRISTMAS_FESTIVAL_EVENT,
+        collection=movies.CHRISTMAS_FESTIVAL_EVENT,
         hours=(12, 24)
+    ),
+    Marathon(
+        name="Groundhog Day Marathon",
+        trigger=triggers.has_label("GROUNDHOGS_DAY"),
+        collection=themed_marathon(
+            show_title="Groundhog Day",
+            title="Groundhog Day Marathon",
+            is_movie=True
+        ),
+        hours=(6, 24) # All day
     )
 ]
 
-# 2. SEASONAL BLOCKS
-PRIMETIME_FEATURE = SeasonalBlock(
-    base=collections.NEW_HOLLYWOOD_CINEMA,
-    seasonal={
-        "SUMMER": Swap(collections.MODERN_BLOCKBUSTERS),
-        "FALL": Swap(collections.NOIR_NIGHT),
-        "WINTER": Swap(collections.GOLDEN_AGE_CINEMA),
-        "SPRING": Swap(collections.MUSICAL_MARQUEE),
-    }
-)
+# ==============================================================================
+# 2. HOLIDAY SCHEDULES
+# ==============================================================================
 
-AFTERNOON_FEATURE = SeasonalBlock(
-    base="classic_hollywood_movie",
-    seasonal={
-        "WINTER": Feather("classic_hollywood_winter_movies", 0.4),
-        "SUMMER": Feather("classic_hollywood_summer_movies", 0.4),
-        "SPRING": Feather("musical_movie", 0.3),
-        "FALL": Feather("classic_noir_movie", 0.3)
-    }
-)
-
-# 3. HOLIDAY SCHEDULES
 HALLOWEEN_SCHEDULE = {
-    "prime": collections.HALLOWEEN_MARATHON_EVENT
+    "prime": movies.HALLOWEEN_MARATHON_EVENT
 }
 
 CHRISTMAS_SCHEDULE = {
-    "afternoon": collections.CHRISTMAS_FESTIVAL_EVENT,
-    "prime": collections.CHRISTMAS_FESTIVAL_EVENT
+    "afternoon": movies.CHRISTMAS_FESTIVAL_EVENT,
+    "prime": movies.CHRISTMAS_FESTIVAL_EVENT
 }
 
-# 4. SCHEDULES
+# ==============================================================================
+# 4. SCHEDULE DEFINITIONS
+# ==============================================================================
+
 SCHEDULES = {
     "WEEKDAY": {
-        "overnight": collections.NOIR_NIGHT,
-        "morning": collections.GOLDEN_AGE_CINEMA,
-        "afternoon": AFTERNOON_FEATURE,
-        "prime": PRIMETIME_FEATURE
+        "overnight": movies.NOIR_NIGHT,
+        "morning": movies.GOLDEN_AGE_CINEMA,
+        "afternoon": movies.MOVIE_AFTERNOON_FEATURE,
+        "prime": movies.MOVIE_PRIMETIME_FEATURE
     },
     "WEEKEND": {
-        "overnight": collections.NOIR_NIGHT,
-        "morning": collections.SILENT_CINEMA,
-        "afternoon": collections.WESTERN_MATINEE,
-        "prime": collections.SCI_FI_SHOWCASE
+        "overnight": movies.NOIR_NIGHT,
+        "morning": movies.SILENT_CINEMA,
+        "afternoon": movies.WESTERN_MATINEE,
+        "prime": movies.SCI_FI_SHOWCASE
     }
 }
+
+# ==============================================================================
+# 5. ERSATZTV INTEGRATION
+# ==============================================================================
 
 def define_content(api, context, build_id):
     pass
@@ -104,10 +107,11 @@ def build_playout(api, context, build_id):
         },
         block_profiles={
             "HALLOWEEN": STANDARD_PROFILES, # TODO: Use specific Halloween profile
-            "CHRISTMAS": CHRISTMAS_PROFILES
+            "CHRISTMAS": CHRISTMAS_PROFILES,
+            "GROUNDHOGS_DAY": STANDARD_PROFILES
         },
         timeslot_preset="movies",
         logger=ChannelLogger(prefix="[MOVIES]"),
-        fallback_content=collections.GOLDEN_AGE_CINEMA
+        fallback_content=movies.GOLDEN_AGE_CINEMA
     )
     return run_daily_schedule(api, context, build_id, config)

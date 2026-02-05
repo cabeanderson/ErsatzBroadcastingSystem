@@ -2,21 +2,19 @@
 Logic for resolving schedule entries into content keys.
 """
 
-import random
 import traceback
 from scripts.core import registry
-from scripts.playout import ChannelLogger
+from scripts.core.logger import ChannelLogger
 from scripts.logic.seasonal import SeasonalBlock, resolve_seasonal_block
 from scripts.logic.models import Fallback, PlayOnce, BrandedBlock, ResolutionResult, CommercialBreak
-from scripts.logic.holidays import get_holiday_target
-from typing import Any
-from scripts.library.structures import AppointmentBlock, SeriesRelay
+from scripts.logic.holidays import get_holiday_target, apply_holiday_injection
+from typing import Any, Union
+from scripts.logic.structures import AppointmentBlock, SeriesRelay, AppointmentLineup, AppointmentSlot
+from scripts.logic.sequencing import find_active_season
 
 # Keys that should be handled by the holiday system, not the generic label loop
-HOLIDAY_KEYS = {
-    "CHRISTMAS", "HALLOWEEN", "THANKSGIVING", "VALENTINES_DAY", 
-    "JULY_4", "NEW_YEARS_DAY", "NEW_YEARS_EVE", "ST_PATRICKS_DAY", "STAR_WARS_DAY"
-}
+# Dynamically derived from registry to ensure consistency
+HOLIDAY_KEYS = set(registry.HOLIDAYS.values()) | {r["name"] for r in registry.FLOATING_RULES}
 
 def resolve_target(target: Any, boss: Any, holiday_ctx: Any, config: Any, resolver: Any, logger: ChannelLogger) -> ResolutionResult:
     """
@@ -34,7 +32,7 @@ def resolve_target(target: Any, boss: Any, holiday_ctx: Any, config: Any, resolv
         for _ in range(10):
             changed = False
             
-            if isinstance(target, dict):
+            if isinstance(target, dict) and "title" not in target and "query" not in target:
                 # Resolve inner dictionary using Director labels
                 found_match = False
                 for key, val in target.items():
@@ -88,7 +86,7 @@ def resolve_target(target: Any, boss: Any, holiday_ctx: Any, config: Any, resolv
             return ResolutionResult(wrapper=target, source=source)
 
         # Return wrappers directly so schedule.py can handle their logic
-        if isinstance(target, (PlayOnce, BrandedBlock, CommercialBreak, AppointmentBlock, SeriesRelay)):
+        if isinstance(target, (PlayOnce, BrandedBlock, CommercialBreak, AppointmentBlock, SeriesRelay, AppointmentLineup)):
             return ResolutionResult(wrapper=target, source=source)
 
         # Safety check: If target is still a complex object (duck type check for SeasonalBlock)
@@ -104,37 +102,3 @@ def resolve_target(target: Any, boss: Any, holiday_ctx: Any, config: Any, resolv
         logger.warn(f"resolve_target failed for {target}: {e}")
         traceback.print_exc()
         return ResolutionResult(key=None, source="error")
-
-
-def apply_holiday_injection(final_key: Any, resolver: Any, holiday_ctx: Any, boss: Any, logger: ChannelLogger, source: str = "schedule") -> ResolutionResult:
-    """Check if any major holiday is active and try to inject a tagged variant."""
-    if isinstance(final_key, str):
-        active_tag = None
-        
-        for holiday in registry.HOLIDAY_PRIORITY:
-            strength = holiday_ctx.envelope.get(holiday, 0.0)
-            # Roll based on signal strength (e.g. 0.1 signal = 10% chance)
-            if strength > 0.01 and boss.roll(strength, key=f"inject_{holiday}_{final_key}"):
-                active_tag = holiday
-                break
-            
-        if active_tag:
-            # Get original query to see if we can modify it
-            data = resolver.get_query_data(final_key)
-            
-            base_query = None
-            order = "Shuffle"
-            if isinstance(data, dict):
-                base_query = data.get("query")
-                order = data.get("order", "Shuffle")
-            elif isinstance(data, str):
-                base_query = data
-                
-            # Only inject if it's a valid query and not already tagged
-            if base_query and f"tag:{active_tag}" not in base_query:
-                holiday_key = f"{final_key}_auto_{active_tag}"
-                holiday_query = f"({base_query}) AND tag:{active_tag}"
-                resolver.register_dynamic_query(holiday_key, holiday_query, order)
-                return ResolutionResult(wrapper=Fallback(primary=holiday_key, secondary=final_key), source="injection")
-
-    return ResolutionResult(key=final_key, source=source)

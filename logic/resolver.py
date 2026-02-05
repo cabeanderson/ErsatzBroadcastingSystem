@@ -1,3 +1,4 @@
+# scripts/logic/resolver.py
 """
 Content Resolver - The Bridge to ErsatzTV.
 
@@ -5,9 +6,15 @@ Translates internal content keys and collections into actual
 ErsatzTV search queries and registers them via the API.
 """
 
-from typing import Any, Dict, Optional, Set, Union, Callable
+from typing import Any, Dict, Optional, Set, Union
+import re
+import hashlib
+from .queries import show_by_title
 from etv_client.models import ContentSearch, ContentPlaylist
-from scripts.playout import ChannelLogger
+from scripts.core.logger import ChannelLogger
+from scripts.logic.models import MarathonDefinition
+from scripts.logic.models import ContentItem
+from scripts.logic.structures import MarathonSequence
 
 class ContentResolver:
     def __init__(self, api: Any, build_id: str, registry: Dict[str, Any], logger: ChannelLogger):
@@ -77,6 +84,11 @@ class ContentResolver:
                 else:
                     query = content
         
+        # 2b. Handle MarathonDefinition
+        elif isinstance(data, MarathonDefinition):
+            query = data.query
+            order = data.order
+        
         # 2. Handle String Definitions
         elif isinstance(data, str):
             query = data
@@ -95,11 +107,56 @@ class ContentResolver:
             self.logger.warn(f"Invalid query format for key '{key}'. Got: {type(data)}")
             return
 
+        if "test_bebop" in key:
+            self.logger.info(f"Registering TEST key '{key}' with order: '{order}'")
         self.api.add_search(self.build_id, ContentSearch(key=key, query=query, order=order))
         self.active_keys.add(key)
 
     def resolve(self, target: Any, boss: Optional[Any] = None) -> str: # boss: DayDirector
         key = self._get_key_from_target(target, boss)
+        
+        # Check if key is a string that points to a Collection in the registry
+        if isinstance(key, str) and key in self.registry:
+            data = self.registry[key]
+            if hasattr(data, 'pick'):
+                # It's a collection! Pick from it.
+                picked = data.pick(boss)
+                # Recursively resolve the picked item
+                return self.resolve(picked, boss)
+
+        # Handle ContentItem objects
+        if isinstance(key, ContentItem):
+            title = key.title
+            order = key.order
+            query = key.query if key.query else show_by_title(title)
+            
+            # Generate unique key based on title AND query to prevent collisions
+            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
+            query_hash = hashlib.md5(query.encode('utf-8')).hexdigest()[:6]
+            generated_key = f"auto_gen_{safe_title}_{query_hash}"
+            
+            self.register_dynamic_query(generated_key, query, order)
+            return generated_key
+
+        # Handle on-the-fly dictionary definitions (e.g. inside Collections)
+        if isinstance(key, dict) and "title" in key:
+            # Generate a key and query
+            title = key["title"]
+            order = key.get("order", "Shuffle")
+            
+            if "query" in key:
+                query = key["query"]
+            else:
+                query = show_by_title(title)
+            
+            # Generate unique key based on title AND query
+            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
+            query_hash = hashlib.md5(query.encode('utf-8')).hexdigest()[:6]
+            generated_key = f"auto_gen_{safe_title}_{query_hash}"
+            
+            self.register_dynamic_query(generated_key, query, order)
+            return generated_key
+            
         self._register_with_etv(key)
         return key
 
@@ -117,3 +174,10 @@ class ContentResolver:
         self.active_keys.add(key)
         # Store locally so we can inspect it later (e.g. for multi-part detection)
         self.dynamic_registry[key] = {"query": query, "order": order}
+
+def resolve_sequence(target: Any) -> Any:
+    """Resolves a target into a list of items (sequence)."""
+    if isinstance(target, MarathonSequence):
+        return target.items
+    # Default to single item sequence
+    return [target]

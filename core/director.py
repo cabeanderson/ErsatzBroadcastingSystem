@@ -211,8 +211,11 @@ class DayDirector:
         Returns the current broadcast season (WINTER, SPRING, SUMMER, FALL).
         This is deterministic. For probabilistic blending, use get_season_strength().
         """
-        current_season, _ = states.get_season_transition(self.now.month)
-        return current_season
+        m = self.now.month
+        for season, months in registry.SEASONS.items():
+            if m in months:
+                return season
+        return "WINTER"
     
     # --- DEBUG ---
     

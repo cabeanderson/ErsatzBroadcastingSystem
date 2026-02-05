@@ -1,11 +1,12 @@
 """
 Logic for blending seasonal content based on signal strength.
 """
-from scripts.playout import ChannelLogger
+from scripts.core.logger import ChannelLogger
 
 import hashlib
 from typing import Any, Dict, Tuple, Union, List
 from scripts.logic.models import Swap, Feather
+from scripts.config import ENABLE_SEASONAL_BLOCKS
 
 class SeasonalBlock:
     def __init__(self, base: Any, seasonal: Dict[str, Any], blend_ratio: float = 1.0):
@@ -57,6 +58,9 @@ def resolve_seasonal_block(block: SeasonalBlock, boss: Any, holiday_ctx: Any, re
     it will roll a deterministic die to decide whether to substitute it,
     scaled by the season's signal strength.
     """
+    
+    if not ENABLE_SEASONAL_BLOCKS:
+        return block.base
 
     # 1. Check for Holiday ramp signals (e.g., Christmas, Halloween)
     for key, raw_content in block.seasonal.items():

@@ -14,6 +14,7 @@ This framework separates **scheduling logic** from **channel configuration**. In
     *   **Seasonal Blending:** Slowly transition content from Summer to Fall.
     *   **Holiday Takeovers:** Automatically switch to Halloween or Christmas programming.
     *   **Marathons:** Probability-based triggers (e.g., 5% chance of a DBZ marathon on Saturdays).
+    *   **Appointment TV:** Schedule specific seasons of shows to premiere on exact dates (e.g., "Lost Season 1 starts Fall 2026").
 *   **Smart Content Resolution:** Handles collections, fillers, intros/outros, and bumpers.
 *   **Safety First:** Includes circuit breakers, fallbacks, and pre-flight checks to ensure continuous playback.
 
