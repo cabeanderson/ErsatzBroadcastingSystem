@@ -23,6 +23,7 @@ class DayDirector:
     def __init__(self, context: Any, anniversary_years: Optional[int] = None):
         self.context = context
         self._initial_time: datetime = context.current_time
+        self._label_cache: Dict[datetime, Set[str]] = {}
         
         if anniversary_years is not None:
             self.anniversary: Optional[datetime] = self._get_anniversary_date(self._initial_time, anniversary_years)
@@ -58,7 +59,10 @@ class DayDirector:
     @property
     def labels(self) -> Set[str]:
         """Dynamic labels based on current time."""
-        return states.derive_labels(self.now)
+        dt = self.now
+        if dt not in self._label_cache:
+            self._label_cache[dt] = states.derive_labels(dt)
+        return self._label_cache[dt]
 
     # --- DETERMINISTIC SELECTION ---
     

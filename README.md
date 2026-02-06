@@ -31,10 +31,12 @@ scripted-schedules/
 ├── scripts/            # Main Package
 │   ├── channels/       # Your channel configurations (User Data)
 │   ├── library/        # Content queries and collections (User Data)
+│   ├── scheduling/     # The Scheduling Subsystem (Config, Runner)
 │   ├── core/           # Date math and state
 │   ├── logic/          # Scheduling decisions
 │   ├── engines/        # Playback behaviors (Marathons, Blocks, Programs)
 │   ├── testing/        # Simulator
+│   ├── settings.py     # Global settings
 │   └── requirements.txt
 └── README.md
 ```
@@ -62,7 +64,6 @@ scripted-schedules/
 
 3.  Configure your environment:
     *   Ensure `etv_client` is available (generated from ErsatzTV OpenAPI).
-    *   Set up `scripts/config_local.py` if you need to override paths (optional).
 
 ## Simulation & Testing
 

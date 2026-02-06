@@ -10,6 +10,7 @@ NO_FANTASY = "NOT genre:fantasy"
 NO_SCIFI = 'NOT genre:"science fiction"'
 NO_COMEDY = "NOT genre:comedy"
 NO_BBC = "NOT studio:bbc"
+NO_HORROR = "NOT genre:horror"
 SHORT = "minutes:[* TO 40]"
 
 # --- MOVIE ERAS ---
@@ -45,4 +46,11 @@ SUMMER_TAGS = "(tag:summer OR tag:beach OR tag:ocean OR tag:lake OR tag:island O
 
 SEASONAL_TAG_QUERIES = {
     "WINTER": WINTER_TAGS, "FALL": FALL_TAGS, "SPRING": SPRING_TAGS, "SUMMER": SUMMER_TAGS
+}
+
+# --- THEMATIC TAGS ---
+# Maps calendar labels (Months, Days, etc.) to tag queries for Thematic Injection
+THEMATIC_TAG_QUERIES = {
+    "NOVEMBER": "tag:noir",       # Noir November
+    "OCTOBER": "tag:halloween",   # Spooky Season
 }

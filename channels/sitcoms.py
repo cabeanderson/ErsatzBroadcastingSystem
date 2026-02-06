@@ -9,8 +9,8 @@ Features:
 """
 
 from etv_client.models import ControlWaitUntil
-from scripts.schedule import run_daily_schedule, ScheduleConfig
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.logic.models import Swap, Feather
 from scripts.logic.structures import RandomCollection
 from scripts.library import sitcoms, common
@@ -124,7 +124,10 @@ def build_playout(api, context, build_id):
         block_profiles={},
         # filler_content="commercials_spot", # TODO: Add collections.BUMPERS when available
         logger=ChannelLogger(prefix="[SITCOMS]"),
-        fallback_content=sitcoms.CLASSIC_SITCOMS_60s_70s
+        fallback_content=sitcoms.CLASSIC_SITCOMS_60s_70s,
+        enable_holiday_injection=True,
+        enable_seasonal_injection=True,
+        enable_bumpers=True
     )
     
     return run_daily_schedule(api, context, build_id, config)

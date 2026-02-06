@@ -20,15 +20,16 @@ install_mocks()
 # Import core modules
 from scripts.core import registry
 from scripts.library.sources import MASTER_SOURCES
-from scripts.logic.resolution import resolve_target
-from scripts.logic.resolver import ContentResolver
+from scripts.logic.resolution.pipeline import resolve_content, apply_injections
+from scripts.logic.resolution.resolver import ContentResolver
 from scripts.core.logger import ChannelLogger
 from scripts.core import DayDirector
-from scripts.logic.holidays import HolidayContext
-from scripts.schedule import ScheduleConfig, _find_active_marathon
+from scripts.logic.calendar.holidays import HolidayContext
+from scripts.scheduling.config import ScheduleConfig
+from scripts.logic.calendar.assembly import find_active_marathon
 from scripts.logic.structures import Program
-from scripts.logic.sequencing import resolve_scheduled_content
-from scripts.logic.models import Marathon, MarathonDefinition
+from scripts.logic.resolution.pipeline import resolve_scheduled_content
+from scripts.logic.models import Marathon, MarathonDefinition, Fallback
 
 # Import channels to test
 from scripts.channels import cartoon_network, detective, scifi, sitcoms, classic_movies
@@ -125,7 +126,7 @@ class TestComprehensive(unittest.TestCase):
         holiday_ctx = HolidayContext(boss)
         config = ScheduleConfig(schedules={})
         
-        res = resolve_target(target, boss, holiday_ctx, config, self.resolver, self.logger)
+        res = resolve_content(target, boss, holiday_ctx, config, self.resolver, self.logger)
         print(f"  Winter Resolution: {res.resolved_content}")
         self.assertTrue(res, "Failed to resolve Winter target")
 
@@ -134,7 +135,7 @@ class TestComprehensive(unittest.TestCase):
         boss = DayDirector(self.mock_context)
         holiday_ctx = HolidayContext(boss)
         
-        res = resolve_target(target, boss, holiday_ctx, config, self.resolver, self.logger)
+        res = resolve_content(target, boss, holiday_ctx, config, self.resolver, self.logger)
         print(f"  Fall Resolution: {res.resolved_content}")
         self.assertTrue(res, "Failed to resolve Fall target")
         
@@ -184,31 +185,31 @@ class TestComprehensive(unittest.TestCase):
         m3 = Marathon(name="Medium Priority", trigger=lambda b: True, collection="med", priority=5)
         
         # Scenario 1: All active
-        config = ScheduleConfig(schedules={}, marathons=[m1, m2, m3])
+        config = ScheduleConfig(schedules={}, marathons=[m1, m2, m3], enable_marathons=True)
         # Mock holiday context (inactive)
         mock_holiday_ctx.is_holiday_season = False
         
-        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        marathon, key, hours = find_active_marathon(config, self.boss, mock_holiday_ctx)
         self.assertEqual(marathon.name, "High Priority", "Should pick highest priority")
         
         # Scenario 2: High inactive
         m2_inactive = Marathon(name="High Priority", trigger=lambda b: False, collection="high", priority=10)
-        config = ScheduleConfig(schedules={}, marathons=[m1, m2_inactive, m3])
+        config = ScheduleConfig(schedules={}, marathons=[m1, m2_inactive, m3], enable_marathons=True)
         
-        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        marathon, key, hours = find_active_marathon(config, self.boss, mock_holiday_ctx)
         self.assertEqual(marathon.name, "Medium Priority", "Should pick next highest priority")
         
         # Scenario 3: Holiday Season (Marathons Disabled)
         mock_holiday_ctx.is_holiday_season = True
-        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        marathon, key, hours = find_active_marathon(config, self.boss, mock_holiday_ctx)
         self.assertIsNone(marathon, "Should disable marathons during holiday season")
         
         # Reset holiday context
         mock_holiday_ctx.is_holiday_season = False
         
         # Scenario 4: No active marathons
-        config = ScheduleConfig(schedules={}, marathons=[])
-        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        config = ScheduleConfig(schedules={}, marathons=[], enable_marathons=True)
+        marathon, key, hours = find_active_marathon(config, self.boss, mock_holiday_ctx)
         self.assertIsNone(marathon)
         
         print("✅ Marathon priority logic verified.")
@@ -232,12 +233,68 @@ class TestComprehensive(unittest.TestCase):
         MASTER_SOURCES["late_start_marathon"] = marathon_def
         
         m = Marathon(name="Late Start", trigger=lambda b: True, collection="late_start_marathon", hours=(8, 24))
-        config = ScheduleConfig(schedules={}, marathons=[m])
+        config = ScheduleConfig(schedules={}, marathons=[m], enable_marathons=True)
         
-        marathon, key, hours = _find_active_marathon(config, self.boss, mock_holiday_ctx)
+        marathon, key, hours = find_active_marathon(config, self.boss, mock_holiday_ctx)
         
         self.assertEqual(hours, (14, 24), "Should override start hour to 14")
         print("✅ Marathon start_hour override verified.")
+
+    def test_07_holiday_injection_toggle(self):
+        """Verify channel-specific holiday injection toggle."""
+        print("\n[Test] Holiday Injection Toggle")
+        
+        # Setup: Active Holiday (Halloween)
+        self.holiday_ctx.envelope = {"halloween": 1.0}
+        
+        # Setup: Content that can be injected
+        self.resolver.registry["test_show"] = "show_title:Test"
+        
+        # Setup: Force roll to succeed
+        self.boss.roll = MagicMock(return_value=True)
+        
+        # 1. Enabled (Default)
+        config_on = ScheduleConfig(schedules={}, enable_holiday_injection=True)
+        
+        # Resolve base target first (injection is now separate)
+        res_base = resolve_content("test_show", self.boss, self.holiday_ctx, config_on, self.resolver, self.logger)
+        
+        res_on = apply_injections(
+            res_base.key,
+            config=config_on,
+            resolver=self.resolver,
+            boss=self.boss,
+            holiday_ctx=self.holiday_ctx,
+            logger=self.logger,
+            source="schedule_slot"
+        )
+        
+        # Should return a ResolutionResult with a Fallback wrapper
+        self.assertIsNotNone(res_on.wrapper, "Should have wrapper when injection enabled")
+        self.assertIsInstance(res_on.wrapper, Fallback, "Wrapper should be Fallback")
+        self.assertEqual(res_on.source, "injection")
+        print("  ✅ Injection active when enabled")
+        
+        # 2. Disabled
+        config_off = ScheduleConfig(schedules={}, enable_holiday_injection=False)
+        
+        res_off = apply_injections(
+            res_base.key,
+            config=config_off,
+            resolver=self.resolver,
+            boss=self.boss,
+            holiday_ctx=self.holiday_ctx,
+            logger=self.logger,
+            source="schedule_slot"
+        )
+        
+        # Should return the key directly, no wrapper
+        self.assertEqual(res_off.key, "test_show")
+        self.assertIsNone(res_off.wrapper, "Should NOT have wrapper when injection disabled")
+        self.assertEqual(res_off.source, "schedule_slot")
+        print("  ✅ Injection skipped when disabled")
+        
+        print("✅ Holiday injection toggle verified.")
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple, Union, Dict, Any
 import re
 from .structures import Program, OrderedCollection
 from .models import MarathonDefinition
-from .queries import show_by_title, _escape_quotes
+from scripts.library.queries import show_by_title
 
 def annual_show(
     seasons: int,
@@ -127,7 +127,7 @@ def themed_marathon(
     Ensures themed blocks are distinct and chronological.
     """
     if is_movie:
-        safe_title = _escape_quotes(show_title)
+        safe_title = show_title.replace('"', '\\"')
         query = f'type:movie AND title:"{safe_title}"'
     else:
         query = show_by_title(show_title)

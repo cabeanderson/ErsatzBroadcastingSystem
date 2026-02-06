@@ -145,11 +145,19 @@ class Program:
     commercial_duration: int = 0
     scheduling: Optional[Dict[str, Any]] = None
     fill_strategy: str = "yield" # "fill", "yield", "gap"
+    play_count: Optional[int] = None # For marathon items
+    start_point: Optional[Tuple[int, int]] = None # For marathon items (season, episode)
     filler: Optional[Any] = None
+    # Feature Overrides
+    enable_commercials: Optional[bool] = None
+    enable_bumpers: Optional[bool] = None
+    enable_filler: Optional[bool] = None
+    enable_holiday_injection: Optional[bool] = None
+    enable_seasonal_injection: Optional[bool] = None
 
     def __post_init__(self):
-        if self.fill_strategy not in ["fill", "yield", "gap"]:
-            raise ValueError(f"Program '{self.name}': Invalid fill_strategy '{self.fill_strategy}'. Must be 'fill', 'yield', or 'gap'.")
+        if self.fill_strategy not in ["fill", "yield", "gap", "bridge"]:
+            raise ValueError(f"Program '{self.name}': Invalid fill_strategy '{self.fill_strategy}'. Must be 'fill', 'yield', 'gap', or 'bridge'.")
         if self.fill_strategy == "fill" and not self.filler:
             raise ValueError(f"Program '{self.name}': fill_strategy='fill' requires 'filler' content.")
         if not self.content and not self.scheduling:
@@ -165,11 +173,18 @@ class Block:
     commercials: Optional[str] = None
     commercial_duration: int = 0
     use_epg_group: bool = False
-    fill_strategy: str = "yield" # "fill", "yield", "gap"
+    fill_strategy: str = "yield" # "fill", "yield", "gap", "bridge"
+    strict_window: bool = True # If False, allows content to overflow timeslot
     filler: Optional[Any] = None
+    # Feature Overrides
+    enable_commercials: Optional[bool] = None
+    enable_bumpers: Optional[bool] = None
+    enable_filler: Optional[bool] = None
+    enable_holiday_injection: Optional[bool] = None
+    enable_seasonal_injection: Optional[bool] = None
 
     def __post_init__(self):
-        if self.fill_strategy not in ["fill", "yield", "gap"]:
-            raise ValueError(f"Block '{self.name}': Invalid fill_strategy '{self.fill_strategy}'. Must be 'fill', 'yield', or 'gap'.")
+        if self.fill_strategy not in ["fill", "yield", "gap", "bridge"]:
+            raise ValueError(f"Block '{self.name}': Invalid fill_strategy '{self.fill_strategy}'. Must be 'fill', 'yield', 'gap', or 'bridge'.")
         if self.fill_strategy == "fill" and not self.filler:
             raise ValueError(f"Block '{self.name}': fill_strategy='fill' requires 'filler' content.")

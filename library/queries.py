@@ -5,8 +5,9 @@ Shared by sources and marathons to prevent circular dependencies.
 """
 
 import re
-from typing import Optional, Union, Dict, Tuple
-from scripts.config import DEFAULT_ORDER
+import hashlib
+from typing import Optional, Union, Dict, Tuple, Any
+from scripts.settings import DEFAULT_ORDER
 
 # 1. CORE DEFINITIONS & GLOBAL FILTERS
 
@@ -119,6 +120,45 @@ def episode_source(
 def apply_tags(base_query: str, tag_query: str) -> str:
     """Helper to combine a base query string with a seasonal tag query string."""
     return f"({base_query}) AND {tag_query}"
+
+def inject_tag(
+    base_key: str,
+    tag_query: str,
+    suffix: str,
+    resolver: Any,
+    logger: Any = None,
+    order: str = "Shuffle"
+) -> Optional[str]:
+    """
+    Generic helper to inject a tag query into an existing content key.
+    Creates a new dynamic key, registers it, and returns it.
+    
+    Args:
+        base_key: The original content key (must exist in registry).
+        tag_query: The Lucene query part to append (e.g. 'tag:winter').
+        suffix: Unique suffix for the new key (e.g. '_auto_winter').
+        resolver: ContentResolver instance.
+        logger: ChannelLogger instance (optional).
+        order: Playback order for the new key (default: Shuffle).
+    """
+    data = resolver.get_query_data(base_key)
+    base_query = None
+    
+    if isinstance(data, dict):
+        base_query = data.get("query")
+        order = data.get("order", order)
+    elif isinstance(data, str):
+        base_query = data
+        
+    if base_query and tag_query not in base_query:
+        new_key = f"{base_key}{suffix}"
+        new_query = f"({base_query}) AND {tag_query}"
+        resolver.register_dynamic_query(new_key, new_query, order)
+        if logger:
+            logger.info(f"   💉 Injected tag '{tag_query}' into '{base_key}' -> '{new_key}'")
+        return new_key
+    
+    return None
 
 # 4. PARSING UTILITIES
 

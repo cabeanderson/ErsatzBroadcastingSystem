@@ -7,7 +7,7 @@ Uses builder functions for consistency and maintainability.
 
 from .marathons import MARATHONS
 # Import builder functions and core types from logic
-from scripts.logic.queries import (
+from scripts.library.queries import (
     episode_source, movie_source, show_source, show_by_title, 
     playback_order, playlist_ref, apply_tags,
     ANIME, MOVIE, SHOW
@@ -17,8 +17,8 @@ from scripts.logic.factories import episode_list
 from .filters import (
     NINETIES, EIGHTIES, STREAMING_ERA, CLASSIC_ERA,
     WINTER_TAGS, SUMMER_TAGS,
-    SILENT_ERA, GOLDEN_AGE, SEVENTIES, Y2K_ERA, TENS, TWENTIES,
-    SHORT, NO_COMEDY,
+    FALL_TAGS, SPRING_TAGS, SILENT_ERA, GOLDEN_AGE, SEVENTIES, Y2K_ERA, TENS, TWENTIES,
+    SHORT, NO_COMEDY, NO_HORROR,
     TV_CLASSIC, TV_GOLDEN_AGE, TV_HD, TV_VINTAGE,
     NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI,
     SIXTIES, SITCOM_80S_VIBE, SITCOM_90S_VIBE
@@ -244,6 +244,37 @@ TV_REGISTRY = {
     "30_rock_tv": show_by_title("30 rock"),
     "community_tv": show_by_title("community"),
 
+    # --- 80s CHANNEL SPECIFIC ---
+    "eighties_cartoons_heman": show_by_title("He-Man and the Masters of the Universe"),
+    "eighties_cartoons_transformers": show_by_title("The Transformers"),
+    "eighties_cartoons_gi_joe": show_by_title("G.I. Joe: A Real American Hero"),
+    "eighties_cartoons_smurfs": show_by_title("The Smurfs"),
+    "eighties_sitcom_family_ties": show_by_title("Family Ties"),
+    "eighties_sitcom_growing_pains": show_by_title("Growing Pains"),
+    "eighties_sitcom_full_house": show_by_title("Full House"),
+    "eighties_action_tv": show_source(genre="action", era=EIGHTIES),
+    "eighties_drama_tv": show_source(genre="drama", era=EIGHTIES),
+    "eighties_daytime_movie": movie_source(era=EIGHTIES, extra=NO_HORROR),
+    "eighties_crime_tv": show_source(genre="crime", era=EIGHTIES),
+    "eighties_suspense_movie": movie_source(genre="thriller", era=EIGHTIES),
+    "eighties_action_knight_rider": show_by_title("Knight Rider"),
+    "eighties_action_airwolf": show_by_title("Airwolf"),
+    "eighties_sitcom_cheers": show_by_title("Cheers"),
+    "eighties_sitcom_golden_girls": show_by_title("The Golden Girls"),
+    "eighties_sitcom_night_court": show_by_title("Night Court"),
+    "eighties_crime_miami_vice": show_by_title("Miami Vice"),
+    "eighties_crime_magnum_pi": show_by_title("Magnum, P.I."),
+    "eighties_sitcom_cosby_show": show_by_title("The Cosby Show"),
+    "eighties_blockbuster_movie": movie_source(era=EIGHTIES, tags="tag:blockbuster"),
+    "movie_intro_bumper": 'type:"other_video" AND tag:intro AND tag:movie',
+    "eighties_scifi_star_trek": show_by_title("Star Trek: The Next Generation"),
+    "eighties_scifi_v": show_by_title("V"),
+    "eighties_drama_movie": movie_source(genre="drama", era=EIGHTIES),
+    "eighties_music_videos": 'type:"music_video" AND year:[1980 TO 1989]',
+    "eighties_weekend_movie": movie_source(era=EIGHTIES),
+    "eighties_cult_movie": movie_source(era=EIGHTIES, tags="tag:cult"),
+    "commercials_80s_spot": 'type:"other_video" AND tag:commercial AND tag:80s',
+
     # --- SPECIFIC SHOWS (Chronological/Themed) ---
     "devs_chronological_tv": playback_order(show_by_title("Devs"), force="Chronological"),
     "the_oa_chronological_tv": playback_order(show_by_title("The OA"), force="Chronological"),
@@ -348,6 +379,8 @@ THEME_REGISTRY = {
 SEASONAL_VARIANTS = {
     "classic_hollywood_winter_movies": apply_tags(MOVIE_REGISTRY["classic_hollywood_movie"], WINTER_TAGS),
     "classic_hollywood_summer_movies": apply_tags(MOVIE_REGISTRY["classic_hollywood_movie"], SUMMER_TAGS),
+    "classic_hollywood_fall_movies": apply_tags(MOVIE_REGISTRY["classic_hollywood_movie"], FALL_TAGS),
+    "classic_hollywood_spring_movies": apply_tags(MOVIE_REGISTRY["classic_hollywood_movie"], SPRING_TAGS),
 }
 
 # 5. FILLERS & BUMPERS

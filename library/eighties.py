@@ -4,7 +4,7 @@ Collections, Blocks, and Special Programming.
 """
 
 from scripts.logic.structures import RandomCollection, OrderedCollection, Block
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.logic.models import Swap
 
 # ==============================================================================
@@ -56,7 +56,7 @@ LATE_NIGHT_CULT_MOVIES = "eighties_cult_movie"
 
 DAYTIME_MOVIE_BLOCK = Block(
     name="80s Movie Matinee",
-    items=["eighties_comedy_movie", "eighties_action_movie"],
+    items=["80s_comedy_movie", "80s_action_movie"],
     fill_strategy="fill",
     filler="eighties_music_videos"
 )

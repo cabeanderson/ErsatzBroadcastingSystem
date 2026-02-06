@@ -10,12 +10,12 @@ Features:
 """
 
 from etv_client.models import ControlWaitUntil
-from scripts.schedule import run_daily_schedule, ScheduleConfig
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
 from scripts.library import animation, scifi, movies
-from scripts.logic.seasonal import SeasonalBlock
-from scripts.logic.models import Swap, PlayOnce, Marathon
+from scripts.logic.calendar.seasonal import SeasonalBlock
+from scripts.logic.models import Swap, Marathon
 from scripts.logic import triggers
-from scripts.logic.structures import RandomCollection, OrderedCollection
+from scripts.logic.structures import RandomCollection, OrderedCollection, Block
 from scripts.core.logger import ChannelLogger
 
 # ==============================================================================
@@ -97,7 +97,12 @@ NOON_BLOCK = {
     "SATURDAY": movies.CREATURE_FEATURE,
     "SUNDAY": "space_opera_tv",
     "WEEKDAY_A": OrderedCollection(["knight_rider_tv", "quantum_leap_chronological_tv"]),
-    "default": PlayOnce("comedy_scifi_movie")
+    "default": Block(
+        name="Sci-Fi Noon Movie",
+        items=["comedy_scifi_movie"],
+        fill_strategy="bridge",
+        strict_window=False
+    )
 }
 
 # Afternoon Block (14:00 - 18:00)
@@ -168,6 +173,9 @@ def build_playout(api, context, build_id):
         marathons=MARATHONS,
         timeslot_preset="default",
         logger=ChannelLogger(prefix="[SCIFI]"),
-        fallback_content="classic_scifi_tv"
+        fallback_content="classic_scifi_tv",
+        enable_marathons=True,
+        enable_holiday_injection=True,
+        enable_seasonal_injection=True
     )
     return run_daily_schedule(api, context, build_id, config)

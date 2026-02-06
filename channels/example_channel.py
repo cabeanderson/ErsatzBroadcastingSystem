@@ -16,14 +16,15 @@ from datetime import datetime
 # Add project root to path if running directly
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from scripts.schedule import run_daily_schedule, ScheduleConfig, SeasonalBlock, pre_register_all_content
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
+from scripts.scheduling.pre_registration import pre_register_all_content
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.logic.resolver import ContentResolver
 from scripts.library.sources import MASTER_SOURCES
 from scripts.logic.structures import Block
-from scripts.logic.holidays import with_holidays
-from scripts.logic.triggers import chance, has_label, on_date
-from scripts.logic.models import Marathon, BlockProfile
-from scripts.logic.seasonal import feather, swap
+from scripts.logic.calendar.holidays import with_holidays
+from scripts.logic.calendar.triggers import chance, has_label, on_date
+from scripts.logic.models import Marathon, BlockProfile, Feather, Swap
 from scripts.core.logger import ChannelLogger
 # In a real channel, you would import your collections:
 # from scripts.library import collections
@@ -66,9 +67,9 @@ SATURDAY_MORNING_BLOCK = Block(
 EVENING_MOVIES = SeasonalBlock(
     base="collection_general_movies",
     seasonal={
-        "WINTER": feather("collection_christmas_movies", ratio=0.4), # 40% chance in Winter
-        "SUMMER": swap("collection_blockbuster_movies"),             # 100% swap in Summer
-        "OCTOBER": swap("collection_horror_movies")                  # Custom season/month
+        "WINTER": Feather("collection_christmas_movies", ratio=0.4), # 40% chance in Winter
+        "SUMMER": Swap("collection_blockbuster_movies"),             # 100% swap in Summer
+        "OCTOBER": Swap("collection_horror_movies")                  # Custom season/month
     },
     blend_ratio=1.0
 )
@@ -117,7 +118,12 @@ SCHEDULE = {
         "morning": "collection_news_and_weather",
         "midday": "collection_sitcoms",
         # Single play slot: Plays one item, then fills rest of slot with next block
-        "afternoon": "show_daily_talkshow", 
+        "afternoon": Block(
+            name="Daily Talkshow",
+            items=["show_daily_talkshow"],
+            fill_strategy="bridge",
+            strict_window=False
+        ),
         "prime": with_holidays(
             "collection_drama_series",
             # Overrides for specific holidays
@@ -178,9 +184,6 @@ def get_config(verbose=True):
         timeslot_preset="custom", # Use 'custom' when providing custom_timeslots
         custom_timeslots=MY_TIMESLOTS,
         
-        # Slots that play one item then yield to the next block
-        single_play_slots=["afternoon"],
-        
         # Full day holiday schedules
         holiday_schedules=HOLIDAY_SCHEDULES,
         
@@ -206,7 +209,7 @@ def get_config(verbose=True):
         fallback_content="collection_fallback_loops",
         
         # Commercial settings
-        commercials_between_items=0, # Seconds (0 to disable global commercials)
+        commercial_duration=0, # Seconds (0 to disable global commercials)
         commercial_content="commercials_spot",
         
         logger=logger

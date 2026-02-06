@@ -22,11 +22,11 @@ Schedule Philosophy:
 from etv_client.models import ControlWaitUntil
 
 # Framework - Orchestration
-from scripts.schedule import run_daily_schedule, ScheduleConfig
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
 
 # Framework - Logic
 from scripts.logic.models import Marathon
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.logic import triggers, Swap, profiles
 
 # Framework - Content
@@ -40,7 +40,7 @@ from scripts.core.logger import ChannelLogger
 MARATHONS = [
     Marathon(
         name="Cowboy Bebop",
-        trigger=triggers.chance(1.0, "bebop_marathon"),
+        trigger=triggers.chance(0.01, "bebop_marathon"),
         collection=animation.COWBOY_BEBOP_COMPLETE,
         hours=(10, 24),
         priority=2
@@ -217,9 +217,13 @@ def build_playout(api, context, build_id):
         holiday_schedules=HOLIDAY_SCHEDULES,
         timeslot_preset="default",
         block_profiles={}, # Use defaults from HOLIDAY_PROFILES
-        filler_content=None,  # TODO: Add collections.BUMPERS when available
+        filler_content="adult_swim_bumpers",
         logger=ChannelLogger(prefix="[CARTOONS]"),
-        fallback_content=animation.CLASSIC_CARTOONS
+        fallback_content=animation.CLASSIC_CARTOONS,
+        enable_marathons=True,
+        enable_holiday_injection=True,
+        enable_seasonal_injection=True,
+        enable_bumpers=True
     )
     
     return run_daily_schedule(api, context, build_id, config)

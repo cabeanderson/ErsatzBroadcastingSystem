@@ -4,9 +4,9 @@ Collections, Blocks, and Special Programming for Cartoon Network & Adult Swim.
 """
 
 from scripts.logic.structures import RandomCollection, OrderedCollection, MarathonSequence, Block
-from scripts.logic.queries import show_by_title
+from scripts.library.queries import show_by_title
 from scripts.logic.models import Swap, ContentItem
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from . import branding
 
 # --- COLLECTIONS ---

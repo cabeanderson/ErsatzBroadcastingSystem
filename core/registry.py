@@ -27,20 +27,28 @@ FLOATING_RULES: List[Dict[str, Any]] = [
     {"name": "MEMORIAL_DAY",    "month": 5,  "weekday": 0, "occurrence": "last"},
     {"name": "LABOR_DAY",       "month": 9,  "weekday": 0, "occurrence": 1},
     {"name": "SUPER_BOWL",      "month": 2,  "weekday": 6, "occurrence": 2},
+    {"name": "MLK_DAY",         "month": 1,  "weekday": 0, "occurrence": 3},
+    {"name": "PRESIDENTS_DAY",  "month": 2,  "weekday": 0, "occurrence": 3},
+    {"name": "MOTHERS_DAY",     "month": 5,  "weekday": 6, "occurrence": 2},
+    {"name": "FATHERS_DAY",     "month": 6,  "weekday": 6, "occurrence": 3},
     {"name": "FRIDAY_THE_13TH", "month": None, "weekday": 4, "day": 13},
 ]
 
 # 3. HOLIDAY PRIORITY (Highest to Lowest)
 # Used for resolving conflicts when multiple holidays are active (e.g. Injection)
 HOLIDAY_PRIORITY: List[str] = [
-    "new_years",      # Specific day beats the season
     "christmas",      # The big one
+    "new_years_eve",
+    "new_years_day",
     "halloween",
     "thanksgiving",
-    "valentines",
-    "st_patricks",
-    "star_wars",
-    "july_4"
+    "valentines_day",
+    "st_patricks_day",
+    "star_wars_day",
+    "july_4",
+    "mothers_day",
+    "fathers_day",
+    "super_bowl"
 ]
 
 # 4. METEOROLOGICAL SEASONS

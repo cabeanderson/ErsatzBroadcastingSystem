@@ -6,9 +6,9 @@ Collections, Blocks, and Special Programming.
 from datetime import date
 from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection, Block
 from scripts.logic.factories import annual_show
-from scripts.logic.queries import show_by_title
+from scripts.library.queries import show_by_title
 from scripts.logic.models import Swap, Feather
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from . import branding
 
 # --- COLLECTIONS ---

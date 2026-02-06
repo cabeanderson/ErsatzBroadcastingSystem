@@ -19,10 +19,10 @@ Holiday Events:
 - Christmas in July: Special marathon (July 25)
 """
 from etv_client.models import ControlWaitUntil
-from scripts.schedule import run_daily_schedule, ScheduleConfig
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
 from scripts.logic.models import Marathon, Swap, Feather
 from scripts.logic import triggers
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.library import movies
 from scripts.logic.factories import themed_marathon
 from scripts.core.logger import ChannelLogger
@@ -107,6 +107,9 @@ def build_playout(api, context, build_id):
         block_profiles={},
         timeslot_preset="movies",
         logger=ChannelLogger(prefix="[MOVIES]"),
-        fallback_content=movies.GOLDEN_AGE_CINEMA
+        fallback_content=movies.GOLDEN_AGE_CINEMA,
+        enable_marathons=True,
+        enable_holiday_injection=True,
+        enable_seasonal_injection=True
     )
     return run_daily_schedule(api, context, build_id, config)

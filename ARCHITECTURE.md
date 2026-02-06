@@ -25,7 +25,7 @@ scripts/
 │   ├── seasonal.py          # SeasonalBlock, resolve_seasonal_block
 │   ├── timeslots.py         # DEFAULT_TIMESLOTS (midday/noon/evening/night)
 │   ├── triggers.py          # Trigger classes (ProbabilityTrigger, etc.)
-│   ├── resolution.py        # resolve_schedule_target (main pipeline)
+│   ├── pipeline.py          # resolve_target (main pipeline)
 │   ├── playback.py          # handle_single_play_slot, select_content_by_time
 │   ├── programming.py       # Dataclasses: Marathon, BrandedBlock, BlockProfile
 │   └── profiles.py          # HOLIDAY_PROFILES (Universal ramp logic)
@@ -42,7 +42,6 @@ scripts/
 │   ├── marathon.py          # run_marathon - Sequential episode playback
 │   ├── blocks.py            # BrandedBlock, play_branded_block
 │   └── sequential.py        # AppointmentBlock, SeriesRelay execution
-│   └── slots.py             # Single play slot orchestration
 │
 ├── channels/                # THE PERSONALITIES - Channel configs
 │   ├── cartoon_network.py   # ~130 lines - Kids programming with marathons
@@ -99,7 +98,6 @@ scripts/
 - `marathon.py` - Sequential episode marathons with EPG grouping
 - `blocks.py` - Branded blocks with intro/outro/bumpers
 - `sequential.py` - Appointment TV and Series Relay execution
-- `slots.py` - Single-play slot logic and gap filling
 
 ### Layer 5: Orchestration (Top Level)
 **Purpose:** Main execution loop  
@@ -186,10 +184,10 @@ channels/
 
 ---
 
-### `logic/resolution.py` - THE BRAIN
+### `logic/pipeline.py` - THE BRAIN
 **Responsibility:** Resolve schedule targets to final content keys  
 **Key Function:**
-- `resolve_schedule_target()` - Full resolution pipeline
+ - `resolve_target()` - Full resolution pipeline
 
 **Resolution Order (ENFORCED):**
 1. Inner dict resolution (day-of-week labels)
@@ -212,7 +210,7 @@ target = {
 }
 
 # Output: Final content key string
-final_key = resolve_schedule_target(target, boss, holiday_ctx, config, resolver)
+final_key = resolve_target(target, boss, holiday_ctx, config, resolver, logger)
 # → "halloween_tv" (if Halloween active)
 # → "movie_night_tv" (if Tuesday and no holiday)
 # → "cozy_tv" (if winter peak and not Tuesday)
@@ -315,7 +313,6 @@ ScheduleConfig(
     seasonal_blocks={...},              # Optional: Dict of block variants
     timeslot_preset="default",          # Optional: "default", "kids", "movies", or custom dict
     custom_timeslots={...},             # Optional: Override specific timeslots
-    single_play_slots=[...],            # Optional: List of slot names for single-play
     global_holiday_overrides={...},     # Optional: Dict of holiday to content
     holiday_schedules={...},            # Optional: Dict of holiday to full schedule
     block_profiles={...},               # Optional: Dict of slot profiles (or HOLIDAY_PROFILES)
@@ -619,7 +616,7 @@ test_channel(cartoon_network, date(2026, 10, 31))
 
 ### "Wrong content playing"
 Resolution order may be unexpected:
-1. Add logging to `resolve_schedule_target`
+1. Add logging to `resolve_target`
 2. Check each resolution step
 3. Verify priority (holiday > day-of-week > seasonal > default)
 

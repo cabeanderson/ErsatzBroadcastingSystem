@@ -14,9 +14,10 @@ def test_imports():
     print("--- Testing Imports ---")
     modules = [
         "scripts.core.director",
-        "scripts.logic.queries",
+        "scripts.library.queries",
         "scripts.logic.structures",
-        "scripts.logic.resolver",
+        "scripts.logic.resolution.resolver",
+        "scripts.logic.resolution.pipeline",
         "scripts.logic.factories",
         "scripts.library.sources",
         "scripts.library.common",
@@ -30,7 +31,11 @@ def test_imports():
         "scripts.channels.sitcoms",
         "scripts.channels.cartoon_network",
         "scripts.channels.classic_movies",
-        "scripts.schedule"
+        "scripts.settings",
+        "scripts.scheduling",
+        "scripts.scheduling.config",
+        "scripts.scheduling.runner",
+        "scripts.scheduling.pre_registration"
     ]
     
     for m in modules:
@@ -48,12 +53,12 @@ def test_resolution():
     try:
         from scripts.channels.detective import SCHEDULES
         from scripts.library.sources import MASTER_SOURCES
-        from scripts.logic.resolver import ContentResolver
+        from scripts.logic.resolution.resolver import ContentResolver
         from scripts.core.logger import ChannelLogger
         from scripts.core import DayDirector
-        from scripts.logic.holidays import HolidayContext
-        from scripts.schedule import ScheduleConfig
-        from scripts.logic.resolution import resolve_target
+        from scripts.logic.calendar.holidays import HolidayContext
+        from scripts.scheduling.config import ScheduleConfig
+        from scripts.logic.resolution.pipeline import resolve_content
         
         # Mock API
         class MockApi:
@@ -84,14 +89,14 @@ def test_resolution():
         # "prime": PRIME_BLOCK
         # PRIME_BLOCK is a dict with "TUESDAY": ...
         
-        result = resolve_target(target, boss, holiday_ctx, config, resolver, logger)
+        result = resolve_content(target, boss, holiday_ctx, config, resolver, logger)
         print(f"Resolved Result: {result}")
         
         if result.wrapper:
             print(f"Wrapper: {type(result.wrapper)}")
             if hasattr(result.wrapper, 'content'):
                  # Resolve inner content of BrandedBlock
-                 inner = resolve_target(result.wrapper.content, boss, holiday_ctx, config, resolver, logger)
+                 inner = resolve_content(result.wrapper.content, boss, holiday_ctx, config, resolver, logger)
                  print(f"Inner Content: {inner.resolved_content}")
 
         print("✅ Resolution Test Passed")

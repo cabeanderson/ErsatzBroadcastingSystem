@@ -4,7 +4,7 @@ Collections, Blocks, and Special Programming.
 """
 
 from scripts.logic.structures import RandomCollection
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.logic.models import Swap, Feather
 
 # --- COLLECTIONS ---
@@ -57,19 +57,16 @@ CHRISTMAS_FESTIVAL_EVENT = RandomCollection([
 MOVIE_PRIMETIME_FEATURE = SeasonalBlock(
     base=NEW_HOLLYWOOD_CINEMA,
     seasonal={
-        "SUMMER": Swap(MODERN_BLOCKBUSTERS),
-        "FALL": Swap(NOIR_NIGHT),
-        "WINTER": Swap(GOLDEN_AGE_CINEMA),
-        "SPRING": Swap(MUSICAL_MARQUEE),
-    }
+        "SUMMER": Swap(MODERN_BLOCKBUSTERS), # Blockbusters fit summer perfectly
+        "FALL": Swap(NOIR_NIGHT),            # Noir fits the moody fall vibe
+        "WINTER": Feather("classic_hollywood_winter_movies", 0.5), # Blend in winter-tagged classics
+        "SPRING": Feather("classic_hollywood_spring_movies", 0.5), # Blend in spring-tagged classics
+    },
+    auto_tag=True
 )
 
 MOVIE_AFTERNOON_FEATURE = SeasonalBlock(
     base="classic_hollywood_movie",
-    seasonal={
-        "WINTER": Feather("classic_hollywood_winter_movies", 0.4),
-        "SUMMER": Feather("classic_hollywood_summer_movies", 0.4),
-        "SPRING": Feather("musical_movie", 0.3),
-        "FALL": Feather("classic_noir_movie", 0.3)
-    }
+    seasonal={},
+    auto_tag=True
 )

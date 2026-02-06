@@ -9,9 +9,10 @@ Features:
 """
 
 from etv_client.models import ControlWaitUntil
-from scripts.schedule import run_daily_schedule, ScheduleConfig
-from scripts.logic import triggers, Marathon, PlayOnce, Swap
-from scripts.logic.seasonal import SeasonalBlock
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
+from scripts.logic import triggers, Marathon, Swap
+from scripts.logic.structures import Block
+from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.library import detective
 from scripts.core.logger import ChannelLogger
 from datetime import date
@@ -65,11 +66,16 @@ SCHEDULES = {
         "early": detective.DETECTIVE_LATE_NIGHT,
         "morning": detective.DETECTIVE_USA_BLOCK, # Monk/Psych
         "midday": detective.DETECTIVE_USA_BLOCK,
-        "noon": PlayOnce({
-            "WEEKDAY_A": "elsbeth_tv",     # Explicit
-            "WEEKDAY_B": "moonlighting_tv",
-            "default": "procedural_tv"     # True fallback
-        }),
+        "noon": Block(
+            name="Lunch Special",
+            items=[{
+                "WEEKDAY_A": "elsbeth_tv",     # Explicit
+                "WEEKDAY_B": "moonlighting_tv",
+                "default": "procedural_tv"     # True fallback
+            }],
+            fill_strategy="bridge",
+            strict_window=False
+        ),
         "afternoon": detective.DETECTIVE_USA_BLOCK, # Monk/Psych
         "evening": SeasonalBlock(
             base=detective.DETECTIVE_BRITISH_BLOCK,
@@ -124,6 +130,9 @@ def build_playout(api, context, build_id):
         schedules=SCHEDULES,
         marathons=MARATHONS,
         logger=ChannelLogger(prefix="[DETECTIVE]"),
-        fallback_content="procedural_tv"
+        fallback_content="procedural_tv",
+        enable_marathons=True,
+        enable_holiday_injection=True,
+        enable_seasonal_injection=True
     )
     return run_daily_schedule(api, context, build_id, config)

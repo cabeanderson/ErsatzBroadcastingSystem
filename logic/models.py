@@ -4,7 +4,6 @@ Data models for marathons, events, and blocks.
 
 from dataclasses import dataclass, field
 from typing import Callable, Tuple, Optional, Any, Dict, List, Union
-from scripts.logic.queries import is_movie_query
 
 
 @dataclass
@@ -15,6 +14,9 @@ class Marathon:
     collection: Any
     hours: Optional[Tuple[int, int]] = None
     priority: int = 1
+    # Feature overrides
+    enable_bumpers: Optional[bool] = None
+    enable_commercials: Optional[bool] = None
 
 @dataclass
 class MarathonDefinition:
@@ -42,6 +44,7 @@ class MarathonDefinition:
         if self.media_type == "movie":
             return True
         # Fallback to query inspection
+        from scripts.library.queries import is_movie_query
         return is_movie_query(self.query)
 
 
@@ -66,6 +69,7 @@ class ContentItem:
         if self.media_type == "movie":
             return True
         # Fallback to query inspection
+        from scripts.library.queries import is_movie_query
         return is_movie_query(self.query)
 
 
@@ -110,14 +114,6 @@ class HolidayProfile:
     hangover_days: int = 0
 
 @dataclass
-class PlayOnce:
-    """
-    Wrapper to signal that content should play exactly one item,
-    then fill the remainder of the timeslot with the NEXT block's content.
-    """
-    content: Any
-
-@dataclass
 class Fallback:
     """
     Represents a content choice with a fallback option.
@@ -157,7 +153,7 @@ class ResolutionResult:
     Carries the final content key, any wrappers, and metadata about the source.
     """
     key: Optional[str] = None          # The final registry key to play
-    wrapper: Optional[Any] = None      # BrandedBlock, PlayOnce, or Fallback
+    wrapper: Optional[Any] = None      # Block, Program, or Fallback
     source: str = "schedule"           # Origin: "schedule", "holiday", "seasonal", "injection"
 
     @property

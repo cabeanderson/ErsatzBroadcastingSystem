@@ -9,21 +9,21 @@ ErsatzTV search queries and registers them via the API.
 from typing import Any, Dict, Optional, Set, Union
 import re
 import hashlib
-from .queries import show_by_title
+from scripts.library.queries import show_by_title
 from etv_client.models import ContentSearch, ContentPlaylist
 from scripts.core.logger import ChannelLogger
 from scripts.logic.models import MarathonDefinition
 from scripts.logic.models import ContentItem
-from scripts.logic.structures import MarathonSequence
 
 class ContentResolver:
-    def __init__(self, api: Any, build_id: str, registry: Dict[str, Any], logger: ChannelLogger):
+    def __init__(self, api: Any, build_id: str, registry: Dict[str, Any], logger: ChannelLogger, global_filter: Optional[str] = None):
         self.api: Any = api
         self.build_id: str = build_id
         self.registry: Dict[str, Any] = registry # This IS the MASTER_SOURCES from sources.py
         self.active_keys: Set[str] = set()
         self.dynamic_registry: Dict[str, Dict[str, Any]] = {}
         self.logger: ChannelLogger = logger
+        self.global_filter: Optional[str] = global_filter
 
     def _get_key_from_target(self, target: Any, boss: Optional[Any] = None) -> Any: # boss: DayDirector
         """
@@ -106,6 +106,10 @@ class ContentResolver:
         if not isinstance(query, str):
             self.logger.warn(f"Invalid query format for key '{key}'. Got: {type(data)}")
             return
+            
+        # Apply global filter if it exists
+        if self.global_filter:
+            query = f"({query}) AND ({self.global_filter})"
 
         if "test_bebop" in key:
             self.logger.info(f"Registering TEST key '{key}' with order: '{order}'")
@@ -170,14 +174,12 @@ class ContentResolver:
         """Register a dynamically generated query with ErsatzTV."""
         if key in self.active_keys:
             return
+            
+        # Apply global filter if it exists
+        if self.global_filter:
+            query = f"({query}) AND ({self.global_filter})"
+            
         self.api.add_search(self.build_id, ContentSearch(key=key, query=query, order=order))
         self.active_keys.add(key)
         # Store locally so we can inspect it later (e.g. for multi-part detection)
         self.dynamic_registry[key] = {"query": query, "order": order}
-
-def resolve_sequence(target: Any) -> Any:
-    """Resolves a target into a list of items (sequence)."""
-    if isinstance(target, MarathonSequence):
-        return target.items
-    # Default to single item sequence
-    return [target]

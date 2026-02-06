@@ -348,7 +348,7 @@ class ChannelSimulator:
                 # Add context info
                 if show_context:
                     from scripts.core import DayDirector
-                    from scripts.logic.holidays import HolidayContext
+                    from scripts.logic.calendar.holidays import HolidayContext
                     
                     mock_ctx = type('obj', (object,), {
                         'current_time': time,

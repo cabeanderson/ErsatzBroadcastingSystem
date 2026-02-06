@@ -4,7 +4,6 @@ The Engineer - Technical execution layer.
 Handles ErsatzTV API interaction, circuit breakers, and utilities.
 """
 
-import re
 from etv_client.models import (
     PlayoutCount, 
     ControlWaitUntil, 
@@ -12,11 +11,15 @@ from etv_client.models import (
     ControlStartEpgGroup
 )
 from datetime import datetime, timedelta
+from contextlib import contextmanager
 from typing import Any, Optional, Callable, Tuple, List, Union
 
 from scripts.logic.models import Fallback, CommercialBreak
 from scripts.core.logger import ChannelLogger
-from scripts.config import ENABLE_SMART_BUMPERS
+
+# ==============================================================================
+# 1. BASIC PLAYBACK
+# ==============================================================================
 
 def play_item(api: Any, build_id: str, content_key: str, logger: ChannelLogger, count: int = 1, suppress_errors: bool = False) -> Any:
     """
@@ -91,6 +94,10 @@ def play_with_fallback(api: Any, build_id: str, content: Any, logger: ChannelLog
     return play_item(api, build_id, content, logger, count=count)
 
 
+# ==============================================================================
+# 2. TIME MANAGEMENT
+# ==============================================================================
+
 def wait_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger, target_time: str, tomorrow: bool = False) -> Any:
     """
     Waits (dead air) until target_time.
@@ -160,26 +167,34 @@ def fill_until_next_hour(api: Any, build_id: str, context: Any, logger: ChannelL
     return fill_until_time(api, build_id, context, logger, f"{next_hour:02d}:00", filler_key, tomorrow=tomorrow)
 
 
+# ==============================================================================
+# 3. SAFETY & EPG
+# ==============================================================================
+
 def circuit_breaker(
     api: Any, 
     build_id: str, 
     context: Any, 
     last_time: datetime, 
     logger: ChannelLogger,
-    fallback_content: Optional[str] = None
+    fallback_content: Optional[str] = None,
+    skip_minutes: int = 30
 ) -> Any:
     """
     Prevents infinite loops by attempting fallback or forcing time forward.
     """
     if context.current_time <= last_time:
+        assert skip_minutes > 0, "circuit_breaker skip_minutes must be > 0"
+
         logger.warn(
             f"⚠️ Circuit breaker: Time stalled at {context.current_time.strftime('%H:%M')}"
         )
+        logger.debug(f"Circuit breaker skip configured: {skip_minutes} minutes")
         
         # Try fallback first
         if fallback_content:
             try:
-                logger.info(f"   Attempting fallback: {fallback_content}")
+                logger.info(f"   Attempting fallback due to stalled time: {fallback_content}")
                 context = play_item(api, build_id, fallback_content, logger)
                 
                 if context.current_time > last_time:
@@ -191,7 +206,6 @@ def circuit_breaker(
                 logger.warn(f"   ❌ Fallback error: {e}")
         
         # Force time skip as last resort
-        skip_minutes = 30
         new_time = context.current_time + timedelta(minutes=skip_minutes)
         tomorrow = new_time.date() > context.current_time.date()
         
@@ -201,11 +215,7 @@ def circuit_breaker(
         )
         
         try:
-            api.wait_until(build_id, ControlWaitUntil(
-                when=new_time.strftime("%H:%M"),
-                tomorrow=tomorrow
-            ))
-            return api.get_context(build_id)
+            return wait_until_time(api, build_id, context, logger, new_time.strftime("%H:%M"), tomorrow=tomorrow)
         except Exception as e:
             logger.error(f"🛑 Circuit breaker failed: {e}")
             return context
@@ -213,16 +223,16 @@ def circuit_breaker(
     return context
 
 
-def toggle_marathon_branding(api: Any, build_id: str, name: Optional[str] = None, description: Optional[str] = None, start: bool = True) -> None:
+def toggle_epg_group(api: Any, build_id: str, name: Optional[str] = None, description: Optional[str] = None, start: bool = True) -> None:
     """
-    Manages EPG grouping for marathons.
+    Manages EPG grouping for blocks or marathons.
     Fails gracefully if EPG commands fail.
     
     Args:
         api: ErsatzTV API instance
         build_id: Build UUID
-        name: Marathon name for EPG
-        description: Marathon description
+        name: Group name for EPG (e.g. "Saturday Morning Cartoons")
+        description: Optional description
         start: If True, enables branding. If False, disables.
     """
     try:
@@ -243,35 +253,13 @@ def toggle_marathon_branding(api: Any, build_id: str, name: Optional[str] = None
         action = "start" if start else "stop"
         print(f"[WARN] Failed to {action} EPG group: {e}", flush=True)
 
-def play_smart_bumper(api: Any, build_id: str, context: Any, title: Optional[str], resolver: Any, logger: ChannelLogger, required_tags: List[str] = None) -> Tuple[Any, bool]:
-    """
-    Attempts to play a smart bumper for a specific show title.
-    Returns (context, success_boolean).
-    """
-    if not title or not ENABLE_SMART_BUMPERS:
-        return context, False
-
-    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
-    
-    # Default tags if none provided
-    tags = required_tags if required_tags else ["bumpers"]
-    tag_queries = [f'tag:"{t}"' for t in tags]
-    
-    # Query: type:"other_video" AND tag:"{title}" AND tag:"{tag1}" ...
-    bumper_query = f'type:"other_video" AND tag:"{title}" AND {" AND ".join(tag_queries)}'
-    
-    tags_suffix = "_".join(tags).lower().replace(" ", "")
-    bumper_key = f"auto_bumper_{safe_title}_{tags_suffix}"
-    
-    resolver.register_dynamic_query(bumper_key, bumper_query)
-    
+@contextmanager
+def epg_group(api: Any, build_id: str, name: Optional[str] = None, description: Optional[str] = None) -> Any:
+    """Context manager for EPG grouping. Automatically handles start/stop."""
+    if name:
+        toggle_epg_group(api, build_id, name=name, description=description, start=True)
     try:
-        old_time = context.current_time
-        context = play_item(api, build_id, bumper_key, logger, suppress_errors=True)
-        if context.current_time > old_time:
-            logger.info(f"   ↳ Playing smart bumper: {bumper_key}")
-            return context, True
-    except Exception:
-        pass
-        
-    return context, False
+        yield
+    finally:
+        if name:
+            toggle_epg_group(api, build_id, start=False)

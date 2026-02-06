@@ -13,7 +13,7 @@ throughout the day, with a special focus on themed prime time blocks.
 """
 
 from etv_client.models import ControlWaitUntil
-from scripts.schedule import run_daily_schedule, ScheduleConfig
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
 from scripts.core.logger import ChannelLogger
 from scripts.library import eighties
 
@@ -56,7 +56,9 @@ def build_playout(api, context, build_id):
         schedules=SCHEDULES,
         timeslot_preset="default", # Uses standard broadcast dayparts
         logger=ChannelLogger(prefix="[80s TV]"),
-        fallback_content="eighties_music_videos" # Fallback if all else fails
+        fallback_content="eighties_music_videos", # Fallback if all else fails
+        enable_commercials=True,
+        enable_filler=True
     )
     return run_daily_schedule(api, context, build_id, config)
 

@@ -2,7 +2,7 @@
 Test Channel for verifying ErsatzTV behavior.
 """
 from etv_client.models import ControlWaitUntil
-from scripts.schedule import run_daily_schedule, ScheduleConfig
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
 from scripts.core.logger import ChannelLogger
 
 # ==============================================================================

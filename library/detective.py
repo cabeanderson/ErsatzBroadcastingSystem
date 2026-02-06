@@ -4,7 +4,7 @@ Collections, Blocks, and Special Programming.
 """
 
 from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection, Block
-from scripts.logic.queries import show_by_title
+from scripts.library.queries import show_by_title
 from scripts.logic.factories import annual_show
 
 # --- COLLECTIONS ---
