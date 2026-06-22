@@ -9,48 +9,74 @@ A declarative, feature-rich scheduling system for ErsatzTV that enables professi
 ## Directory Structure
 ```
 scripts/
-├── schedule.py              # THE ARCHITECT - Main orchestration loop
-├── playout.py               # THE ENGINEER - API utilities & ChannelLogger
+├── playout.py               # THE ENGINEER - ErsatzTV API utilities, circuit breaker, EPG
+├── settings.py              # Global defaults & feature flags
+├── requirements.txt         # (stdlib-only; etv_client ships inside ErsatzTV)
 │
-├── core/                    # THE FOUNDATION - Temporal primitives (4 files)
-│   ├── __init__.py
-│   ├── director.py          # DayDirector - Main temporal interface
-│   ├── registry.py          # HOLIDAYS, SEASONS, SEASONAL_PERIODS (data)
-│   ├── states.py            # Date math: derive_labels, is_in_date_range
-│   └── signals.py           # Probability curves: get_parabolic_surge, etc.
+├── core/                    # THE FOUNDATION - Temporal primitives (no business logic)
+│   ├── director.py          # DayDirector - Main temporal interface (labels, signals, RNG)
+│   ├── registry.py          # HOLIDAYS, SEASONS, SEASONAL_RAMPS, FLOATING_RULES (data)
+│   ├── states.py            # Date math: derive_labels, is_in_date_range, days_until/since
+│   ├── signals.py           # Probability curves: get_parabolic_surge, season strength
+│   ├── identity.py          # stable_hash() - process-stable RNG seeds (determinism)
+│   └── logger.py            # ChannelLogger
 │
-├── logic/                   # THE BRAIN - Scheduling logic (9 files)
-│   ├── __init__.py
-│   ├── holidays.py          # HolidayContext, with_holidays, get_holiday_target
-│   ├── seasonal.py          # SeasonalBlock, resolve_seasonal_block
-│   ├── timeslots.py         # DEFAULT_TIMESLOTS (midday/noon/evening/night)
-│   ├── triggers.py          # Trigger classes (ProbabilityTrigger, etc.)
-│   ├── pipeline.py          # resolve_target (main pipeline)
-│   ├── playback.py          # handle_single_play_slot, select_content_by_time
-│   ├── programming.py       # Dataclasses: Marathon, BrandedBlock, BlockProfile
-│   └── profiles.py          # HOLIDAY_PROFILES (Universal ramp logic)
+├── logic/                   # THE BRAIN - Scheduling decisions
+│   ├── models.py            # Dataclasses: Marathon, Fallback, Swap, Feather,
+│   │                        #   CommercialBreak, ContentItem, ResolutionResult, profiles
+│   ├── structures.py        # Collections (Random/Ordered/Weighted/Daily) + Block, Program
+│   ├── triggers.py          # Trigger helpers (chance, when_has, combine, ...)
+│   ├── factories.py         # Helpers for building Programs/collections (e.g. episode_list)
+│   ├── profiles.py          # HOLIDAY_PROFILES (universal ramp logic)
+│   │
+│   ├── calendar/            # Time → schedule shape
+│   │   ├── assembly.py      # assemble_day_schedule() + marathon→Block conversion
+│   │   ├── holidays.py      # HolidayContext, with_holidays, get_holiday_target
+│   │   ├── seasonal.py      # SeasonalBlock, resolve_seasonal_block
+│   │   ├── timeslots.py     # Timeslot presets + expansion
+│   │   └── triggers.py      # Calendar-aware trigger building blocks
+│   │
+│   └── resolution/          # target → playable content key
+│       ├── pipeline.py      # resolve_content() (main pipeline) + injections + appointment math
+│       ├── resolver.py      # ContentResolver - registers queries with ErsatzTV
+│       ├── playback.py      # hour_in_window, boundary math
+│       └── config_utils.py  # resolve_feature() cascade (Program > Block > Channel)
 │
-├── library/                 # THE VAULT - Content organization (5 files)
-│   ├── __init__.py
-│   ├── sources.py           # MASTER_SOURCES - All Lucene queries
-│   ├── collections.py       # Collection objects (OrderedCollection, etc.)
-│   ├── structures.py        # Data structures (AppointmentBlock, SeriesRelay)
-│   └── resolver.py          # ContentResolver - Registers content with ErsatzTV
+├── library/                 # THE VAULT - Content definitions
+│   ├── sources.py           # MASTER_SOURCES - all Lucene queries
+│   ├── queries.py           # Query builders, tag injection, parsing utilities
+│   ├── filters.py           # SEASONAL_TAG_QUERIES, INJECTION_RULES
+│   ├── branding.py          # Bumper/intro/outro definitions
+│   ├── marathons.py         # Marathon content definitions
+│   └── <genre>.py           # sitcoms, scifi, detective, animation, british, ...
 │
-├── engines/                 # THE STRATEGIES - Complex behaviors (5 files)
-│   ├── __init__.py
-│   ├── marathon.py          # run_marathon - Sequential episode playback
-│   ├── blocks.py            # BrandedBlock, play_branded_block
-│   └── sequential.py        # AppointmentBlock, SeriesRelay execution
+├── engines/                 # THE STRATEGIES - Playback behaviors
+│   ├── blocks.py            # PlayoutSession, play_block, play_program (+ marathon blocks)
+│   └── dispatcher.py        # play_schedule_slot, commercials, bumpers, fill/bridge
 │
-├── channels/                # THE PERSONALITIES - Channel configs
-│   ├── cartoon_network.py   # ~130 lines - Kids programming with marathons
-│   ├── detective.py         # ~60 lines - Mystery/detective programming
-│   └── [future channels]
+├── scheduling/              # ORCHESTRATION
+│   ├── runner.py            # ScheduleRunner - the main daily loop ("THE ARCHITECT")
+│   ├── config.py            # ScheduleConfig
+│   └── pre_registration.py  # Pre-register all content before the loop
+│
+├── channels/                # THE PERSONALITIES - Channel configs (pure data)
+│   ├── cartoon_network.py   # Kids programming with marathons
+│   ├── detective.py         # Mystery/detective programming
+│   └── sitcoms, scifi, eighties, british, classic_movies, ...
 │
 └── testing/
-    └── simulator.py         # Mock testing framework
+    ├── simulator.py         # Mock API + ChannelSimulator (auto-installs etv_client mock)
+    ├── visualize_week.py    # CLI weekly schedule visualizer
+    ├── scan_library.py      # CLI media source scanner
+    └── test_*.py            # Smoke / scenario / refactor tests
 ```
+
+> **Note:** `schedule.py` is now `scheduling/runner.py` (class `ScheduleRunner`,
+> entry point `run_daily_schedule`). The old flat `logic/*.py` files moved under
+> `logic/calendar/` and `logic/resolution/`; the marathon and sequential engines
+> were folded into `engines/blocks.py`. Some prose further below may still use the
+> historical names — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for the
+> doc-reconciliation item.
 
 ---
 
@@ -445,7 +471,30 @@ Features combine cleanly:
 - `combine(when_has("SATURDAY"), with_probability(0.25))`
 
 ### 4. Determinism
-Same date always produces same schedule. Uses deterministic RNG seeded by date.
+Same date always produces the same schedule, **including across process restarts**
+(rebuilding the container does not change the output). This is enforced by:
+
+- **Date-seeded RNG.** All randomness flows through `DayDirector`, seeded by
+  `date + key`. A fresh `DayDirector` is created per day, so RNG state never
+  leaks between days.
+- **Content-stable seeds, not `id()`.** Collections and list picks seed their RNG
+  via `core/identity.stable_hash(...)` (a hash of the items), never a memory
+  address. Memory addresses change every run, so seeding on `id()` would silently
+  break reproducibility — `stable_hash` does not.
+- **Date-anchored sequential collections.** `OrderedCollection` derives its
+  position from `(date − epoch)` rather than a free-running counter, so a given
+  calendar date maps to a fixed position and the rotation "moves on" while the
+  server is offline (matching the appointment-TV philosophy below). The epoch is
+  `settings.DEFAULT_APPOINTMENT_START_DATE`.
+- **Per-day reset of transient state.** `RandomCollection` resets its no-repeat
+  set each day, so a day's picks depend only on that date — not on how many picks
+  happened on earlier days.
+
+> **Trade-offs of true determinism:** `RandomCollection`'s no-repeat memory is
+> per-day only (cross-day no-repeat is incompatible with "same date → same
+> output"). An `OrderedCollection` used for *strict* episode order inside a
+> multi-item block can repeat one item across a day boundary — use the
+> calendar-driven `scheduling=` (Appointment TV) path for strict sequencing.
 
 ### 5. Progressive Enhancement
 Start simple, add features as needed:

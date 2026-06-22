@@ -20,9 +20,10 @@ This framework separates **scheduling logic** from **channel configuration**. In
 
 ## Documentation
 
-*   [Architecture Guide](scripts/ARCHITECTURE.md) - Deep dive into the "Architect", "Brain", and "Vault".
-*   [Core Concepts](scripts/CONCEPTS.md) - Understanding Labels, Signals, and Resolution.
-*   [Import Reference](scripts/IMPORTS.md) - Cheat sheet for imports and classes.
+*   [Architecture Guide](ARCHITECTURE.md) - Deep dive into the "Architect", "Brain", and "Vault".
+*   [Core Concepts](CONCEPTS.md) - Understanding Labels, Signals, and Resolution.
+*   [Import Reference](IMPORTS.md) - Cheat sheet for imports and classes.
+*   [Known Issues & Tech Debt](KNOWN_ISSUES.md) - Tracked findings and fixes-for-later.
 
 ## Project Structure
 
@@ -79,21 +80,23 @@ scripted-schedules/
 ### Local channel planning
 
 You can test your channel logic on any dev machine **without ErsatzTV and without
-the real `etv_client`**. The simulator ships an in-memory mock of `etv_client`;
-install it *before* importing any channel module (channels import `etv_client`
-at the top level), then drive a channel through the `ChannelSimulator`:
+the real `etv_client`**. The simulator ships an in-memory mock of `etv_client`
+that is installed automatically the moment you import anything from
+`scripts.testing` — so you can just import a channel and run it:
 
 ```python
 from datetime import date
-from scripts.testing import install_mocks
-install_mocks()                      # must run before importing channels
-
+from scripts.testing.simulator import ChannelSimulator   # auto-installs the mock
 from scripts.channels import detective
-from scripts.testing.simulator import ChannelSimulator
 
 sim = ChannelSimulator(detective)
 schedule = sim.simulate_day(date(2026, 10, 31))   # "time travel" to Halloween
 ```
+
+> The mock never shadows a real `etv_client`: inside the ErsatzTV container the
+> real client is used, and the mock install is a no-op. If you ever import a
+> channel *before* touching `scripts.testing`, call `install_mocks()` from
+> `scripts.testing` first.
 
 The bundled test scripts already do this and are a good smoke check:
 

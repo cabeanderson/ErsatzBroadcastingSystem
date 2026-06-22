@@ -11,7 +11,8 @@ from scripts.logic.calendar.holidays import HolidayContext
 from scripts.logic.resolution.pipeline import resolve_content
 from scripts.logic.resolution.playback import hour_in_window
 from scripts.logic.resolution.resolver import ContentResolver
-from scripts.engines.dispatcher import play_schedule_slot, maintain_playout_invariants
+from scripts.engines.dispatcher import play_schedule_slot, maintain_playout_invariants, reset_bumper_failure_cache
+from scripts.library.queries import reset_injection_cache
 from scripts.library.sources import MASTER_SOURCES
 from scripts.logic.calendar.assembly import assemble_day_schedule
 from scripts.scheduling.config import ScheduleConfig
@@ -32,6 +33,11 @@ class ScheduleRunner:
 
     def run(self) -> Any:
         """Main execution loop."""
+        # Clear per-build module caches so dynamic state never leaks between
+        # channel builds sharing one process (e.g. the simulator).
+        reset_bumper_failure_cache()
+        reset_injection_cache()
+
         try:
             pre_register_all_content(self.resolver, self.config)
         except Exception as e:

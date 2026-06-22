@@ -1,4 +1,4 @@
-# scripts/logic/resolver.py
+# scripts/logic/resolution/resolver.py
 """
 Content Resolver - The Bridge to ErsatzTV.
 

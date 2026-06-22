@@ -50,9 +50,9 @@ class TestScenarios(unittest.TestCase):
         schedule = {"prime": "test_content"}
         config = ScheduleConfig(schedules={"WEEKDAY": schedule})
         
-        # Simulate assembly
-        day_sched = assemble_day_schedule(config, self.boss, self.holiday_ctx)
-        
+        # Simulate assembly (returns (day_schedule, marathon_block, marathon_window))
+        day_sched, _, _ = assemble_day_schedule(config, self.boss, self.holiday_ctx)
+
         # Check that content exists (keys are now tuples like (20, 23))
         self.assertIn("test_content", day_sched.values())
         print("✅ Simple schedule assembled")

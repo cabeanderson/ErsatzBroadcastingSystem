@@ -33,10 +33,18 @@ if TYPE_CHECKING:
     from scripts.logic.calendar.holidays import HolidayContext
     from scripts.engines.blocks import PlayoutSession
 
-# Global cache to store failed bumper searches during this run
+# Per-run cache of failed bumper searches.
 # Key: (safe_title, tags_tuple)
 # Value: True (meaning "we checked, and it doesn't exist")
+# Reset at the start of each build via reset_bumper_failure_cache() so results
+# never bleed across channels (which may use different global_filters) or grow
+# unbounded across many builds in one process (e.g. the simulator).
 BUMPER_FAILURE_CACHE = {}
+
+
+def reset_bumper_failure_cache() -> None:
+    """Clear the per-run bumper-existence cache. Called by ScheduleRunner.run()."""
+    BUMPER_FAILURE_CACHE.clear()
 
 # --- UNIFIED HELPERS ---
 

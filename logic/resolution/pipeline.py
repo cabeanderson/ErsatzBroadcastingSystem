@@ -82,7 +82,7 @@ def _finalize_content_resolution(target: Any, source: str, boss: Any, holiday_ct
             resolver.resolve(target.secondary)
         return ResolutionResult(wrapper=target, source=source)
 
-    # Return wrappers directly so schedule.py can handle their logic
+    # Return wrappers directly so the dispatcher/engines can handle their logic
     if isinstance(target, (Block, Program, CommercialBreak)):
         return ResolutionResult(wrapper=target, source=source)
 

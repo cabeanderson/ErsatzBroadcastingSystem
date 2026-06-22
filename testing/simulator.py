@@ -242,22 +242,45 @@ class ControlSkipItems:
 
 def install_mocks():
     """
-    Installs mock models into sys.modules.
-    Must be called BEFORE importing any channel scripts if etv_client is not installed.
+    Make a mock ``etv_client.models`` importable for offline simulation/tests.
+
+    Safe to call anywhere, any number of times. It is invoked automatically when
+    ``scripts.testing`` is imported, so channel modules (which do
+    ``from etv_client.models import ...`` at import time) load on a dev machine
+    without the real client and regardless of import order.
+
+    The real client always wins: if ``etv_client`` is installed (e.g. inside the
+    ErsatzTV container) this is a no-op, so it can never silently shadow a real
+    deployment.
     """
     if 'etv_client.models' in sys.modules:
         return
 
-    mock_module = type(sys)('etv_client.models')
-    mock_module.PlayoutCount = PlayoutCount
-    mock_module.ContentSearch = ContentSearch
-    mock_module.ContentPlaylist = ContentPlaylist
-    mock_module.ControlWaitUntil = ControlWaitUntil
-    mock_module.ControlSkipToItem = ControlSkipToItem
-    mock_module.ControlStartEpgGroup = ControlStartEpgGroup
-    mock_module.PlayoutPadUntil = PlayoutPadUntil
-    mock_module.ControlSkipItems = ControlSkipItems
-    sys.modules['etv_client.models'] = mock_module
+    # Never shadow a real, installed client (the ErsatzTV scripting runtime).
+    try:
+        import etv_client.models  # noqa: F401
+        return
+    except ImportError:
+        pass
+
+    ModuleType = type(sys)
+    package = sys.modules.get('etv_client') or ModuleType('etv_client')
+    models = ModuleType('etv_client.models')
+    for name, cls in {
+        'PlayoutCount': PlayoutCount,
+        'ContentSearch': ContentSearch,
+        'ContentPlaylist': ContentPlaylist,
+        'ControlWaitUntil': ControlWaitUntil,
+        'ControlSkipToItem': ControlSkipToItem,
+        'ControlStartEpgGroup': ControlStartEpgGroup,
+        'PlayoutPadUntil': PlayoutPadUntil,
+        'ControlSkipItems': ControlSkipItems,
+    }.items():
+        setattr(models, name, cls)
+
+    package.models = models
+    sys.modules['etv_client'] = package
+    sys.modules['etv_client.models'] = models
 
 class ChannelSimulator:
     """Main simulator for testing channels."""

@@ -1,4 +1,4 @@
-# scripts/logic/queries.py
+# scripts/library/queries.py
 """
 Query builder functions and constants for the content library.
 Shared by sources and marathons to prevent circular dependencies.
@@ -9,7 +9,15 @@ import hashlib
 from typing import Optional, Union, Dict, Tuple, Any
 from scripts.settings import DEFAULT_ORDER
 
+# Per-run cache of injected tag queries: (base_key, tag_query, suffix) -> (key, query, order).
+# Reset at the start of each build via reset_injection_cache() so it never grows
+# unbounded across many builds in one process (e.g. the simulator).
 _INJECTION_CACHE = {}
+
+
+def reset_injection_cache() -> None:
+    """Clear the per-run tag-injection cache. Called by ScheduleRunner.run()."""
+    _INJECTION_CACHE.clear()
 
 # 1. CORE DEFINITIONS & GLOBAL FILTERS
 
