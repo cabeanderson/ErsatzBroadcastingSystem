@@ -97,7 +97,7 @@ def _convert_marathon_to_block(marathon: Marathon, marathon_key: Any, resolver: 
 
         # Convert INFINITE (None) to a large number to ensure continuous play
         final_count = play_count if play_count is not None else DEFAULT_MARATHON_LIMIT
-        program_items.append(Program(name=f"{epg_title} - Part {i+1}", content=raw_item, play_count=final_count, start_point=start_point))
+        program_items.append(Program(name=f"{epg_title} - Part {i+1}", content=raw_item, play_count=final_count, start_point=start_point, force_start=True))
 
     # Strategy "yield" ensures that if content runs out, we return to the Runner to pick up the normal schedule
     return Block(name=epg_title, items=program_items, use_epg_group=True, strict_window=True, fill_strategy="yield", filler=filler)

@@ -49,8 +49,44 @@ SEASONAL_TAG_QUERIES = {
 }
 
 # --- THEMATIC TAGS ---
-# Maps calendar labels (Months, Days, etc.) to tag queries for Thematic Injection
-THEMATIC_TAG_QUERIES = {
-    "NOVEMBER": "tag:noir",       # Noir November
-    "OCTOBER": "tag:halloween",   # Spooky Season
+# Unified Injection Rules
+# Supports: Ramps, Static Days, Vetos, and Context Overrides
+INJECTION_RULES = {
+    "CHRISTMAS": {
+        "mode": "ramp",
+        "signal": "CHRISTMAS",
+        "ratio": 1.0,
+        "query": "tag:Christmas",
+        "overrides": {
+            "Horror": "tag:Krampus OR tag:Christmas Horror",
+            "Action": "tag:Christmas AND genre:Action"
+        },
+        "veto": ["Documentary", "News", "War"]
+    },
+    "HALLOWEEN": {
+        "mode": "ramp",
+        "signal": "HALLOWEEN",
+        "query": "(tag:halloween OR plot:halloween)",
+        "ratio": 0.8,
+        "veto": ["Preschool"]
+    },
+    "THANKSGIVING": {
+        "mode": "ramp",
+        "signal": "THANKSGIVING",
+        "query": "tag:Thanksgiving",
+        "ratio": 0.8
+    },
+    "VALENTINES_DAY": {
+        "mode": "static",
+        "label": "VALENTINES_DAY",
+        "query": '(tag:valentines OR tag:"Valentines Day")',
+        "ratio": 1.0,
+        "veto": ["Horror", "Crime", "War"]
+    },
+    "NOVEMBER": {"mode": "static", "label": "NOVEMBER", "query": "(tag:noir OR plot:noir)", "ratio": 0.4},
+    "ST_PATRICKS_DAY": {"mode": "static", "label": "ST_PATRICKS_DAY", "query": 'tag:"St Patricks Day"', "ratio": 0.8},
+    "NEW_YEARS_EVE": {"mode": "static", "label": "NEW_YEARS_EVE", "query": 'tag:"New Years"', "ratio": 1.0},
+    "NEW_YEARS_DAY": {"mode": "static", "label": "NEW_YEARS_DAY", "query": 'tag:"New Years"', "ratio": 0.8},
+    "EASTER": {"mode": "static", "label": "EASTER", "query": "tag:Easter", "ratio": 0.8},
+    "JULY_4": {"mode": "static", "label": "JULY_4", "query": 'tag:"July 4th"', "ratio": 1.0}
 }

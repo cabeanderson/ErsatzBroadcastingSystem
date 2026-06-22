@@ -8,7 +8,8 @@ Uses builder functions for consistency and maintainability.
 from .marathons import MARATHONS
 # Import builder functions and core types from logic
 from scripts.library.queries import (
-    episode_source, movie_source, show_source, show_by_title, 
+    episode_source, movie_source, show_source, 
+    show_by_title, show_container_by_title, movie_by_title,
     playback_order, playlist_ref, apply_tags,
     ANIME, MOVIE, SHOW
 )
@@ -92,6 +93,7 @@ MOVIE_REGISTRY = {
     # --- SPECIALTY ---
     "videogame_movie": movie_source(extra="(title:*Mario* OR title:*Sonic* OR title:*Kombat*)"),
     "short_film_movie": movie_source(extra=SHORT),
+    "british_movie": movie_source(extra='(tag:british OR studio:"BBC" OR studio:"BBC Films" OR studio:"Film4" OR studio:"Working Title" OR studio:"Ealing" OR studio:"Hammer" OR studio:"Warp Films" OR studio:"DNA Films")'),
     
     # --- FRANCHISES ---
     "star_wars_saga_chronological": playback_order(movie_source(extra='title:"Star Wars"'), force="Chronological"),

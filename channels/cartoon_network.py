@@ -69,7 +69,7 @@ MARATHONS = [
     Marathon(
         name="Star Wars Animation Day",
         trigger=triggers.has_label("STAR_WARS_DAY"),
-        collection=animation.STAR_WARS_ANIMATION,
+        collection=animation.STAR_WARS_ANIMATION.items,
         hours=(8, 22),
         priority=2
     )
@@ -109,12 +109,14 @@ MIDDAY_BLOCK = {
 
 # Noon Block (12:00 - 14:00)
 NOON_BLOCK = {
+    "SATURDAY": SEASONAL_AFTERNOON,
     "SUNDAY": animation.ANIMATION_SHOWCASE,
     "default": animation.NICKTOONS_VAULT
 }
 
 # Afternoon Block (14:00 - 18:00)
 AFTERNOON_BLOCK = {
+    "SATURDAY": animation.NICKTOONS_VAULT,
     "SUNDAY": animation.ANIMATION_SHOWCASE,
     "default": SEASONAL_AFTERNOON
 }
@@ -223,6 +225,7 @@ def build_playout(api, context, build_id):
         enable_marathons=True,
         enable_holiday_injection=True,
         enable_seasonal_injection=True,
+        enable_thematic_injection=True,
         enable_bumpers=True
     )
     

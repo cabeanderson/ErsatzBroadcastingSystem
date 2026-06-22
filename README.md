@@ -61,17 +61,45 @@ scripted-schedules/
     ```bash
     pip install -r requirements.txt
     ```
+    > **Note:** The framework uses only the Python standard library, so this is
+    > effectively a no-op. There are no third-party packages to install.
 
-3.  Configure your environment:
-    *   Ensure `etv_client` is available (generated from ErsatzTV OpenAPI).
+3.  Make `etv_client` available:
+    *   `etv_client` is the API binding that **ships inside ErsatzTV**; it is not
+        on PyPI and is not part of this repo.
+    *   **Running inside the ErsatzTV container** (the normal case): it is already
+        importable from ErsatzTV's scripting runtime — there is nothing to do.
+        See ErsatzTV's scripting documentation:
+        <https://github.com/ErsatzTV/ErsatzTV>.
+    *   **Running locally** (simulator/tests for channel planning): you do **not**
+        need the real client — see [Local channel planning](#local-channel-planning) below.
 
 ## Simulation & Testing
 
-You can test your channel logic without affecting your live ErsatzTV server using the included simulator. This allows you to "time travel" to test holidays and special events.
+### Local channel planning
+
+You can test your channel logic on any dev machine **without ErsatzTV and without
+the real `etv_client`**. The simulator ships an in-memory mock of `etv_client`;
+install it *before* importing any channel module (channels import `etv_client`
+at the top level), then drive a channel through the `ChannelSimulator`:
+
+```python
+from datetime import date
+from scripts.testing import install_mocks
+install_mocks()                      # must run before importing channels
+
+from scripts.channels import detective
+from scripts.testing.simulator import ChannelSimulator
+
+sim = ChannelSimulator(detective)
+schedule = sim.simulate_day(date(2026, 10, 31))   # "time travel" to Halloween
+```
+
+The bundled test scripts already do this and are a good smoke check:
 
 ```bash
-# Run the simulator for a specific channel
-python3 -m scripts.testing.simulator
+python3 -m scripts.testing.test_refactor     # imports + resolution
+python3 -m unittest scripts.testing.test_scenarios
 ```
 
 ### Deployment

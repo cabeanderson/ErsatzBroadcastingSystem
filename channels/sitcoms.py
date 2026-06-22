@@ -95,7 +95,7 @@ CHRISTMAS_SCHEDULE = {
 
 # Reuse Christmas logic for others for now, or create specific collections
 THANKSGIVING_SCHEDULE = {k: common.THANKSGIVING_COMEDY_EVENT for k in HALLOWEEN_SCHEDULE}
-VALENTINES_SCHEDULE = {k: common.VALENTINES_COMEDY_EVENT for k in HALLOWEEN_SCHEDULE}
+#VALENTINES_SCHEDULE = {k: common.VALENTINES_COMEDY_EVENT for k in HALLOWEEN_SCHEDULE}
 
 # ==============================================================================
 # 5. ERSATZTV INTEGRATION
@@ -119,7 +119,7 @@ def build_playout(api, context, build_id):
             "HALLOWEEN": HALLOWEEN_SCHEDULE,
             "THANKSGIVING": THANKSGIVING_SCHEDULE,
             "CHRISTMAS": CHRISTMAS_SCHEDULE,
-            "VALENTINES_DAY": VALENTINES_SCHEDULE,
+         #   "VALENTINES_DAY": VALENTINES_SCHEDULE,
         },
         block_profiles={},
         # filler_content="commercials_spot", # TODO: Add collections.BUMPERS when available
@@ -127,6 +127,7 @@ def build_playout(api, context, build_id):
         fallback_content=sitcoms.CLASSIC_SITCOMS_60s_70s,
         enable_holiday_injection=True,
         enable_seasonal_injection=True,
+        enable_thematic_injection=True,
         enable_bumpers=True
     )
     

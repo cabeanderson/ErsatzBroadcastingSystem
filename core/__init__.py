@@ -5,4 +5,5 @@ Contains pure logic for time, state, signals, and resolution.
 """
 
 from .director import DayDirector
-__all__ = ['DayDirector']
+from .identity import stable_hash
+__all__ = ['DayDirector', 'stable_hash']

@@ -7,69 +7,99 @@ from scripts.logic.structures import RandomCollection, OrderedCollection, DailyO
 from scripts.library.queries import show_by_title
 from scripts.logic.factories import annual_show
 
-# --- COLLECTIONS ---
+# --- BLOCKS ---
 
-CLASSIC_DETECTIVES = OrderedCollection([
-    "classic_mystery_tv",
-    "detective_tv",
-    "classic_noir_movie"
-])
+CLASSIC_DETECTIVES = Block(
+    name="Classic Detectives",
+    items=OrderedCollection([
+        "classic_mystery_tv",
+        "detective_tv",
+        "classic_noir_movie"
+    ])
+)
 
-MODERN_CRIME = OrderedCollection([
-    "procedural_tv",
-    "modern_mystery_tv",
-    "legal_drama_tv"
-])
+MODERN_CRIME = Block(
+    name="Modern Crime",
+    items=OrderedCollection([
+        "procedural_tv",
+        "modern_mystery_tv",
+        "legal_drama_tv"
+    ])
+)
 
-BRITISH_CRIME = OrderedCollection([
-    "british_mystery_tv",
-    "british_drama_tv"
-])
+BRITISH_CRIME = Block(
+    name="British Crime",
+    items=OrderedCollection([
+        "british_mystery_tv",
+        "british_drama_tv"
+    ])
+)
 
-TRUE_CRIME_NIGHT = OrderedCollection([
-    "true_crime_tv",
-    "mystery_crime_movie"
-])
+TRUE_CRIME_NIGHT = Block(
+    name="True Crime Night",
+    items=OrderedCollection([
+        "true_crime_tv",
+        "mystery_crime_movie"
+    ])
+)
 
-LEGAL_BLOCK = RandomCollection([
-    "legal_drama_tv"
-])
+LEGAL_BLOCK = Block(
+    name="Legal Drama",
+    items=RandomCollection([
+        "legal_drama_tv"
+    ])
+)
 
-DETECTIVE_USA_BLOCK = RandomCollection([
-    {"title": "monk"},
-    {"title": "psych"}
-])
+DETECTIVE_USA_BLOCK = Block(
+    name="USA Network Block",
+    items=RandomCollection([
+        {"title": "monk"},
+        {"title": "psych"}
+    ])
+)
 
-DETECTIVE_BRITISH_BLOCK = RandomCollection([
-    {"title": "agatha christie's poirot"},
-    {"title": "miss marple"},
-    "british_mystery_tv"
-])
+DETECTIVE_BRITISH_BLOCK = Block(
+    name="British Mystery",
+    items=RandomCollection([
+        {"title": "agatha christie's poirot"},
+        {"title": "miss marple"},
+        "british_mystery_tv"
+    ])
+)
 
-DETECTIVE_LATE_NIGHT = RandomCollection([
-    {"title": "columbo"},
-    {"title": "poker face"},
-    {"title": "bored to death"},
-    {"title": "remington steele"},
-    "classic_mystery_tv",
-    "true_crime_tv"
-])
+DETECTIVE_LATE_NIGHT = Block(
+    name="Detective Late Night",
+    items=RandomCollection([
+        {"title": "columbo"},
+        {"title": "poker face"},
+        {"title": "bored to death"},
+        {"title": "remington steele"},
+        "classic_mystery_tv",
+        "true_crime_tv"
+    ])
+)
 
-MYSTERY_MOVIE_WHEEL = OrderedCollection([
-    {"title": "Columbo", "query": show_by_title("Columbo"), "order": "Shuffle"},
-    {"title": "Poirot", "query": show_by_title("Agatha Christie's Poirot"), "order": "Shuffle"},
-    {"title": "Miss Marple", "query": show_by_title("Miss Marple"), "order": "Shuffle"},
-    {"title": "Murder, She Wrote", "query": show_by_title("Murder, She Wrote"), "order": "Shuffle"},
-])
+MYSTERY_MOVIE_WHEEL = Block(
+    name="Mystery Movie Wheel",
+    items=OrderedCollection([
+        {"title": "Columbo", "query": show_by_title("Columbo"), "order": "Shuffle"},
+        {"title": "Poirot", "query": show_by_title("Agatha Christie's Poirot"), "order": "Shuffle"},
+        {"title": "Miss Marple", "query": show_by_title("Miss Marple"), "order": "Shuffle"},
+        {"title": "Murder, She Wrote", "query": show_by_title("Murder, She Wrote"), "order": "Shuffle"},
+    ])
+)
 
-NOIR_NOVEMBER_COLLECTION = RandomCollection([
-    {"title": "True Detective", "query": show_by_title("True Detective"), "order": "Chronological"},
-    {"title": "Bosch", "query": show_by_title("Bosch"), "order": "Chronological"},
-    {"title": "Mindhunter", "query": show_by_title("Mindhunter"), "order": "Chronological"},
-    {"title": "Dark Winds", "query": show_by_title("Dark Winds"), "order": "Chronological"},
-    {"title": "Homicide: Life on the Street", "query": show_by_title("Homicide: Life on the Street"), "order": "Shuffle"},
-    {"title": "Millennium", "query": show_by_title("Millennium"), "order": "Shuffle"},
-])
+NOIR_NOVEMBER_COLLECTION = Block(
+    name="Noir November",
+    items=RandomCollection([
+        {"title": "True Detective", "query": show_by_title("True Detective"), "order": "Chronological"},
+        {"title": "Bosch", "query": show_by_title("Bosch"), "order": "Chronological"},
+        {"title": "Mindhunter", "query": show_by_title("Mindhunter"), "order": "Chronological"},
+        {"title": "Dark Winds", "query": show_by_title("Dark Winds"), "order": "Chronological"},
+        {"title": "Homicide: Life on the Street", "query": show_by_title("Homicide: Life on the Street"), "order": "Shuffle"},
+        {"title": "Millennium", "query": show_by_title("Millennium"), "order": "Shuffle"},
+    ])
+)
 
 # --- BLOCKS ---
 
@@ -125,20 +155,20 @@ DETECTIVE_FRIDAY_RETRO = Block(
 
 TRUE_DETECTIVE_BLOCK = annual_show(
     show_title="True Detective",
-    seasons=4,
     episodes_per_season=[8, 8, 8, 6],
     premiere_year=2026,
-    premiere_season="FALL",
+    premiere_season=("FALL", "SUNDAY"),
+    frequency=["SUNDAY"],
     reruns="mystery_crime_movie", # Fallback if season ends early
     loop=True
 )
 
 FARGO_BLOCK = annual_show(
     show_title="Fargo",
-    seasons=5,
     episodes_per_season=[10, 10, 10, 11, 10],
     premiere_year=2026,
-    premiere_season="WINTER",
+    premiere_season=("WINTER", "SUNDAY"),
+    frequency=["SUNDAY"],
     reruns="mystery_crime_movie",
     loop=True
 )
@@ -147,8 +177,11 @@ FARGO_BLOCK = annual_show(
 # 1. Millennium (Anchor)
 # 2. Anthology Slot (True Detective in Fall, Fargo in Winter, Movies otherwise)
 # 3. Movie Filler
-SUNDAY_PRESTIGE_BLOCK = DailyOrderedCollection([
-    TRUE_DETECTIVE_BLOCK,
-    FARGO_BLOCK,
-    {"title": "Millennium", "query": show_by_title("Millennium"), "order": "Chronological"}
-])
+SUNDAY_PRESTIGE_BLOCK = Block(
+    name="Sunday Prestige Mystery",
+    items=DailyOrderedCollection([
+        TRUE_DETECTIVE_BLOCK,
+        FARGO_BLOCK,
+        {"title": "Millennium", "query": show_by_title("Millennium"), "order": "Chronological"}
+    ])
+)

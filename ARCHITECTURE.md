@@ -143,12 +143,9 @@ channels/
 
 ## Key Files Deep Dive
 
-### `schedule.py` - THE ARCHITECT
+### `scheduling/runner.py` - THE ARCHITECT
 **Responsibility:** Orchestrate daily schedule execution  
 **Key Functions:**
-- `run_daily_schedule()` - Main loop
-- `ScheduleConfig` - Configuration dataclass
-- `_pre_register_all_content()` - Registers all content upfront
 
 **Flow:**
 1. Detect day type (weekday/Saturday/Sunday)
@@ -160,16 +157,13 @@ channels/
    - Handle circuit breaker
    - Handle filler if needed
 
----
 
-### `core/director.py` - THE INTERFACE
+### `logic/calendar/assembly.py` - THE INTERFACE
 **Responsibility:** Main temporal intelligence interface  
+**Note:** Previously `core/director.py`
 **Key Methods:**
-- `has(label)` - Check if current time has label
-- `has_any(*labels)` - Check if ANY label matches
-- `has_all(*labels)` - Check if ALL labels match
-- `signal(event_name)` - Get 0.0-1.0 signal strength for event
-- `roll(probability, key)` - Deterministic daily probability check
+- `DayDirector` class implementation
+- `build_context()` - Factory for creating directors
 - `pick(key, items)` - Deterministic daily selection
 - `season_vibe` - Current seasonal blend (WINTER/SPRING/SUMMER/FALL)
 
@@ -182,11 +176,10 @@ channels/
 - Dayparts: PRIMETIME, LATE_NIGHT, etc.
 - Positional: FIRST_MONDAY, SECOND_SATURDAY, etc.
 
----
 
-### `logic/pipeline.py` - THE BRAIN
+### `logic/resolution/pipeline.py` - THE BRAIN
 **Responsibility:** Resolve schedule targets to final content keys  
-**Key Function:**
+**Location:** `logic/resolution/pipeline.py`
  - `resolve_target()` - Full resolution pipeline
 
 **Resolution Order (ENFORCED):**

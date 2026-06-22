@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Set, Union
 import re
 import hashlib
 from scripts.library.queries import show_by_title
+from scripts.core.identity import stable_hash
 from etv_client.models import ContentSearch, ContentPlaylist
 from scripts.core.logger import ChannelLogger
 from scripts.logic.models import MarathonDefinition
@@ -36,7 +37,7 @@ class ContentResolver:
 
         # 2. If it's a raw list
         if isinstance(target, list):
-            return self._get_key_from_target(boss.pick(f"resolver_list_pick:{id(target)}", target) if boss else target[0], boss) # Fallback to first item if no boss
+            return self._get_key_from_target(boss.pick(f"resolver_list_pick:{stable_hash(target)}", target) if boss else target[0], boss) # Fallback to first item if no boss
 
         return target
 
@@ -130,6 +131,12 @@ class ContentResolver:
 
         # Handle ContentItem objects
         if isinstance(key, ContentItem):
+            # Optimization: Check if we've already generated a key for this object instance
+            if hasattr(key, "_cached_generated_key"):
+                 # Ensure we register it for this build (active_keys check is fast)
+                 self.register_dynamic_query(key._cached_generated_key, key._cached_query, key.order)
+                 return key._cached_generated_key
+
             title = key.title
             order = key.order
             query = key.query if key.query else show_by_title(title)
@@ -138,6 +145,10 @@ class ContentResolver:
             safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
             query_hash = hashlib.md5(query.encode('utf-8')).hexdigest()[:6]
             generated_key = f"auto_gen_{safe_title}_{query_hash}"
+            
+            # Cache on the object itself
+            key._cached_generated_key = generated_key
+            key._cached_query = query
             
             self.register_dynamic_query(generated_key, query, order)
             return generated_key

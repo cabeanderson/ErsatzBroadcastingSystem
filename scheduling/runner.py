@@ -16,6 +16,7 @@ from scripts.library.sources import MASTER_SOURCES
 from scripts.logic.calendar.assembly import assemble_day_schedule
 from scripts.scheduling.config import ScheduleConfig
 from scripts.scheduling.pre_registration import pre_register_all_content
+from scripts.engines.blocks import PlayoutSession
 
 class ScheduleRunner:
     """
@@ -47,6 +48,17 @@ class ScheduleRunner:
             self.config.logger.info(f"=== {self.boss.now.strftime('%A, %B %d, %Y')} ===")
             self.config.logger.info(f"Season: {self.boss.season_vibe} | Holidays: {', '.join(self.holiday_ctx.active_holidays) or 'None'}")
 
+            session = PlayoutSession(
+                api=self.api,
+                build_id=self.build_id,
+                context=self.context,
+                resolver=self.resolver,
+                logger=self.config.logger,
+                boss=self.boss,
+                holiday_ctx=self.holiday_ctx,
+                config=self.config
+            )
+
             while self.context.current_time.day == start_day and not self.context.is_done:
                 hour = self.context.current_time.hour
 
@@ -70,15 +82,17 @@ class ScheduleRunner:
                     current_slot_tuple = (hour, (hour + 1) % 24)
                     target = self.config.fallback_content
 
+                session.context = self.context
                 result = resolve_content(target, self.boss, self.holiday_ctx, self.config, self.resolver, self.config.logger)
-                self.context = play_schedule_slot(self.api, self.build_id, self.context, result, current_slot_tuple, self.config, self.resolver, self.boss, self.holiday_ctx, day_schedule=day_schedule)
+                self.context = play_schedule_slot(session, result, current_slot_tuple, day_schedule=day_schedule)
                 
                 # If we just played the marathon and returned, disable it so we fall back to normal schedule
-                if target is marathon_block:
+                if marathon_block and target is marathon_block:
                     self.config.logger.info(f"Marathon '{marathon_block.name}' yielded/finished. Returning to regular schedule.")
                     marathon_block = None
 
-                self.context = maintain_playout_invariants(self.api, self.build_id, self.context, last_time, self.config, self.boss, self.holiday_ctx, self.resolver)
+                session.context = self.context
+                self.context = maintain_playout_invariants(session, last_time)
                 last_time = self.context.current_time
 
         return self.context

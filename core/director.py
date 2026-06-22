@@ -24,6 +24,8 @@ class DayDirector:
         self.context = context
         self._initial_time: datetime = context.current_time
         self._label_cache: Dict[datetime, Set[str]] = {}
+        self._rng_cache: Dict[str, random.Random] = {}
+        self._roll_cache: Dict[str, float] = {}
         
         if anniversary_years is not None:
             self.anniversary: Optional[datetime] = self._get_anniversary_date(self._initial_time, anniversary_years)
@@ -40,8 +42,10 @@ class DayDirector:
 
     def _rng(self, key: str) -> random.Random:
         """Centralized deterministic RNG factory based on the current date."""
-        seed = f"{self.date}::{key}"
-        return random.Random(seed)
+        if key not in self._rng_cache:
+            seed = f"{self.date}::{key}"
+            self._rng_cache[key] = random.Random(seed)
+        return self._rng_cache[key]
 
     def _get_anniversary_date(self, dt: datetime, years: int) -> datetime:
         """Teleport date back, handling leap years."""
@@ -68,12 +72,17 @@ class DayDirector:
     
     def roll(self, probability: float, key: str = "default") -> bool:
         """Deterministic daily probability check."""
-        seed = f"{self.date}::{key}"
-        # Use SHA256 to generate a uniform float 0.0-1.0
-        hash_bytes = hashlib.sha256(seed.encode('utf-8')).digest()
-        # Convert first 4 bytes to int and divide by max 32-bit int
-        val = int.from_bytes(hash_bytes[:4], 'big')
-        return (val / 0xFFFFFFFF) < probability
+        if key in self._roll_cache:
+            val = self._roll_cache[key]
+        else:
+            seed = f"{self.date}::{key}"
+            # Use SHA256 to generate a uniform float 0.0-1.0
+            hash_bytes = hashlib.sha256(seed.encode('utf-8')).digest()
+            # Convert first 4 bytes to int and divide by max 32-bit int
+            val = int.from_bytes(hash_bytes[:4], 'big') / 0xFFFFFFFF
+            self._roll_cache[key] = val
+            
+        return val < probability
 
     def pick(self, key: str, items: Union[List[Any], str, None]) -> Optional[Any]:
         """Deterministic selection from a list."""

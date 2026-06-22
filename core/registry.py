@@ -70,7 +70,7 @@ SEASONAL_RAMPS: Dict[str, Dict[str, Any]] = {
     "SPRING": {
         "peak_start": (3, 15),
         "peak_end": (4, 15),
-        "ramp_up_weeks": 5,
+        "ramp_up_weeks": 6,
         "ramp_down_weeks": 5,
     },
     "SUMMER": {

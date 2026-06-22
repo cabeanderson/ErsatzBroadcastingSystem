@@ -1,0 +1,25 @@
+# ErsatzTV Scheduling Framework — Python dependencies
+#
+# This file is intentionally empty of pinned packages.
+#
+# The framework runs on the Python standard library only (3.10+). There are
+# NO third-party packages to install — for either in-container deployment or
+# local channel planning.
+#
+# The single external dependency, `etv_client`, is the API binding that ships
+# INSIDE ErsatzTV. It is not published on PyPI and must not be pip-installed:
+#
+#   * In the ErsatzTV container (production):
+#       etv_client is already importable from ErsatzTV's scripting runtime —
+#       nothing to install. See ErsatzTV's scripting docs:
+#       https://github.com/ErsatzTV/ErsatzTV
+#
+#   * On a dev machine (running the simulator / tests to plan channels):
+#       no real etv_client is required. The repo ships an in-memory mock that
+#       you install before importing any channel:
+#           from scripts.testing import install_mocks
+#           install_mocks()
+#       See the README section "Local channel planning".
+#
+# `pip install -r requirements.txt` therefore succeeds as a no-op, which keeps
+# the documented setup steps honest.

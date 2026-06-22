@@ -181,10 +181,10 @@ OFFICE_FILLERS = OrderedCollection(["seinfeld_tv"])
 
 OFFICE_BLOCK = annual_show(
     show_title="The Office",
-    seasons=9,
     episodes_per_season=[6, 22, 25, 19, 28, 26, 26, 24, 25],
     premiere_year=2026,
-    premiere_season="FALL",
+    premiere_season=("FALL", "THURSDAY"),
+    frequency=["THURSDAY"],
     reruns=OFFICE_FILLERS,
     loop=True
 )
@@ -195,10 +195,10 @@ PARKS_FILLERS = OrderedCollection(["3rd_rock_tv"])
 
 PARKS_BLOCK = annual_show(
     show_title="Parks and Recreation",
-    seasons=7,
     episodes_per_season=[6, 24, 16, 22, 22, 22, 13],
     premiere_year=2026,
-    premiere_season="FALL",
+    premiere_season=("FALL", "THURSDAY"),
+    frequency=["THURSDAY"],
     reruns=PARKS_FILLERS,
     loop=True
 )
@@ -209,10 +209,10 @@ COMMUNITY_FILLERS = OrderedCollection(["fresh_prince_tv"])
 
 COMMUNITY_BLOCK = annual_show(
     show_title="Community",
-    seasons=6,
     episodes_per_season=[25, 24, 22, 13, 13, 13],
     premiere_year=2026,
-    premiere_season="FALL",
+    premiere_season=("FALL", "THURSDAY"),
+    frequency=["THURSDAY"],
     reruns=COMMUNITY_FILLERS,
     loop=True
 )
@@ -223,10 +223,10 @@ THIRTY_ROCK_FILLERS = OrderedCollection(["newsradio_tv"])
 
 THIRTY_ROCK_BLOCK = annual_show(
     show_title="30 Rock",
-    seasons=7,
     episodes_per_season=[21, 15, 22, 22, 23, 22, 13],
     premiere_year=2026,
-    premiere_season="FALL",
+    premiere_season=("FALL", "THURSDAY"),
+    frequency=["THURSDAY"],
     reruns=THIRTY_ROCK_FILLERS,
     loop=True
 )

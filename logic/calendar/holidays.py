@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from scripts.core import DayDirector
     from scripts.playout import ChannelLogger
 
+_HOLIDAY_CACHE = {}
+
 class HolidayContext:
     """
     Captures the current holiday state for easy querying.
@@ -21,20 +23,38 @@ class HolidayContext:
     
     def __init__(self, boss: Any):
         self.boss: Any = boss
-        self.envelope: Dict[str, float] = {}
         
-        # Dynamically load signals from profiles
-        for holiday_name, profile in HOLIDAY_PROFILES.items():
-            if holiday_name == "default":
-                continue
-                
-            key = holiday_name.lower()
-            # Main ramp
-            self.envelope[key] = boss.signal(holiday_name, window=profile.window)
+        current_date = boss.now.date()
+        
+        if current_date in _HOLIDAY_CACHE:
+            cached = _HOLIDAY_CACHE[current_date]
+            self.envelope = cached['envelope']
+            self._active_holidays = cached['active_holidays']
+            self._is_holiday_season = cached['is_holiday_season']
+        else:
+            self.envelope: Dict[str, float] = {}
             
-            # Hangover ramp (if defined)
-            if profile.hangover_days > 0:
-                self.envelope[f"{key}_hangover"] = boss.signal(holiday_name, window=profile.hangover_days, hangover=True)
+            # Dynamically load signals from profiles
+            for holiday_name, profile in HOLIDAY_PROFILES.items():
+                if holiday_name == "default":
+                    continue
+                    
+                key = holiday_name.lower()
+                # Main ramp
+                self.envelope[key] = boss.signal(holiday_name, window=profile.window)
+                
+                # Hangover ramp (if defined)
+                if profile.hangover_days > 0:
+                    self.envelope[f"{key}_hangover"] = boss.signal(holiday_name, window=profile.hangover_days, hangover=True)
+            
+            self._active_holidays = [name for name, signal in self.envelope.items() if signal > 0.7]
+            self._is_holiday_season = self._compute_is_holiday_season()
+            
+            _HOLIDAY_CACHE[current_date] = {
+                'envelope': self.envelope,
+                'active_holidays': self._active_holidays,
+                'is_holiday_season': self._is_holiday_season
+            }
         
         # Convenience properties
         self.halloween = self.envelope.get("halloween", 0.0)
@@ -50,16 +70,19 @@ class HolidayContext:
     @property
     def is_holiday_season(self) -> bool:
         """True if ANY major holiday is active."""
+        return self._is_holiday_season
+    
+    @property
+    def active_holidays(self) -> List[str]:
+        """Returns list of currently active holiday names."""
+        return self._active_holidays
+
+    def _compute_is_holiday_season(self) -> bool:
         return (self.is_active("halloween") or
                 self.is_active("halloween_hangover", threshold=0.5) or
                 self.is_active("christmas") or 
                 self.is_active("christmas_hangover", threshold=0.5) or
                 self.is_active("thanksgiving"))
-    
-    @property
-    def active_holidays(self) -> List[str]:
-        """Returns list of currently active holiday names."""
-        return [name for name, signal in self.envelope.items() if signal > 0.7]
 
 
 def get_holiday_target(holiday_ctx: HolidayContext, target: Any, global_overrides: Optional[Dict[str, Any]] = None) -> Any:
@@ -67,6 +90,10 @@ def get_holiday_target(holiday_ctx: HolidayContext, target: Any, global_override
     Apply holiday overrides to a target.
     Checks both target-specific overrides and optional global overrides.
     """
+    # Optimization: Early exit if there's nothing to override
+    if not isinstance(target, dict) and not global_overrides:
+        return target
+
     # Combine target and global overrides, with target-specific taking precedence
     overrides = {}
     if isinstance(target, dict):

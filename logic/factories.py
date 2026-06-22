@@ -4,21 +4,24 @@ Factory functions to build complex scheduling structures like AppointmentBlock.
 """
 
 from typing import List, Optional, Tuple, Union, Dict, Any
+from datetime import date, timedelta
 import re
 from .structures import Program, OrderedCollection
 from .models import MarathonDefinition
 from scripts.library.queries import show_by_title
 
 def annual_show(
-    seasons: int,
     episodes_per_season: List[int],
-    premiere_year: int,
-    content_pattern: Optional[str] = None,
     show_title: Optional[str] = None,
-    premiere_season: str = "FALL",
+    content_pattern: Optional[str] = None,
+    # Broadcast Mode
+    premiere_year: Optional[int] = None,
+    premiere_season: Union[str, Tuple[str, str]] = "FALL",
+    # Contiguous Mode
+    start_date: Optional[date] = None,
     reruns: Optional[Any] = None,
     finale: Optional[str] = None,
-    frequency: str = "weekly",
+    frequency: Union[str, List[str]] = "weekly",
     episodes_per_slot: int = 1,
     loop: bool = False,
     loop_restart_season: Union[str, bool, None] = None
@@ -26,13 +29,22 @@ def annual_show(
     """
     Helper to create an AppointmentBlock for a show that airs annually.
     
-    Automatically generates the season list based on a start year and episode counts.
+    Supports two modes:
+    1. Broadcast Mode: Uses `premiere_year` and `premiere_season` for gapped, yearly seasons.
+    2. Contiguous Mode: Uses `start_date` for gapless sequential playback on a specific frequency.
 
     Args:
+        frequency: "weekly", "daily", or a list of day labels like ["MONDAY", "FRIDAY"].
         loop_restart_season: Season when loop should restart (e.g., "FALL").
                              If None, uses premiere_season.
                              If False, loops immediately after final episode.
     """
+    seasons = len(episodes_per_season)
+
+    if premiere_year is None and start_date is None:
+        raise ValueError("Must provide either 'premiere_year' (Broadcast Mode) or 'start_date' (Contiguous Mode)")
+    if premiere_year is not None and start_date is not None:
+        raise ValueError("Cannot use 'premiere_year' and 'start_date' at the same time.")
     if len(episodes_per_season) != seasons:
         raise ValueError(f"Episode count list length ({len(episodes_per_season)}) must match seasons count ({seasons})")
     
@@ -46,21 +58,23 @@ def annual_show(
     season_list = []
     generated_queries = {}
 
-    for i in range(seasons):
-        season_num = i + 1
-        
-        if show_title:
-            # Auto-generate key and query
-            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', show_title).lower()
-            key = f"__auto_{safe_title}_s{season_num}"
-            generated_queries[key] = f'{show_by_title(show_title)} AND season_number:{season_num}'
-        else:
-            key = content_pattern.format(n=season_num)
+    if start_date: # Contiguous Mode
+        current_start = start_date
+        for i in range(seasons):
+            season_num = i + 1
+            key = _get_content_key(show_title, content_pattern, season_num, generated_queries)
+            count = episodes_per_season[i]
+            season_list.append((key, count, current_start))
+            # The resolver will calculate the end date based on frequency, so we just need the start.
+            # We pass the start date of the *entire series* for each season.
+    else: # Broadcast Mode
+        for i in range(seasons):
+            season_num = i + 1
+            key = _get_content_key(show_title, content_pattern, season_num, generated_queries)
+            count = episodes_per_season[i]
+            year = premiere_year + i
+            season_list.append((key, count, (year, premiere_season)))
             
-        count = episodes_per_season[i]
-        year = premiere_year + i
-        season_list.append((key, count, (year, premiere_season)))
-        
     return Program(
         name=show_title or "Annual Show",
         content=reruns,
@@ -73,6 +87,17 @@ def annual_show(
             "generated_queries": generated_queries
         }
     )
+
+def _get_content_key(show_title, content_pattern, season_num, generated_queries):
+    """Helper to generate and register a content key for a season."""
+    if show_title:
+        safe_title = re.sub(r'[^a-zA-Z0-9]', '_', show_title).lower()
+        key = f"__auto_{safe_title}_s{season_num}"
+        generated_queries[key] = f'{show_by_title(show_title)} AND season_number:{season_num}'
+    else:
+        key = content_pattern.format(n=season_num)
+    return key
+
 
 def alternating_seasons(
     shows: List[Tuple[str, List[int]]],

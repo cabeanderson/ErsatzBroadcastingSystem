@@ -194,7 +194,7 @@ class TestScenarios(unittest.TestCase):
         print("\n[Feature] Appointment TV Injection Protection")
         
         # Setup: Active Holiday
-        self.holiday_ctx.envelope = {"halloween": 1.0}
+        self.mock_context.current_time = datetime(2026, 10, 31, 12, 0, 0)
         self.boss.roll = MagicMock(return_value=True) # Force injection roll
         
         # Setup: Content

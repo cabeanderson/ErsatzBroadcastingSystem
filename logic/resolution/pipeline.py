@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from typing import Any, Union, Optional, Tuple, List, Dict
 
 from scripts.core import registry, states
+from scripts.core.identity import stable_hash
 from scripts.core.logger import ChannelLogger
 from scripts.logic.calendar.seasonal import SeasonalBlock, resolve_seasonal_block
 from scripts.logic.models import Fallback, ResolutionResult, CommercialBreak
@@ -45,7 +46,7 @@ def _unwrap_nested_structure(target: Any, boss: Any, holiday_ctx: Any, config: A
                 changed = True
 
         elif isinstance(target, list):
-            target = boss.pick(f"resolve_list:{id(target)}", target)
+            target = boss.pick(f"resolve_list:{stable_hash(target)}", target)
             changed = True
 
         elif hasattr(target, 'pick'):
@@ -105,6 +106,8 @@ def resolve_content(target: Any, boss: Any, holiday_ctx: Any, config: Any, resol
     try:
         if target is None:  # Fallback to global fallback content if target is None
             target = config.fallback_content
+            if isinstance(target, Block):
+                logger.error(f"CONFIGURATION ERROR: fallback_content cannot be a Block ('{target.name}'). It must be a Collection or String Key.")
 
         # 1. Iterative Resolution (Unwrapping)
         target, source = _unwrap_nested_structure(target, boss, holiday_ctx, config, resolver, logger, source)
@@ -136,27 +139,6 @@ def _attempt_injection(base_key: str, tag_query: str, suffix: str, probability: 
         if tagged_key:
             return ResolutionResult(wrapper=Fallback(primary=tagged_key, secondary=base_key), source=source_label)
     return None
-
-def apply_holiday_injection(final_key: Any, resolver: Any, holiday_ctx: Any, boss: Any, logger: ChannelLogger, source: str = "schedule", enabled: bool = True) -> ResolutionResult:
-    """Check if any major holiday is active and try to inject a tagged variant."""
-    if isinstance(final_key, str) and enabled:
-        for holiday in registry.HOLIDAY_PRIORITY:
-            strength = holiday_ctx.envelope.get(holiday, 0.0)
-            if strength > 0.01:
-                res = _attempt_injection(
-                    base_key=final_key,
-                    tag_query=f"tag:{holiday}",
-                    suffix=f"_auto_{holiday}",
-                    probability=strength,
-                    roll_key=f"inject_{holiday}_{final_key}",
-                    source_label="injection",
-                    resolver=resolver,
-                    boss=boss,
-                    logger=logger
-                )
-                if res:
-                    return res
-    return ResolutionResult(key=final_key, source=source)
 
 def apply_seasonal_injection(final_key: Any, boss: Any, resolver: Any, logger: ChannelLogger, enabled: bool = True, source: str = "schedule") -> ResolutionResult:
     """
@@ -200,25 +182,85 @@ def apply_thematic_injection(final_key: Any, boss: Any, resolver: Any, logger: C
     if not enabled or not isinstance(final_key, str) or not resolver:
         return ResolutionResult(key=final_key, source=source)
 
-    from scripts.library.filters import THEMATIC_TAG_QUERIES
+    from scripts.library.filters import INJECTION_RULES
 
-    for label, tag_query in THEMATIC_TAG_QUERIES.items():
-        if boss.has(label):
-            # Fixed probability for thematic injection (40%)
-            res = _attempt_injection(
-                base_key=final_key,
-                tag_query=tag_query,
-                suffix=f"_auto_{label.lower()}",
-                probability=0.4,
-                roll_key=f"thematic_auto_tag_{label}_{final_key}_{boss.now.hour}",
-                source_label="thematic_injection",
-                resolver=resolver,
-                boss=boss,
-                logger=logger
-            )
-            if res:
-                return res
-            break # Only apply the first matching theme
+    # Get base query data for context checks (veto/overrides)
+    base_data = resolver.get_query_data(final_key)
+    base_query = ""
+    if isinstance(base_data, dict):
+        base_query = base_data.get("query", "")
+    elif isinstance(base_data, str):
+        base_query = base_data
+    
+    # Normalize base query for checking
+    base_query_lower = base_query.lower()
+
+    for label, config in INJECTION_RULES.items():
+        # 1. Determine Activation & Probability
+        is_active = False
+        probability = 0.0
+        
+        mode = config.get("mode", "static")
+        
+        if mode == "ramp":
+            signal_name = config.get("signal")
+            if signal_name:
+                strength = boss.signal(signal_name)
+                if strength > 0.01:
+                    is_active = True
+                    probability = strength * config.get("ratio", 1.0)
+        elif mode == "static":
+            check_label = config.get("label", label)
+            if boss.has(check_label):
+                is_active = True
+                probability = config.get("ratio", 1.0)
+        
+        if not is_active:
+            continue
+
+        # 2. Veto Logic
+        veto_list = config.get("veto", [])
+        veto_keywords = config.get("veto_keywords", [])
+        
+        should_veto = False
+        for v in veto_list:
+            if f"genre:{v.lower()}" in base_query_lower or f"tag:{v.lower()}" in base_query_lower:
+                should_veto = True
+                break
+        
+        if not should_veto:
+            for vk in veto_keywords:
+                if vk.lower() in base_query_lower:
+                    should_veto = True
+                    break
+        
+        if should_veto:
+            continue 
+
+        # 3. Context Overrides
+        tag_query = config.get("query")
+        overrides = config.get("overrides", {})
+        
+        for context_key, override_query in overrides.items():
+            if f"genre:{context_key.lower()}" in base_query_lower or f"tag:{context_key.lower()}" in base_query_lower:
+                tag_query = override_query
+                break
+
+        # 4. Attempt Injection
+        res = _attempt_injection(
+            base_key=final_key,
+            tag_query=tag_query,
+            suffix=f"_auto_{label.lower()}",
+            probability=probability,
+            roll_key=f"thematic_auto_tag_{label}_{final_key}_{boss.now.hour}",
+            source_label=f"injection_{label.lower()}",
+            resolver=resolver,
+            boss=boss,
+            logger=logger
+        )
+        if res:
+            return res
+        break # Only apply the first matching theme
             
     return ResolutionResult(key=final_key, source=source)
 
@@ -243,25 +285,19 @@ def apply_injections(content_key: str, *, program: Optional[Program] = None, blo
     seasonal_enabled = get_flag("enable_seasonal_injection", config.enable_seasonal_injection)
     thematic_enabled = get_flag("enable_thematic_injection", config.enable_thematic_injection)
 
-    # 1. Holiday Injection
-    res = apply_holiday_injection(
-        content_key,
-        resolver,
-        holiday_ctx,
-        boss,
-        logger,
-        source=source,
-        enabled=holiday_enabled
-    )
+    # Start with original key
+    res = ResolutionResult(key=content_key, source=source)
 
-    # 2. Seasonal Injection (Auto-Tagging)
-    # Only runs if holiday injection didn't already change the content
+    # 1. Seasonal Injection (Auto-Tagging)
     if res.key == content_key and not res.wrapper:
         res = apply_seasonal_injection(content_key, boss, resolver, logger, enabled=seasonal_enabled, source=res.source)
 
-    # 3. Thematic Injection (future)
-    if thematic_enabled and res.key == content_key and not res.wrapper:
-        res = apply_thematic_injection(content_key, boss, resolver, logger, enabled=thematic_enabled, source=res.source)
+    # 2. Thematic Injection (Unified Holiday/Theme System)
+    # Treat holiday_enabled as an alias for thematic_enabled for backward compatibility
+    unified_enabled = thematic_enabled or holiday_enabled
+    
+    if unified_enabled and res.key == content_key and not res.wrapper:
+        res = apply_thematic_injection(content_key, boss, resolver, logger, enabled=unified_enabled, source=res.source)
 
     return res
 
@@ -316,18 +352,33 @@ def extract_primary_content(obj: Any, boss: Any, holiday_ctx: Any, config: Any, 
     return None
 
 def _build_season_windows(seasons: List[Tuple[str, int, Any]], episodes_per_slot: int, frequency: str, current_date: date) -> List[Tuple[date, date, str, int]]:
-    """Constructs start/end windows for each season."""
+    """
+    Constructs start/end windows for each season.
+    This function is now more complex to handle contiguous, frequency-based scheduling.
+    """
     season_windows: List[Tuple[date, date, str, int]] = []
+    
+    # For contiguous schedules, we need to track the end of the previous season
+    last_season_end_date = None
+
     for key, count, start_raw in seasons:
-        start_dt: Optional[date] = states.resolve_season_date(start_raw, current_date)
+        # For contiguous mode, the start date might need to be the end of the previous season
+        if isinstance(start_raw, date) and last_season_end_date:
+            start_dt = last_season_end_date
+        else:
+            start_dt: Optional[date] = states.resolve_season_date(start_raw, current_date)
+
         if not isinstance(start_dt, date):
             continue
             
         # Calculate duration based on slots, not just raw count
         slots_needed: int = (count + episodes_per_slot - 1) // episodes_per_slot
-        duration: timedelta = timedelta(days=(slots_needed * 7 if frequency == "weekly" else slots_needed))
-        end_dt: date = start_dt + duration
+        
+        # Calculate the actual end date based on the frequency
+        end_dt = _calculate_end_date(start_dt, slots_needed, frequency)
+
         season_windows.append((start_dt, end_dt, key, count))
+        last_season_end_date = end_dt
     
     season_windows.sort(key=lambda x: x[0])
     return season_windows
@@ -365,14 +416,63 @@ def _apply_schedule_looping(current_date: date, season_windows: List[Tuple[date,
     return current_date
 
 def _find_active_episode(current_date: date, season_windows: List[Tuple[date, date, str, int]], episodes_per_slot: int, frequency: str) -> Optional[Tuple[str, int, int]]:
-    """Locates the specific episode for the adjusted date."""
+    """Locates the specific episode for the adjusted date, respecting frequency."""
+    weekday_map = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+
     for start, end, key, count in season_windows:
         if start <= current_date < end:
-            elapsed: int = (current_date - start).days
-            slot_idx: int = (elapsed // 7) if frequency == "weekly" else elapsed
+            slot_idx = 0
+            
+            # Normalize frequency to a list of days for consistent calculation
+            freq_list = []
+            if isinstance(frequency, list):
+                freq_list = frequency
+            elif frequency == "daily":
+                freq_list = weekday_map
+            elif frequency == "weekly":
+                # Assume it airs on the same day of the week as the premiere
+                freq_list = [weekday_map[start.weekday()]]
+
+            if freq_list:
+                d = start
+                slot_idx = 0
+                while d < current_date:
+                    if weekday_map[d.weekday()] in freq_list:
+                        slot_idx += 1
+                    d += timedelta(days=1)
+            else: # Fallback for legacy or misconfigured string
+                elapsed_days: int = (current_date - start).days
+                slot_idx = (elapsed_days // 7) if frequency == "weekly" else elapsed_days
+
             episode: int = (slot_idx * episodes_per_slot) + 1
             return (key, count, episode)
     return None
+
+def _calculate_end_date(start_date: date, slots_needed: int, frequency: Union[str, List[str]]) -> date:
+    """Calculates the end date of a block of episodes based on airing frequency."""
+    weekday_map = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+    
+    # Normalize frequency to a list of days
+    freq_list = []
+    if isinstance(frequency, list):
+        freq_list = frequency
+    elif frequency == "daily":
+        freq_list = weekday_map
+    elif frequency == "weekly":
+        freq_list = [weekday_map[start_date.weekday()]]
+
+    if freq_list:
+        d = start_date
+        slots_aired = 0
+        while slots_aired < slots_needed:
+            if weekday_map[d.weekday()] in freq_list:
+                slots_aired += 1
+            d += timedelta(days=1)
+        return d # The end date is the day *after* the last episode airs
+    else: # Legacy "weekly" or "daily" string
+        duration: timedelta = timedelta(days=(slots_needed * 7 if frequency == "weekly" else slots_needed))
+        return start_date + duration
+
 
 def resolve_scheduled_content(program: Program, current_date: date) -> Optional[Tuple[str, int, int]]:
     """

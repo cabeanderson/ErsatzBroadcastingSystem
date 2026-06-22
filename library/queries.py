@@ -9,6 +9,8 @@ import hashlib
 from typing import Optional, Union, Dict, Tuple, Any
 from scripts.settings import DEFAULT_ORDER
 
+_INJECTION_CACHE = {}
+
 # 1. CORE DEFINITIONS & GLOBAL FILTERS
 
 MOVIE = "type:movie"
@@ -84,9 +86,19 @@ def show_source(
     return " AND ".join(parts)
 
 def show_by_title(title: str) -> str:
-    """Build a TV show search by exact title."""
+    """Build a TV show search by exact title (returns Episodes)."""
     safe_title = _escape_quotes(title)
-    return f'show_title:"{safe_title}"'
+    return f'type:episode AND show_title:"{safe_title}"'
+
+def show_container_by_title(title: str) -> str:
+    """Build a TV show search by exact title (returns Show Container)."""
+    safe_title = _escape_quotes(title)
+    return f'type:show AND title:"{safe_title}"'
+
+def movie_by_title(title: str) -> str:
+    """Build a movie search by exact title."""
+    safe_title = _escape_quotes(title)
+    return f'type:movie AND title:"{safe_title}"'
 
 def playlist_ref(name: str, group: str) -> Dict[str, str]:
     """Reference an existing ErsatzTV playlist."""
@@ -141,6 +153,12 @@ def inject_tag(
         logger: ChannelLogger instance (optional).
         order: Playback order for the new key (default: Shuffle).
     """
+    cache_key = (base_key, tag_query, suffix)
+    if cache_key in _INJECTION_CACHE:
+        new_key, new_query, cached_order = _INJECTION_CACHE[cache_key]
+        resolver.register_dynamic_query(new_key, new_query, cached_order)
+        return new_key
+
     data = resolver.get_query_data(base_key)
     base_query = None
     
@@ -156,6 +174,7 @@ def inject_tag(
         resolver.register_dynamic_query(new_key, new_query, order)
         if logger:
             logger.info(f"   💉 Injected tag '{tag_query}' into '{base_key}' -> '{new_key}'")
+        _INJECTION_CACHE[cache_key] = (new_key, new_query, order)
         return new_key
     
     return None

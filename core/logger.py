@@ -11,6 +11,10 @@ class ChannelLogger:
         self.prefix: str = prefix
         self.verbose: bool = verbose
         
+        # Silence noisy libraries to prevent API request spam in logs
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("etv_client").setLevel(logging.WARNING)
+        
         # Extract clean name for file (e.g. "[SCIFI]" -> "scifi")
         clean_name = prefix.replace("[", "").replace("]", "").strip().lower()
         if not clean_name:

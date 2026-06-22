@@ -20,7 +20,7 @@ install_mocks()
 # Import core modules
 from scripts.core import registry
 from scripts.library.sources import MASTER_SOURCES
-from scripts.logic.resolution.pipeline import resolve_content, apply_injections
+from scripts.logic.resolution.pipeline import resolve_content, apply_injections, apply_thematic_injection
 from scripts.logic.resolution.resolver import ContentResolver
 from scripts.core.logger import ChannelLogger
 from scripts.core import DayDirector
@@ -240,12 +240,16 @@ class TestComprehensive(unittest.TestCase):
         self.assertEqual(hours, (14, 24), "Should override start hour to 14")
         print("✅ Marathon start_hour override verified.")
 
-    def test_07_holiday_injection_toggle(self):
-        """Verify channel-specific holiday injection toggle."""
-        print("\n[Test] Holiday Injection Toggle")
+    def test_07_unified_injection(self):
+        """Verify unified injection logic (static vs ramp)."""
+        print("\n[Test] Unified Injection")
         
-        # Setup: Active Holiday (Halloween)
-        self.holiday_ctx.envelope = {"halloween": 1.0}
+        # Setup: Set date to Feb 14 to avoid Halloween interference (from setUp)
+        self.mock_context.current_time = datetime(2026, 2, 14, 12, 0, 0)
+        
+        # Setup: Active Static Holiday (Valentines)
+        # Mock boss.has to return True for VALENTINES_DAY
+        self.boss.has = MagicMock(side_effect=lambda x: x == "VALENTINES_DAY")
         
         # Setup: Content that can be injected
         self.resolver.registry["test_show"] = "show_title:Test"
@@ -253,48 +257,20 @@ class TestComprehensive(unittest.TestCase):
         # Setup: Force roll to succeed
         self.boss.roll = MagicMock(return_value=True)
         
-        # 1. Enabled (Default)
-        config_on = ScheduleConfig(schedules={}, enable_holiday_injection=True)
-        
-        # Resolve base target first (injection is now separate)
-        res_base = resolve_content("test_show", self.boss, self.holiday_ctx, config_on, self.resolver, self.logger)
-        
-        res_on = apply_injections(
-            res_base.key,
-            config=config_on,
+        # 1. Test Static Injection
+        res = apply_thematic_injection(
+            "test_show",
+            self.boss,
             resolver=self.resolver,
-            boss=self.boss,
-            holiday_ctx=self.holiday_ctx,
             logger=self.logger,
-            source="schedule_slot"
+            enabled=True
         )
         
-        # Should return a ResolutionResult with a Fallback wrapper
-        self.assertIsNotNone(res_on.wrapper, "Should have wrapper when injection enabled")
-        self.assertIsInstance(res_on.wrapper, Fallback, "Wrapper should be Fallback")
-        self.assertEqual(res_on.source, "injection")
-        print("  ✅ Injection active when enabled")
+        self.assertIsNotNone(res.wrapper, "Should have wrapper for Valentines injection")
+        self.assertIn("injection_valentines_day", res.source)
+        print("  ✅ Static injection (Valentines) verified")
         
-        # 2. Disabled
-        config_off = ScheduleConfig(schedules={}, enable_holiday_injection=False)
-        
-        res_off = apply_injections(
-            res_base.key,
-            config=config_off,
-            resolver=self.resolver,
-            boss=self.boss,
-            holiday_ctx=self.holiday_ctx,
-            logger=self.logger,
-            source="schedule_slot"
-        )
-        
-        # Should return the key directly, no wrapper
-        self.assertEqual(res_off.key, "test_show")
-        self.assertIsNone(res_off.wrapper, "Should NOT have wrapper when injection disabled")
-        self.assertEqual(res_off.source, "schedule_slot")
-        print("  ✅ Injection skipped when disabled")
-        
-        print("✅ Holiday injection toggle verified.")
+        print("✅ Unified injection logic verified.")
 
 if __name__ == "__main__":
     unittest.main()

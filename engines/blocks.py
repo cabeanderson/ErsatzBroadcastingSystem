@@ -3,6 +3,7 @@
 Unified Program and Block Engine.
 """
 
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Dict, Optional, Union, Tuple, List, TYPE_CHECKING
 from scripts.logic.resolution.resolver import ContentResolver
@@ -18,190 +19,223 @@ from scripts.logic.resolution.config_utils import resolve_feature, resolve_comme
 from scripts.engines.dispatcher import play_commercials, play_bumper, fill_to_boundary, play_generic_branding
 
 if TYPE_CHECKING:
+    from scripts.core import DayDirector
+    from scripts.logic.calendar.holidays import HolidayContext
     from scripts.scheduling.config import ScheduleConfig
 
-def play_block_intro(api: Any, build_id: str, context: Any, intro: Optional[str], resolver: Any, logger: ChannelLogger, boss: Any = None) -> Any:
+MAX_BRIDGE_DEPTH = 5  # Safety limit for recursive bridging
+
+@dataclass
+class PlayoutSession:
+    """Groups common objects used throughout a playout session."""
+    api: Any
+    build_id: str
+    context: Any
+    resolver: "ContentResolver"
+    logger: ChannelLogger
+    boss: "DayDirector"
+    holiday_ctx: "HolidayContext"
+    config: "ScheduleConfig"
+
+def _get_next_block_item(block: Block, items_played: int, boss: "DayDirector") -> Optional[Any]:
+    """Selects the next item from a block's iterator, handling collections and lists."""
+    iterator = block.items
+    is_collection = hasattr(iterator, "pick")
+
+    if is_collection:
+        return iterator.pick(boss)
+    
+    if isinstance(iterator, list) and items_played < len(iterator):
+        return iterator[items_played]
+    
+    return None # Exhausted
+
+def play_block_intro(session: PlayoutSession, intro: Optional[str]) -> Any:
     """Helper to play a block intro."""
-    return play_generic_branding(api, build_id, context, intro, "intro", resolver, logger, boss)
+    return play_generic_branding(session, intro, "intro")
 
-def play_block_outro(api: Any, build_id: str, context: Any, outro: Optional[str], resolver: Any, logger: ChannelLogger, boss: Any = None) -> Any:
+def play_block_outro(session: PlayoutSession, outro: Optional[str]) -> Any:
     """Helper to play a block outro."""
-    return play_generic_branding(api, build_id, context, outro, "outro", resolver, logger, boss)
+    return play_generic_branding(session, outro, "outro")
 
-def play_block(api: Any, build_id: str, context: Any, item: Union[Block, Program], resolver: Any, logger: ChannelLogger, start_hour: int, end_hour: int, boss: Any, holiday_ctx: Any, config: "ScheduleConfig", day_schedule: Optional[Dict[Tuple[int, int], Any]] = None) -> Any:
+def play_block(session: PlayoutSession, item: Union[Block, Program], start_hour: int, end_hour: int, day_schedule: Optional[Dict[Tuple[int, int], Any]] = None, force_end_hour: Optional[int] = None, ignore_start_window: bool = False, bridge_depth: int = 0) -> Any:
     """Unified engine to play a Block or a single Program."""
     # Resolver is passed in to maintain active_keys cache
     if isinstance(item, Program):
-        return play_program(api, build_id, context, item, resolver, logger, boss, holiday_ctx, start_hour, end_hour, config, day_schedule=day_schedule)
+        return play_program(session, item, start_hour, end_hour, day_schedule=day_schedule, force_end_hour=force_end_hour, ignore_start_window=ignore_start_window, bridge_depth=bridge_depth)
     
     if isinstance(item, Block):
-        return _play_block_internal(api, build_id, context, item, resolver, logger, start_hour, end_hour, boss, holiday_ctx, config, day_schedule=day_schedule)
+        return _play_block_internal(session, item, start_hour, end_hour, day_schedule=day_schedule, force_end_hour=force_end_hour, ignore_start_window=ignore_start_window, bridge_depth=bridge_depth)
 
-    logger.warn(f"play_block received an unsupported type: {type(item)}")
-    return context
+    session.logger.warn(f"play_block received an unsupported type: {type(item)}")
+    return session.context
 
-def _play_block_internal(api: Any, build_id: str, context: Any, block: Block, resolver: Any, logger: ChannelLogger, start_hour: int, end_hour: int, boss: Any, holiday_ctx: Any, config: "ScheduleConfig", day_schedule: Optional[Dict[Tuple[int, int], Any]] = None) -> Any:
+def _play_block_internal(session: PlayoutSession, block: Block, start_hour: int, end_hour: int, day_schedule: Optional[Dict[Tuple[int, int], Any]] = None, force_end_hour: Optional[int] = None, ignore_start_window: bool = False, bridge_depth: int = 0) -> Any:
     """Internal logic to play a Block object (a container of Programs/content)."""
-    logger.info(f"🎬 {block.name} ({start_hour}:00-{end_hour}:00)")
+    from scripts.logic.resolution.playback import calculate_boundary_dt
+    effective_end_hour = force_end_hour if force_end_hour is not None else end_hour
+    log_suffix = f" (Forced stop at {effective_end_hour}:00)" if force_end_hour is not None else ""
+    session.logger.info(f"🎬 {block.name} ({start_hour}:00-{end_hour}:00){log_suffix}")
 
     # Resolve features and context
-    bumpers_enabled = resolve_feature(None, block.enable_bumpers, config.enable_bumpers)
-    slot_name = config.timeslot_reverse_map.get((start_hour, end_hour))
+    bumpers_enabled = resolve_feature(None, block.enable_bumpers, session.config.enable_bumpers)
+    slot_name = session.config.timeslot_reverse_map.get((start_hour, end_hour))
     
     # Check for strict window adherence (Default: True)
     # True = Hard Stop: Block ends exactly when the timeslot ends (cutting off content if needed).
     # False = Soft Stop: Block allows the current item to finish even if it overflows the timeslot.
     strict_window = getattr(block, 'strict_window', True)
 
+    # If this is a bridged block, it must adhere to the hard stop time.
+    if ignore_start_window:
+        strict_window = True
+
+    boundary_dt = calculate_boundary_dt(session.context, start_hour, effective_end_hour)
+
     items_played = 0
     epg_name = block.name if block.use_epg_group else None
-    with epg_group(api, build_id, epg_name):
-        if bumpers_enabled: context = play_block_intro(api, build_id, context, block.intro, resolver, logger, boss)
+    with epg_group(session.api, session.build_id, epg_name):
+        if bumpers_enabled: session.context = play_block_intro(session, block.intro)
         
-        last_time = context.current_time
+        last_time = session.context.current_time
         
-        iterator = block.items
-        is_collection = hasattr(block.items, "pick")
-        
-        while not context.is_done:
-            # Only check window if strict
+        while not session.context.is_done:
+            # Check if we've passed the boundary for this block.
             if strict_window:
-                hour = context.current_time.hour
-                if not hour_in_window(hour, start_hour, end_hour): logger.info(f"🕒 Block time window ended at {context.current_time.strftime('%H:%M')}"); break
+                if session.context.current_time >= boundary_dt:
+                    session.logger.info(f"🕒 Block time window ended at {session.context.current_time.strftime('%H:%M')}")
+                    break
                 
-            item_to_play = None
-            if is_collection:
-                item_to_play = iterator.pick(boss)
-            else:
-                if items_played < len(iterator): item_to_play = iterator[items_played]
-                else: logger.info("Block items exhausted."); break
+            item_to_play = _get_next_block_item(block, items_played, session.boss)
+            if item_to_play is None:
+                session.logger.info("Block items exhausted.")
+                break
             
-            if isinstance(item_to_play, Program):
-                context = play_program(api, build_id, context, item_to_play, resolver, logger, boss, holiday_ctx, start_hour, end_hour, config, parent_block=block)
+            # --- Implicit Program Refactor ---
+            # Dispatch based on the type of item. Raw items are wrapped in an implicit Program.
+
+            # Handle nested blocks (error case)
+            if isinstance(item_to_play, Block):
+                session.logger.error(f"❌ Block '{block.name}' attempted to play nested Block '{item_to_play.name}'. This is not supported. Skipping.")
+                continue
+
+            # Handle CommercialBreak objects directly
+            if isinstance(item_to_play, CommercialBreak):
+                session.context = _handle_block_item_commercial_break(session, item_to_play, block) or session.context
+            
+            # Handle explicit Program objects
+            elif isinstance(item_to_play, Program):
+                session.context = play_program(session, item_to_play, start_hour, effective_end_hour, parent_block=block, day_schedule=day_schedule)
+            
+            # All other items (strings, dicts, collections) are wrapped in an implicit Program.
             else:
-                context = play_block_item(api, build_id, context, item_to_play, block, resolver, logger, boss, holiday_ctx, config, slot_name=slot_name)
+                program_name = str(item_to_play) if isinstance(item_to_play, str) else getattr(item_to_play, 'name', 'Unnamed Item')
+                implicit_program = Program(
+                    name=f"Item: {program_name}",
+                    content=item_to_play,
+                )
+                session.context = play_program(session, implicit_program, start_hour, effective_end_hour, parent_block=block, day_schedule=day_schedule, bridge_depth=bridge_depth)
 
             items_played += 1
             
-            context = circuit_breaker(api, build_id, context, last_time, logger, fallback_content=config.fallback_content, skip_minutes=config.circuit_breaker_skip)
-            if context.current_time <= last_time:
-                logger.warn("Block item failed to advance time. Breaking block.")
+            session.context = circuit_breaker(session.api, session.build_id, session.context, last_time, session.logger, fallback_content=session.config.fallback_content, skip_minutes=session.config.circuit_breaker_skip)
+            if session.context.current_time <= last_time:
+                session.logger.warn("Block item failed to advance time. Breaking block.")
                 break
-            last_time = context.current_time
+            last_time = session.context.current_time
 
         # After loop, handle fill strategy for the block itself
         if block.fill_strategy == "bridge":
-            context = _bridge_to_next_slot(api, build_id, context, (start_hour, end_hour), day_schedule, boss, holiday_ctx, config, resolver, logger)
+            session.context = _bridge_to_next_slot(session, (start_hour, effective_end_hour), day_schedule, bridge_depth=bridge_depth)
         else:
             # Always fill/wait to boundary if we finished early, to prevent Runner from re-scheduling this slot.
             # strict_window=False allows OVERflow, but we must handle UNDERflow.
-            context = fill_to_boundary(api, build_id, context, config, resolver, logger, boss, holiday_ctx, start_hour, end_hour, strategy=block.fill_strategy, filler_content=block.filler, log_indent="   ", parent_item=block)
+            session.context = fill_to_boundary(session, start_hour, effective_end_hour, strategy=block.fill_strategy, filler_content=block.filler, log_indent="   ", parent_item=block)
 
-        if bumpers_enabled: context = play_block_outro(api, build_id, context, block.outro, resolver, logger, boss)
-    logger.info(f"🏁 {block.name} - {items_played} items played")
-    return context
+        if bumpers_enabled: session.context = play_block_outro(session, block.outro)
+    session.logger.info(f"🏁 {block.name} - {items_played} items played")
+    return session.context
 
 def _bridge_to_next_slot(
-    api: Any, build_id: str, context: Any, current_slot_tuple: Tuple[int, int], day_schedule: Dict[Tuple[int, int], Any], boss: Any, holiday_ctx: Any, config: "ScheduleConfig", resolver: Any, logger: ChannelLogger
+    session: PlayoutSession, current_slot_tuple: Tuple[int, int], day_schedule: Dict[Tuple[int, int], Any], bridge_depth: int = 0
 ) -> Any:
     """Fills the rest of a slot with content from the *next* scheduled block."""
     from scripts.logic.resolution.playback import calculate_boundary_dt
-    from scripts.logic.resolution.pipeline import extract_primary_content
-    from scripts.engines.dispatcher import maintain_playout_invariants
 
     start, end = current_slot_tuple
-    boundary_dt = calculate_boundary_dt(context, start, end)
+    boundary_dt = calculate_boundary_dt(session.context, start, end)
+
+    # 1. Safety Check: Recursion Depth
+    if bridge_depth >= MAX_BRIDGE_DEPTH:
+        session.logger.warn(f"🛑 Max bridge depth ({MAX_BRIDGE_DEPTH}) reached. Stopping recursion to prevent infinite loop.")
+        next_slot_item = None
+        next_slot_tuple = None
+    else:
+        # 2. Find the next slot in the schedule
+        next_slot_tuple = None
+        next_slot_item = None
+        if day_schedule:
+            lookup_start = 0 if end == 24 else end
+            for (s, e), entry in sorted(day_schedule.items()):
+                if s == lookup_start:
+                    next_slot_tuple = (s, e)
+                    next_slot_item = entry
+                    break
+
+    if next_slot_item and next_slot_tuple:
+        session.logger.info(f"  Bridging to next block. Handing off to playout engine. Hard stop at {end}:00")
+        # Recursively call the main block player with the next item.
+        # Pass our current slot's end time as a "force_end_hour" to ensure it stops on the boundary.
+        # Also, tell it to ignore its own start time window, since we are starting it early.
+        session.context = play_block(
+            session, next_slot_item,
+            start_hour=next_slot_tuple[0],
+            end_hour=next_slot_tuple[1],
+            day_schedule=day_schedule,
+            ignore_start_window=True,
+            bridge_depth=bridge_depth + 1
+        )
     
-    next_slot_entry = None
-    if day_schedule:
-        lookup_start = 0 if end == 24 else end
-        for (s, e), entry in sorted(day_schedule.items()):
-            if s == lookup_start:
-                next_slot_entry = entry
-                break
+    # After the bridge attempt (recursive call or not), we must ensure we are at the boundary.
+    # This handles cases where there was no next block, or the bridged block finished early.
+    if session.context.current_time < boundary_dt:
+        session.logger.info(f"  Bridge handoff complete or skipped. Filling remaining gap until {boundary_dt.strftime('%H:%M')}.")
+        session.context = fill_to_boundary(session, start, end, strategy="fill", log_indent="     ")
 
-    last_time = context.current_time
-    while context.current_time < boundary_dt:
-        if next_slot_entry:
-            try:
-                logger.info("  Bridging to next block to fill gap")
-                next_key = extract_primary_content(next_slot_entry, boss, holiday_ctx, config, resolver, logger)
-                res = apply_injections(next_key, config=config, resolver=resolver, boss=boss, holiday_ctx=holiday_ctx, logger=logger, source="slot_fill")
-                next_key = res.resolved_content
-
-                if next_key:
-                    context = play_with_fallback(api, build_id, next_key, logger, context=context)
-                else:
-                    raise ValueError("Content resolution returned None")
-            except Exception as e:
-                logger.warn(f"  ⚠️ Error resolving next block for bridge: {e}")
-                next_slot_entry = None
-        
-        if not next_slot_entry:
-            # No next slot, use standard filler/wait
-            target_hour = boundary_dt.hour
-            target_time_str = f"{target_hour:02d}:00"
-            is_tomorrow = boundary_dt.day > context.current_time.day
-            
-            filler_key = None
-            if config.enable_filler:
-                try:
-                    filler_content = resolve_filler_content(None, None, config)
-                    filler_result = resolve_content(filler_content, boss, holiday_ctx, config, resolver, logger)
-                    filler_key = filler_result.resolved_content
-                    if isinstance(filler_key, Fallback):
-                        filler_key = filler_key.primary
-                except Exception as e:
-                    logger.warn(f"  ⚠️ Bridge filler content unavailable: {e}")
-            
-            if filler_key:
-                logger.info(f"  Bridge complete. Filling until {target_time_str}")
-            else:
-                logger.info(f"  Bridge complete. Waiting until {target_time_str}")
-            
-            context = fill_until_time(api, build_id, context, logger, target_time_str, filler_key, tomorrow=is_tomorrow)
-            break
-        
-        context = maintain_playout_invariants(api, build_id, context, last_time, config, boss, holiday_ctx, resolver)
-        if context.current_time <= last_time:
-            logger.error("Bridge fill failed: circuit breaker couldn't advance time")
-            break 
-        last_time = context.current_time
-            
-    return context
+    return session.context
 
 def _resolve_and_prepare_program_content(
-    api: Any, build_id: str, program: Program, resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, config: "ScheduleConfig"
+    session: PlayoutSession, program: Program
 ) -> Tuple[Optional[Any], int]:
     """
     Resolves program content, handling Appointment TV scheduling and static content.
     Returns the content key and the number of items to play.
     """
     # 1. Appointment TV (Scheduled Content)
-    scheduled_result = resolve_scheduled_content(program, boss.now.date())
+    scheduled_result = resolve_scheduled_content(program, session.boss.now.date())
     if scheduled_result:
         key, ep_count, ep_num = scheduled_result
         ep_per_slot = program.scheduling.get("episodes_per_slot", 1)
         end_ep = min(ep_num + ep_per_slot - 1, ep_count)
         ep_str = f"{ep_num}" if ep_num == end_ep else f"{ep_num}-{end_ep}"
-        logger.info(f"     Scheduling active: Playing '{key}' (Episode {ep_str}/{ep_count})")
+        session.logger.info(f"     Scheduling active: Playing '{key}' (Episode {ep_str}/{ep_count})")
         
-        content_key, count = resolver.resolve(key), ep_per_slot
+        content_key, count = session.resolver.resolve(key), ep_per_slot
         
         # Attempt to skip to the exact episode for robust playback
         try:
-            q_data = resolver.get_query_data(key)
+            q_data = session.resolver.get_query_data(key)
             query = q_data.get("query") if isinstance(q_data, dict) else q_data
             if query and (q_season := extract_episode_range(query)[0]) is not None:
-                api.skip_to_item(build_id, ControlSkipToItem(content=key, season=q_season, episode=ep_num))
+                session.api.skip_to_item(session.build_id, ControlSkipToItem(content=key, season=q_season, episode=ep_num))
         except Exception as e: 
-            logger.warn(f"Failed to force sequence for '{key}': {e}")
+            session.logger.warn(f"Failed to force sequence for '{key}': {e}")
 
         return content_key, count
 
     # 2. Static Content
-    logger.info(f"     Playing static content for '{program.name}'")
-    res = resolve_content(program.content, boss, holiday_ctx, config, resolver, logger, parent_item=program)
+    session.logger.info(f"     Playing static content for '{program.name}'")
+    res = resolve_content(program.content, session.boss, session.holiday_ctx, session.config, session.resolver, session.logger, parent_item=program)
     
     content_key = res.resolved_content
     count = program.play_count or 1
@@ -210,175 +244,112 @@ def _resolve_and_prepare_program_content(
     if program.start_point and isinstance(program.start_point, tuple) and len(program.start_point) == 2:
         season, episode = program.start_point
         try:
-            api.skip_to_item(build_id, ControlSkipToItem(content=content_key, season=season, episode=episode))
+            session.api.skip_to_item(session.build_id, ControlSkipToItem(content=content_key, season=season, episode=episode))
         except Exception as e:
-            logger.warn(f"Failed to force sequence for '{content_key}' via start_point: {e}")
+            session.logger.warn(f"Failed to force sequence for '{content_key}' via start_point: {e}")
 
     return content_key, count
 
 def _handle_program_bumpers(
-    api: Any, build_id: str, context: Any, program: Program, parent_block: Optional[Block], config: "ScheduleConfig", resolver: Any, logger: ChannelLogger, boss: Any, content_key: str, enabled: bool
+    session: PlayoutSession, program: Program, parent_block: Optional[Block], content_key: str, enabled: bool
 ) -> Any:
     """Helper to resolve and play bumpers for a program."""
-    bumper_key = resolve_bumper_collection(program, parent_block, config)
-    return play_bumper(api, build_id, context, config, resolver, logger, boss, content_key, bumper_key=bumper_key, enabled=enabled)
+    bumper_key = resolve_bumper_collection(program, parent_block, session.config)
+    return play_bumper(session, content_key, bumper_key=bumper_key, enabled=enabled)
 
 def _handle_program_commercials(
-    api: Any, build_id: str, context: Any, program: Program, parent_block: Optional[Block], config: "ScheduleConfig", resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, slot_name: Optional[str]
+    session: PlayoutSession, program: Program, parent_block: Optional[Block], slot_name: Optional[str]
 ) -> Any:
     """Helper to resolve and play commercials for a program."""
     block_commercials = parent_block.enable_commercials if parent_block else None
-    comm_duration = resolve_commercial_duration(program, parent_block, config, slot_name=slot_name)
-    commercials_enabled = resolve_feature(program.enable_commercials, block_commercials, config.enable_commercials)
+    comm_duration = resolve_commercial_duration(program, parent_block, session.config, slot_name=slot_name)
+    commercials_enabled = resolve_feature(program.enable_commercials, block_commercials, session.config.enable_commercials)
     
     return play_commercials(
-        api, build_id, context, config, resolver, logger, boss, holiday_ctx,
+        session,
         duration=comm_duration, content=program.commercials, enabled=commercials_enabled,
         log_indent="     ", parent_item=program
     )
 
 def _handle_program_filler(
-    api: Any, build_id: str, context: Any, program: Program, parent_block: Optional[Block], config: "ScheduleConfig", resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, start_hour: int, end_hour: int
+    session: PlayoutSession, program: Program, parent_block: Optional[Block], start_hour: int, end_hour: int
 ) -> Any:
     """Helper to resolve and play filler for a program."""
     # Check parent block strictness - Special Blocks shouldn't fill gaps
     if parent_block and not getattr(parent_block, 'strict_window', True):
-        return context
+        return session.context
 
     block_filler = parent_block.enable_filler if parent_block and hasattr(parent_block, 'enable_filler') else None
-    filler_enabled = resolve_feature(program.enable_filler, block_filler, config.enable_filler)
-    filler_content = resolve_filler_content(program, parent_block, config)
+    filler_enabled = resolve_feature(program.enable_filler, block_filler, session.config.enable_filler)
+    filler_content = resolve_filler_content(program, parent_block, session.config)
     
     return fill_to_boundary(
-        api, build_id, context, config, resolver, logger, boss, holiday_ctx,
+        session,
         start_hour, end_hour, strategy=program.fill_strategy, filler_content=filler_content,
         enabled=filler_enabled, log_indent="     ", parent_item=program
     )
 
-def play_program(api: Any, build_id: str, context: Any, program: Program, resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, start_hour: int, end_hour: int, config: "ScheduleConfig", parent_block: Optional[Block] = None, day_schedule: Optional[Dict[Tuple[int, int], Any]] = None) -> Any:
+def play_program(session: PlayoutSession, program: Program, start_hour: int, end_hour: int, parent_block: Optional[Block] = None, day_schedule: Optional[Dict[Tuple[int, int], Any]] = None, force_end_hour: Optional[int] = None, ignore_start_window: bool = False, bridge_depth: int = 0) -> Any:
     """Executes a Program. Handles scheduling, branding, content playback, and fill strategy."""
-    logger.info(f"   ▶ Program: {program.name}")
+    effective_end_hour = force_end_hour if force_end_hour is not None else end_hour
+    log_suffix = f" (Forced stop at {effective_end_hour}:00)" if force_end_hour is not None else ""
+    session.logger.info(f"   ▶ Program: {program.name} ({start_hour}:00-{end_hour}:00){log_suffix}")
     
     # Resolve features and context
     block_bumpers = parent_block.enable_bumpers if parent_block else None
-    bumpers_enabled = resolve_feature(program.enable_bumpers, block_bumpers, config.enable_bumpers)
-    slot_name = config.timeslot_reverse_map.get((start_hour, end_hour))
+    bumpers_enabled = resolve_feature(program.enable_bumpers, block_bumpers, session.config.enable_bumpers)
+    slot_name = session.config.timeslot_reverse_map.get((start_hour, end_hour))
 
-    content_key, count = _resolve_and_prepare_program_content(
-        api, build_id, program, resolver, logger, boss, holiday_ctx, config
-    )
+    content_key, count = _resolve_and_prepare_program_content(session, program)
 
     if not content_key: 
-        logger.warn(f"Could not resolve content for Program '{program.name}'. Skipping.")
-        return context
+        session.logger.warn(f"Could not resolve content for Program '{program.name}'. Skipping.")
+        return session.context
 
     # Apply Injections (Holiday -> Seasonal)
-    res = apply_injections(
-        content_key,
-        program=program,
-        block=parent_block,
-        config=config,
-        resolver=resolver,
-        boss=boss,
-        holiday_ctx=holiday_ctx,
-        logger=logger,
-        source="program"
-    )
+    res = apply_injections(content_key, program=program, block=parent_block, config=session.config, resolver=session.resolver, boss=session.boss, holiday_ctx=session.holiday_ctx, logger=session.logger, source="program")
 
     content_key = res.resolved_content
 
     if bumpers_enabled: 
-        context = play_block_intro(api, build_id, context, program.intro, resolver, logger, boss)
+        session.context = play_block_intro(session, program.intro)
 
-    context = _handle_program_bumpers(
-        api, build_id, context, program, parent_block, config, resolver, logger, boss, content_key, bumpers_enabled
-    )
+    session.context = _handle_program_bumpers(session, program, parent_block, content_key, bumpers_enabled)
 
-    last_time = context.current_time
-    context = play_with_fallback(api, build_id, content_key, logger, context=context, count=count)
+    last_time = session.context.current_time
+    session.context = play_with_fallback(session.api, session.build_id, content_key, session.logger, context=session.context, count=count)
     
-    context = _handle_program_commercials(
-        api, build_id, context, program, parent_block, config, resolver, logger, boss, holiday_ctx, slot_name
-    )
+    session.context = _handle_program_commercials(session, program, parent_block, slot_name)
 
-    if context.current_time > last_time:
+    effective_end_hour = force_end_hour if force_end_hour is not None else end_hour
+    if session.context.current_time > last_time:
         if program.fill_strategy == "bridge":
-            context = _bridge_to_next_slot(api, build_id, context, (start_hour, end_hour), day_schedule, boss, holiday_ctx, config, resolver, logger)
+            session.context = _bridge_to_next_slot(session, (start_hour, effective_end_hour), day_schedule, bridge_depth=bridge_depth)
         else:
-            context = _handle_program_filler(
-                api, build_id, context, program, parent_block, config, resolver, logger, boss, holiday_ctx, start_hour, end_hour
-            )
+            session.context = _handle_program_filler(session, program, parent_block, start_hour, effective_end_hour)
 
     if bumpers_enabled: 
-        context = play_block_outro(api, build_id, context, program.outro, resolver, logger, boss)
-    return context
+        session.context = play_block_outro(session, program.outro)
+    return session.context
 
 def _handle_block_item_commercial_break(
-    api: Any, build_id: str, context: Any, cb: CommercialBreak, block: Block, resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, config: "ScheduleConfig"
+    session: PlayoutSession, cb: CommercialBreak, block: Block
 ) -> Optional[Any]:
     """Handles a CommercialBreak object found as an item in a block."""
     # Resolve the content of the break
-    cb_res = resolve_content(cb.content, boss, holiday_ctx, config, resolver, logger, parent_item=block)
+    cb_res = resolve_content(cb.content, session.boss, session.holiday_ctx, session.config, session.resolver, session.logger, parent_item=block)
     cb_key = cb_res.resolved_content
     
     if isinstance(cb_key, Fallback):
         cb_key = cb_key.primary
         
     if cb.duration_seconds > 0:
-        target_dt = context.current_time + timedelta(seconds=cb.duration_seconds)
+        target_dt = session.context.current_time + timedelta(seconds=cb.duration_seconds)
         target_time_str = target_dt.strftime("%H:%M")
-        is_tomorrow = target_dt.day > context.current_time.day
+        is_tomorrow = target_dt.day > session.context.current_time.day
         
-        logger.info(f"   ☕ Block Item: Commercial Break ({cb.duration_seconds}s)")
-        context = fill_until_time(api, build_id, context, logger, target_time_str, filler_key=cb_key, tomorrow=is_tomorrow)
-        return context
+        session.logger.info(f"   ☕ Block Item: Commercial Break ({cb.duration_seconds}s)")
+        return fill_until_time(session.api, session.build_id, session.context, session.logger, target_time_str, filler_key=cb_key, tomorrow=is_tomorrow)
     
     # If duration is 0, fall through by returning None
     return None
-
-def play_block_item(api: Any, build_id: str, context: Any, content: Any, block: Block, resolver: Any, logger: ChannelLogger, boss: Any, holiday_ctx: Any, config: "ScheduleConfig", slot_name: Optional[str] = None) -> Any:
-    """Plays raw content (string, collection) within a Block, applying block-level branding."""
-    res = resolve_content(content, boss, holiday_ctx, config, resolver, logger, parent_item=block)
-    content_key = res.resolved_content
-
-    # Handle CommercialBreak items within a block.
-    if isinstance(content_key, CommercialBreak):
-        new_context = _handle_block_item_commercial_break(
-            api, build_id, context, content_key, block, resolver, logger, boss, holiday_ctx, config
-        )
-        if new_context:
-            return new_context
-        # If duration is 0, fall through to treat as regular content
-    
-    if not content_key:
-        logger.warn(f"Could not resolve raw content in block '{block.name}'. Skipping.")
-        return context
-
-    # Apply Injections (Holiday -> Seasonal)
-    res = apply_injections(
-        content_key,
-        block=block,
-        config=config,
-        resolver=resolver,
-        boss=boss,
-        holiday_ctx=holiday_ctx,
-        logger=logger,
-        source="block_item"
-    )
-
-    content_key = res.resolved_content
-
-    context = play_with_fallback(api, build_id, content_key, logger, context=context)
-
-    # Resolve bumper flag
-    bumpers_enabled = resolve_feature(None, block.enable_bumpers, config.enable_bumpers)
-    bumper_key = resolve_bumper_collection(None, block, config)
-    context = play_bumper(api, build_id, context, config, resolver, logger, boss, content_key, bumper_key=bumper_key, enabled=bumpers_enabled)
-
-    # Block-level Commercials (between items)
-    # Resolve commercials flag
-    commercials_enabled = resolve_feature(None, block.enable_commercials, config.enable_commercials)
-    comm_duration = resolve_commercial_duration(None, block, config, slot_name=slot_name)
-    context = play_commercials(api, build_id, context, config, resolver, logger, boss, holiday_ctx, duration=comm_duration, content=block.commercials, enabled=commercials_enabled, log_indent="   ", parent_item=block)
-        
-    return context

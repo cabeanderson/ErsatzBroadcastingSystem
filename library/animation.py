@@ -3,152 +3,200 @@ Animation Content
 Collections, Blocks, and Special Programming for Cartoon Network & Adult Swim.
 """
 
-from scripts.logic.structures import RandomCollection, OrderedCollection, MarathonSequence, Block
+from datetime import date
+from scripts.logic.structures import RandomCollection, OrderedCollection, MarathonSequence, Block, Program
 from scripts.library.queries import show_by_title
+from scripts.logic.factories import annual_show
 from scripts.logic.models import Swap, ContentItem
 from scripts.logic.calendar.seasonal import SeasonalBlock
 from . import branding
 
 # --- COLLECTIONS ---
 
-# Classic Morning Blocks - OrderedCollection for morning routine
-SATURDAY_MORNING = OrderedCollection([
-    {"title": "scooby-doo, where are you!"},
-    {"title": "looney tunes"},
-    {"title": "tom and jerry"},
-    {"title": "the flintstones"},
-    {"title": "the jetsons"},
-    {"title": "popeye"},
-    {"title": "yogi bear"},
-    {"title": "superman"}
-])
+# Classic Morning Blocks
+SATURDAY_MORNING = Block(
+    name="Saturday Morning Cartoons",
+    items=OrderedCollection([
+        {"title": "scooby-doo, where are you!"},
+        {"title": "looney tunes"},
+        {"title": "tom and jerry"},
+        {"title": "the flintstones"},
+        {"title": "the jetsons"},
+        {"title": "popeye"},
+        {"title": "yogi bear"},
+        {"title": "superman"}
+    ])
+)
 
-CLASSIC_CARTOONS = RandomCollection([
-    {"title": "popeye"},
-    {"title": "looney tunes"},
-    {"title": "tom and jerry"},
-    {"title": "the flintstones"},
-    {"title": "the jetsons"},
-    {"title": "yogi bear"}
-])
+CLASSIC_CARTOONS = Block(
+    name="Classic Cartoons",
+    items=RandomCollection([
+        {"title": "popeye"},
+        {"title": "looney tunes"},
+        {"title": "tom and jerry"},
+        {"title": "the flintstones"},
+        {"title": "the jetsons"},
+        {"title": "yogi bear"}
+    ])
+)
 
-# Nickelodeon - RandomCollection for variety
-NICKTOONS_VAULT = RandomCollection([
-    {"title": "aaahh!!! real monsters"},
-    {"title": "the wild thornberrys"},
-    {"title": "spongebob squarepants"},
-    {"title": "invader zim"},
-    {"title": "avatar: the last airbender"},
-    {"title": "the legend of korra"},
-    {"title": "the ren & stimpy show"},
-    {"title": "ed, edd n eddy"}
-])
+# Nickelodeon
+NICKTOONS_VAULT = Block(
+    name="Nicktoons Vault",
+    items=RandomCollection([
+        {"title": "aaahh!!! real monsters"},
+        {"title": "the wild thornberrys"},
+        {"title": "spongebob squarepants"},
+        {"title": "invader zim"},
+        {"title": "avatar: the last airbender"},
+        {"title": "the legend of korra"},
+        {"title": "the ren & stimpy show"},
+        {"title": "ed, edd n eddy"}
+    ])
+)
 
-FOX_PRIMETIME = OrderedCollection([
-    {"title": "the simpsons"},
-    {"title": "bob's burgers"},
-    {"title": "futurama"},
-    {"title": "rick and morty"}
-])
+FOX_PRIMETIME = Block(
+    name="FOX Primetime",
+    items=OrderedCollection([
+        {"title": "the simpsons"},
+        {"title": "bob's burgers"},
+        {"title": "futurama"},
+        {"title": "rick and morty"}
+    ])
+)
 
-# Disney - OrderedCollection for afternoon block progression
-DISNEY_AFTERNOON = OrderedCollection([
-    {"title": "talespin"},
-    {"title": "chip 'n' dale rescue rangers"},
-    {"title": "goof troop"},
-    {"title": "ducktales"},
-    {"title": "darkwing duck"},
-    {"title": "kim possible"},
-    {"title": "pepper ann"}
-])
+# Disney
+DISNEY_AFTERNOON = Block(
+    name="Disney Afternoon",
+    items=OrderedCollection([
+        {"title": "talespin"},
+        {"title": "chip 'n' dale rescue rangers"},
+        {"title": "goof troop"},
+        {"title": "ducktales"},
+        {"title": "darkwing duck"},
+        {"title": "kim possible"},
+        {"title": "pepper ann"}
+    ])
+)
 
-DISNEY_MORNING = OrderedCollection([
-    {"title": "aladdin"},
-    {"title": "hercules"},
-    {"title": "mighty ducks: the animated series"},
-    {"title": "buzz lightyear of star command"},
-    {"title": "goof troop"}
-])
+DISNEY_MORNING = Block(
+    name="Disney Morning",
+    items=OrderedCollection([
+        {"title": "aladdin"},
+        {"title": "hercules"},
+        {"title": "mighty ducks: the animated series"},
+        {"title": "buzz lightyear of star command"},
+        {"title": "goof troop"}
+    ])
+)
 
-# Cartoon Network - RandomCollection for variety
-CARTOON_NETWORK_CLASSICS = RandomCollection([
-    {"title": "courage the cowardly dog"},
-    {"title": "daria"},
-    {"title": "dexter's laboratory"},
-    {"title": "the powerpuff girls"},
-    {"title": "gravity falls"},
-    {"title": "infinity train"},
-    {"title": "johnny bravo"},
-    {"title": "the owl house"},
-    {"title": "animaniacs"},
-    {"title": "pinky and the brain"}
-])
+# Cartoon Network
+CARTOON_NETWORK_CLASSICS = Block(
+    name="Cartoon Network Classics",
+    items=RandomCollection([
+        {"title": "courage the cowardly dog"},
+        {"title": "daria"},
+        {"title": "dexter's laboratory"},
+        {"title": "the powerpuff girls"},
+        {"title": "gravity falls"},
+        {"title": "infinity train"},
+        {"title": "johnny bravo"},
+        {"title": "the owl house"},
+        {"title": "animaniacs"},
+        {"title": "pinky and the brain"}
+    ])
+)
 
-# Action & Superhero - OrderedCollection for DC universe progression
-ACTION_ANIMATION = OrderedCollection([
-    {"title": "batman: the animated series", "order": "Chronological"},
-    {"title": "new batman adventures", "order": "Chronological"},
-    {"title": "batman beyond", "order": "Chronological"},
-    {"title": "justice league", "order": "Chronological"},
-    {"title": "superman: the animated series", "order": "Chronological"},
-    {"title": "x-men", "query": 'show_title:"x-men" NOT show_tag:"adult"'},
-    {"title": "spider-man"}
-])
+# Action & Superhero
+ACTION_ANIMATION = Block(
+    name="Action Animation",
+    items=OrderedCollection([
+        {"title": "batman: the animated series", "order": "Chronological"},
+        {"title": "new batman adventures", "order": "Chronological"},
+        {"title": "batman beyond", "order": "Chronological"},
+        {"title": "justice league", "order": "Chronological"},
+        {"title": "superman: the animated series", "order": "Chronological"},
+        {"title": "x-men", "query": 'show_title:"x-men" NOT show_tag:"adult"'},
+        {"title": "spider-man"}
+    ])
+)
 
-SUPERHERO_HOUR = OrderedCollection([
-    {"title": "batman: the animated series"},
-    {"title": "superman: the animated series"},
-    {"title": "justice league"},
-    {"title": "batman beyond"}
-])
+SUPERHERO_HOUR = Block(
+    name="Superhero Hour",
+    items=OrderedCollection([
+        {"title": "batman: the animated series"},
+        {"title": "superman: the animated series"},
+        {"title": "justice league"},
+        {"title": "batman beyond"}
+    ])
+)
 
-MARVEL_HOUR = OrderedCollection([
-    {"title": "x-men", "query": 'show_title:"x-men" NOT show_tag:"adult"'},
-    {"title": "spider-man"},
-    {"title": "teenage mutant ninja turtles"},
-    {"title": "SWAT Kats", "query": 'show_title:"SWAT Kats*"', "order": "Chronological"}
-])
+MARVEL_HOUR = Block(
+    name="Marvel Action Hour",
+    items=OrderedCollection([
+        {"title": "x-men", "query": 'show_title:"x-men" NOT show_tag:"adult"'},
+        {"title": "spider-man"},
+        {"title": "teenage mutant ninja turtles"},
+        {"title": "SWAT Kats", "query": 'show_title:"SWAT Kats*"', "order": "Chronological"}
+    ])
+)
 
-WB_AFTERNOON = OrderedCollection([
-    {"title": "animaniacs"},
-    {"title": "pinky and the brain"},
-    {"title": "tiny toon adventures"},
-    {"title": "scooby-doo, where are you!"},
-    {"title": "batman: the animated series"},
-    {"title": "batman beyond"}
-])
+WB_AFTERNOON = Block(
+    name="WB Afternoon",
+    items=OrderedCollection([
+        {"title": "animaniacs"},
+        {"title": "pinky and the brain"},
+        {"title": "tiny toon adventures"},
+        {"title": "scooby-doo, where are you!"},
+        {"title": "batman: the animated series"},
+        {"title": "batman beyond"}
+    ])
+)
 
-STAR_WARS_ANIMATION = RandomCollection([
-    {"title": "Clone Wars"},
-    {"title": "Clone Wars"}, # Weighted for more play
-    {"title": "Rebels"},
-    {"title": "Bad Batch"}
-])
+STAR_WARS_ANIMATION = Block(
+    name="Star Wars Animation",
+    items=RandomCollection([
+        {"title": "Clone Wars"},
+        {"title": "Clone Wars"}, # Weighted for more play
+        {"title": "Rebels"},
+        {"title": "Bad Batch"}
+    ])
+)
 
-# Misc Blocks - Plain lists for flexibility
-ANIME_BLOCK = OrderedCollection([
-    {"title": "pokémon"},
-    {"title": "Dragon Ball", "query": 'show_title:"Dragon Ball" AND release_date:[1980-01-01 TO 1989-04-21]'},
-    {"title": "Dragon Ball Z", "order": "Chronological"}, # Explicit order
-    "anime_action_tv"
-])
+# Misc Blocks
+ANIME_BLOCK = Block(
+    name="Anime Block",
+    items=OrderedCollection([
+        {"title": "pokémon"},
+        {"title": "Dragon Ball", "query": 'show_title:"Dragon Ball" AND release_date:[1980-01-01 TO 1989-04-21]'},
+        {"title": "Dragon Ball Z", "order": "Chronological"}, # Explicit order
+        "anime_action_tv"
+    ])
+)
 
-SYNDICATED_CARTOONS = RandomCollection([
-    {"title": "inspector gadget"},
-    {"title": "captain planet"},
-    {"title": "the magic school bus"},
-    {"title": "mister t"},
-    {"title": "teenage mutant ninja turtles"},
-    {"title": "gargoyles"}
-])
+SYNDICATED_CARTOONS = Block(
+    name="Syndicated Cartoons",
+    items=RandomCollection([
+        {"title": "inspector gadget"},
+        {"title": "captain planet"},
+        {"title": "the magic school bus"},
+        {"title": "mister t"},
+        {"title": "teenage mutant ninja turtles"},
+        {"title": "gargoyles"}
+    ])
+)
 
 # Animation Film
-ANIMATION_SHOWCASE = RandomCollection([
-    "ghibli_movie", 
-    "disney_movie", 
-    "pixar_movie", 
-    "dreamworks_movie"
-])
+ANIMATION_SHOWCASE = Block(
+    name="Animation Showcase",
+    items=RandomCollection([
+        "ghibli_movie", 
+        "disney_movie", 
+        "pixar_movie", 
+        # Explicitly filter DreamWorks for Animation to avoid live-action dramas
+        {"title": "DreamWorks Animation", "query": 'studio:"DreamWorks" AND genre:"Animation"'}
+    ])
+)
 
 # DBZ Marathon Collection
 DBZ_SAGAS = RandomCollection([
@@ -239,13 +287,58 @@ AS_NIGHT_B = Block(
 TOONAMI_BLOCK = Block(
     name="Toonami",
     items=OrderedCollection([
+        # Shuffle content doesn't need a start point
         {"title": "Sailor Moon", "query": 'show_title:"sailor moon" AND NOT show_title:"sailor moon crystal"', "order": "Shuffle"},
-        {"title": "Dragon Ball", "query": 'show_title:"Dragon Ball" AND release_date:[1980-01-01 TO 1989-04-21]', "order": "Chronological"},
-        {"title": "Dragon Ball Z", "order": "Chronological"},
-        {"title": "Yu Yu Hakusho", "order": "Chronological"},
-        {"title": "Rurouni Kenshin", "order": "Chronological"},
-        {"title": "Inuyasha", "order": "Chronological"},
-        {"title": "Naruto", "order": "Chronological"}
+        
+        # Toonami airs on weekdays, so we set the frequency accordingly.
+        # Start Date: Today (Mar 17, 2026) -> S01E01
+        annual_show(
+            show_title="Dragon Ball",
+            episodes_per_season=[28, 15, 14, 13, 13, 14, 13, 13, 30],
+            start_date=date(2026, 3, 17),
+            frequency=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+            loop=True
+        ),
+        # Start Date: ~66 days ago to account for weekends -> S02E08 (Total Ep 47)
+        annual_show(
+            show_title="Dragon Ball Z",
+            episodes_per_season=[39, 35, 33, 32, 26, 29, 25, 25, 47],
+            start_date=date(2025, 12, 9), # Adjusted for weekdays
+            frequency=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+            loop=True
+        ),
+        # Start Date: ~9 days ago -> S01E08
+        annual_show(
+            show_title="Yu Yu Hakusho",
+            episodes_per_season=[25, 41, 28, 18],
+            start_date=date(2026, 3, 6), # Adjusted for weekdays
+            frequency=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+            loop=True
+        ),
+        # Start Date: ~37 days ago -> S02E01 (Total Ep 28)
+        annual_show(
+            show_title="Rurouni Kenshin",
+            episodes_per_season=[27, 35, 33],
+            start_date=date(2026, 1, 29), # Adjusted for weekdays
+            frequency=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+            loop=True
+        ),
+        # Start Date: ~25 days ago -> S01E20
+        annual_show(
+            show_title="Inuyasha",
+            episodes_per_season=[27, 27, 27, 27, 27, 27, 7],
+            start_date=date(2026, 2, 12), # Adjusted for weekdays
+            frequency=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+            loop=True
+        ),
+        # Start Date: ~12 days ago -> S01E10
+        annual_show(
+            show_title="Naruto",
+            episodes_per_season=[35, 48, 48, 48, 41],
+            start_date=date(2026, 3, 3), # Adjusted for weekdays
+            frequency=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+            loop=True
+        )
     ]),
     intro=branding.BRANDING_TOONAMI.intro,
     outro=branding.BRANDING_TOONAMI.outro,
@@ -255,7 +348,7 @@ TOONAMI_BLOCK = Block(
 
 FOX_KIDS_BLOCK = Block(
     name="Fox Kids",
-    items=MARVEL_HOUR,
+    items=MARVEL_HOUR.items,
     intro=branding.BRANDING_90S_KIDS.intro,
     outro=branding.BRANDING_90S_KIDS.outro,
     bumpers=branding.BRANDING_90S_KIDS.bumpers,

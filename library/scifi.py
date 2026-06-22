@@ -108,10 +108,34 @@ SCIFI_SUNDAY_BLOCK = Block(
     name="Sci-Fi Sunday Night",
     items=[
         # 8:00pm Slot
-        annual_show(show_title="Lost", seasons=6, episodes_per_season=[25, 24, 23, 14, 17, 18], premiere_year=2026, premiere_season="FALL", reruns=LOST_FILLERS, loop=True),
+        annual_show(
+            show_title="Lost",
+            episodes_per_season=[25, 24, 23, 14, 17, 18],
+            premiere_year=2026,
+            premiere_season=("FALL", "SUNDAY"),
+            frequency=["SUNDAY"],
+            reruns=LOST_FILLERS,
+            loop=True
+        ),
         # 9:00pm Slot
-        annual_show(show_title="Alias", seasons=5, episodes_per_season=[22, 22, 22, 22, 17], premiere_year=2026, premiere_season="WINTER", reruns=ALIAS_FILLERS, loop=True),
+        annual_show(
+            show_title="Alias",
+            episodes_per_season=[22, 22, 22, 22, 17],
+            premiere_year=2026,
+            premiere_season=("WINTER", "SUNDAY"),
+            frequency=["SUNDAY"],
+            reruns=ALIAS_FILLERS,
+            loop=True
+        ),
         # 10:00pm Slot
-        annual_show(show_title="Fringe", seasons=5, episodes_per_season=[20, 23, 22, 22, 13], premiere_year=2027, premiere_season="SPRING", reruns=FRINGE_FILLERS, loop=True)
+        annual_show(
+            show_title="Fringe",
+            episodes_per_season=[20, 23, 22, 22, 13],
+            premiere_year=2027,
+            premiere_season=("SPRING", "SUNDAY"),
+            frequency=["SUNDAY"],
+            reruns=FRINGE_FILLERS,
+            loop=True
+        )
     ]
 )

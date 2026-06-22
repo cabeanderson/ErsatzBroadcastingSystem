@@ -837,6 +837,7 @@ logger.event("Marathon starting")
 - Use resolution order intentionally
 - Layer overrides (day → seasonal → holiday)
 - Provide fallbacks
+Ensure `fallback_content` is a **Collection** or **String Key**.
 - Test edge cases (midnight wraparound, etc.)
 
 **DON'T:**
