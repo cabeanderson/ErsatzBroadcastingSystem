@@ -52,7 +52,7 @@ LEGAL_BLOCK = Block(
 
 DETECTIVE_USA_BLOCK = Block(
     name="USA Network Block",
-    items=RandomCollection([
+    items=OrderedCollection([
         {"title": "monk"},
         {"title": "psych"}
     ])

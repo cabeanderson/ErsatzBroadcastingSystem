@@ -177,6 +177,11 @@ class ContentResolver:
 
     def get_query_data(self, key: str) -> Optional[Union[str, Dict[str, Any]]]:
         """Retrieve raw query data for a key from the registry."""
+        # Defensive: only string keys are registry-addressable. A non-string
+        # (e.g. a Block leaking through resolution) would raise "unhashable type"
+        # on the dict lookups below, aborting the whole run.
+        if not isinstance(key, str):
+            return None
         if key in self.dynamic_registry:
             return self.dynamic_registry[key]
         return self.registry.get(key)
