@@ -98,7 +98,7 @@ if halloween_strength > 0.7:
 
 **How It Works:**
 ```python
-# RNG seeded by: "2026-01-14::roll:marathon"
+# Hashed from: "2026-01-14::marathon"  (SHA-256 -> uniform float)
 boss.roll(0.05, "marathon")  # 5% daily chance
 
 # Always returns same result for Jan 14
@@ -460,17 +460,33 @@ trigger = with_probability(0.05, "dbz_marathon")
 3. At marathon start hour:
    - Override normal schedule
    - Pick marathon from collection
-   - Run marathon engine
+   - Convert to a Block of Programs
 4. Marathon plays until:
-   - Time limit reached, OR
-   - Episodes exhausted, OR
-   - Midnight
+   - Its window ends, OR
+   - Episodes exhausted
 5. Return to normal schedule
 ```
 
+**Bounded vs. unbounded content**
+
+How a marathon is committed to the playout depends on whether its query has a
+known length. This matters: ErsatzTV's `add_count` has *no* time bound, so a
+guessed count is not a safe way to express "play until the slot ends".
+
+| Content | Example | How it plays |
+|---|---|---|
+| Bounded — query names a season/episode range | `dbz_frieza_saga_tv` (S3 E1-33) | `play_count` = 33, one `add_count` |
+| Unbounded — query is a whole show | `simpsons_random_marathon` | `fill_window=True`, one `add_duration` for the remaining window |
+
+An unbounded marathon must never be given a large `play_count`; ErsatzTV commits
+every item in a single call and the slot overruns by days. See
+[ERSATZTV_API.md](ERSATZTV_API.md) and the resolved entry in
+[KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+
 **Features:**
 - Auto-detects starting episode from query
-- Skips to starting episode
+- Skips to starting episode (once, before playback -- the cursor then advances
+  on its own)
 - EPG grouping (shows "DBZ Marathon" instead of individual episodes)
 - Episode counting
 - Safety checks

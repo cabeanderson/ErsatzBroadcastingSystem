@@ -5,9 +5,10 @@ Handles ErsatzTV API interaction, circuit breakers, and utilities.
 """
 
 from etv_client.models import (
-    PlayoutCount, 
-    ControlWaitUntil, 
-    PlayoutPadUntil, 
+    PlayoutCount,
+    PlayoutDuration,
+    ControlWaitUntilExact,
+    PlayoutPadUntilExact,
     ControlStartEpgGroup
 )
 from datetime import datetime, timedelta
@@ -54,6 +55,46 @@ def play_item(api: Any, build_id: str, content_key: str, logger: ChannelLogger, 
     return api.get_context(build_id)
 
 
+def play_for_duration(api: Any, build_id: str, content_key: Any, logger: ChannelLogger,
+                      until: datetime, context: Any = None, filler_key: Optional[str] = None) -> Any:
+    """
+    Adds items from content_key until `until`, then returns the updated context.
+
+    Unlike play_item(count=N), this is bounded by the clock: ErsatzTV fits whole
+    items into the span and stops. Use it for open-ended content (a marathon of
+    a whole show) where a count would be a guess -- and where guessing high
+    overruns the slot by days, because add_count applies no time bound at all.
+    """
+    if context is None:
+        context = api.get_context(build_id)
+
+    remaining = until - context.current_time
+    if remaining.total_seconds() <= 0:
+        logger.debug(f"play_for_duration: no time left before {until:%H:%M}, nothing to add")
+        return context
+
+    if isinstance(content_key, Fallback):
+        content_key = content_key.primary
+    if not isinstance(content_key, str):
+        logger.warn(f"play_for_duration received non-string content: {type(content_key)}")
+        content_key = str(content_key)
+
+    total_minutes = int(remaining.total_seconds() // 60)
+    duration = f"{total_minutes // 60:02d}:{total_minutes % 60:02d}:00"
+    logger.info(f"    ↳ Filling {duration} until {until:%H:%M} from '{content_key}'")
+
+    try:
+        return api.add_duration(build_id, PlayoutDuration(
+            content=content_key,
+            duration=duration,
+            fallback=filler_key,
+            stop_before_end=True
+        ))
+    except Exception as e:
+        logger.warn(f"API add_duration failed for {content_key}: {e}")
+        return api.get_context(build_id)
+
+
 def play_with_fallback(api: Any, build_id: str, content: Any, logger: ChannelLogger, context: Any = None, count: int = 1) -> Any:
     """
     Plays content, handling Fallback objects gracefully.
@@ -98,63 +139,73 @@ def play_with_fallback(api: Any, build_id: str, content: Any, logger: ChannelLog
 # 2. TIME MANAGEMENT
 # ==============================================================================
 
-def wait_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger, target_time: str, tomorrow: bool = False) -> Any:
+# Both helpers below take an absolute datetime and use ErsatzTV's *_exact
+# endpoints rather than the time-of-day ones. The HH:MM variants take no date:
+# the day is carried by a separate `tomorrow` flag, and when the clock is
+# already past the given time of day with tomorrow=False, ErsatzTV schedules
+# NOTHING and reports no error (see PadUntil/WaitUntil in SchedulingEngine).
+# Callers were computing that flag as `target.day > now.day`, which is False
+# across a month boundary (Aug 31 -> Sep 1 is `1 > 31`) -- producing exactly
+# that silent no-op. ErsatzTV also flags its own time-of-day reconstruction as
+# "wrong when offset changes" (DST). Passing a full datetime avoids all of it.
+
+def wait_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger, target_dt: datetime, rewind_on_reset: bool = False) -> Any:
     """
-    Waits (dead air) until target_time.
+    Waits (dead air) until target_dt.
     Creates a hard jump in the timeline.
-    
+
     Args:
         api: ErsatzTV API instance
         build_id: Build UUID
         context: Current playout context (unused but kept for signature consistency)
         logger: ChannelLogger instance (unused but kept for signature consistency)
-        target_time: Time to jump to (HH:MM format)
-        tomorrow: If True, jumps to next day
-    
+        target_dt: Absolute datetime to jump to
+        rewind_on_reset: Allow the build clock to move backward during a reset
+
     Returns:
         Updated context
     """
-    api.wait_until(build_id, ControlWaitUntil(when=target_time, tomorrow=tomorrow))
-    return api.get_context(build_id)
+    return api.wait_until_exact(build_id, ControlWaitUntilExact(
+        when=target_dt,
+        rewind_on_reset=rewind_on_reset
+    ))
 
 
-def fill_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger, target_time: str, filler_key: Optional[str] = None, tomorrow: bool = False) -> Any:
+def fill_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger, target_dt: datetime, filler_key: Optional[str] = None) -> Any:
     """
-    Pads until target_time with filler content.
+    Pads until target_dt with filler content.
     Falls back to wait_until_time if no filler or if padding fails.
-    
+
     Args:
         api: ErsatzTV API instance
         build_id: Build UUID
         context: Current playout context
         logger: ChannelLogger instance
-        target_time: Time to pad until (HH:MM format)
+        target_dt: Absolute datetime to pad until
         filler_key: Content key for filler (optional)
-        tomorrow: If True, pads until target time on next day
-    
+
     Returns:
         Updated context
     """
     if filler_key:
         try:
-            api.pad_until(build_id, PlayoutPadUntil(
-                when=target_time, 
-                content=filler_key, 
-                tomorrow=tomorrow
+            return api.pad_until_exact(build_id, PlayoutPadUntilExact(
+                when=target_dt,
+                content=filler_key,
+                stop_before_end=True
             ))
-            return api.get_context(build_id)
         except Exception as e:
             logger.warn(f"Pad until failed: {e}. Using wait instead.")
             # Fall through to wait_until_time
-    
+
     # No filler or filler failed - just wait (dead air)
-    return wait_until_time(api, build_id, context, logger, target_time, tomorrow=tomorrow)
+    return wait_until_time(api, build_id, context, logger, target_dt)
 
 
 def fill_until_next_hour(api: Any, build_id: str, context: Any, logger: ChannelLogger, filler_key: str) -> Any:
     """
     Convenience wrapper - pads to next hour boundary.
-    
+
     Args:
         api: ErsatzTV API instance
         build_id: Build UUID
@@ -162,9 +213,10 @@ def fill_until_next_hour(api: Any, build_id: str, context: Any, logger: ChannelL
         logger: ChannelLogger instance
         filler_key: Content key for filler content
     """
-    next_hour = (context.current_time.hour + 1) % 24
-    tomorrow = (next_hour == 0)
-    return fill_until_time(api, build_id, context, logger, f"{next_hour:02d}:00", filler_key, tomorrow=tomorrow)
+    next_hour_dt = (context.current_time + timedelta(hours=1)).replace(
+        minute=0, second=0, microsecond=0
+    )
+    return fill_until_time(api, build_id, context, logger, next_hour_dt, filler_key)
 
 
 # ==============================================================================
@@ -207,15 +259,14 @@ def circuit_breaker(
         
         # Force time skip as last resort
         new_time = context.current_time + timedelta(minutes=skip_minutes)
-        tomorrow = new_time.date() > context.current_time.date()
-        
+
         logger.warn(
             f"🔧 Forcing time skip: {context.current_time.strftime('%H:%M')} → "
             f"{new_time.strftime('%H:%M')}"
         )
-        
+
         try:
-            return wait_until_time(api, build_id, context, logger, new_time.strftime("%H:%M"), tomorrow=tomorrow)
+            return wait_until_time(api, build_id, context, logger, new_time)
         except Exception as e:
             logger.error(f"🛑 Circuit breaker failed: {e}")
             return context

@@ -287,16 +287,30 @@ context = run_daily_schedule(api, context, build_id, config)
 ### Playout
 ```python
 from scripts.playout import (
-    ChannelLogger,              # Structured logging
-    play_item,                  # Play single item
-    is_long_form,               # Detect movies/TV/events
-    align_to_time,              # Jump to time (gap)
-    fill_until_time,            # Pad to time with filler
-    is_approaching_hour_boundary,  # Check if near hour
-    fill_until_next_hour,       # Pad to next hour
+    play_item,                  # Add N items (add_count) -- NO time bound
+    play_for_duration,          # Add items until a datetime (add_duration)
+    play_with_fallback,         # Play content, handling Fallback objects
+    wait_until_time,            # Dead air until a datetime (wait_until_exact)
+    fill_until_time,            # Pad with filler until a datetime (pad_until_exact)
+    fill_until_next_hour,       # Pad to the next hour boundary
     circuit_breaker,            # Prevent infinite loops
-    toggle_marathon_branding,   # EPG group control
-    toggle_watermark_for_content  # Watermark control
+    toggle_epg_group,           # EPG group control
+    epg_group                   # EPG group context manager
+)
+```
+
+`wait_until_time` and `fill_until_time` take an absolute `datetime`, not an
+`"HH:MM"` string -- see [ERSATZTV_API.md](ERSATZTV_API.md) for why the
+time-of-day endpoints are avoided.
+
+Related helpers live elsewhere:
+
+```python
+from scripts.core.logger import ChannelLogger              # Structured logging
+from scripts.logic.resolution.playback import (
+    is_approaching_hour_boundary,  # Check if near hour
+    calculate_boundary_dt,         # End-of-slot datetime (handles midnight wrap)
+    hour_in_window                 # Slot membership test
 )
 
 # Usage

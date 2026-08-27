@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 # --- Marathon Conversion Logic (Moved from engines/marathon.py) ---
 
 INFINITE = None
-DEFAULT_MARATHON_LIMIT = 1000
 
 class MarathonItem(ABC):
     @abstractmethod
@@ -95,9 +94,19 @@ def _convert_marathon_to_block(marathon: Marathon, marathon_key: Any, resolver: 
                 start_point = (r_season, 1)
                 logger.info(f"   🎲 Marathon random start configured: S{r_season}E1")
 
-        # Convert INFINITE (None) to a large number to ensure continuous play
-        final_count = play_count if play_count is not None else DEFAULT_MARATHON_LIMIT
-        program_items.append(Program(name=f"{epg_title} - Part {i+1}", content=raw_item, play_count=final_count, start_point=start_point, force_start=True))
+        # Unbounded content (a whole show, no episode range) has no meaningful
+        # count. Substituting a large one is not "continuous play": ErsatzTV's
+        # add_count applies no time bound and commits every item in a single
+        # call, so a 6-hour slot became days of playout. Flag it instead, and
+        # let the engine ask for exactly the remaining window via add_duration.
+        program_items.append(Program(
+            name=f"{epg_title} - Part {i+1}",
+            content=raw_item,
+            play_count=play_count,
+            fill_window=play_count is None,
+            start_point=start_point,
+            force_start=True
+        ))
 
     # Strategy "yield" ensures that if content runs out, we return to the Runner to pick up the normal schedule
     return Block(name=epg_title, items=program_items, use_epg_group=True, strict_window=True, fill_strategy="yield", filler=filler)

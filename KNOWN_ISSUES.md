@@ -24,9 +24,58 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
   / `reset_injection_cache()` are called at the start of `ScheduleRunner.run()`,
   scoping both caches to a single build. Verified entries don't survive a run.
 
+- ~~🔴 **Run-aborting crash when a content-less Program hit a Block fallback.**~~
+  An off-season Appointment Program (`content=None`, no active schedule) fell
+  through to static resolution, which substituted `config.fallback_content`. When
+  that fallback is a `Block`/Collection (e.g. Cartoon Network's
+  `fallback_content=CLASSIC_CARTOONS`), the Block was handed downstream and
+  `get_query_data` did `Block in dict` → `TypeError: unhashable type`, aborting the
+  entire `run()` — i.e. "the channel just stops having content." Fixed: such
+  programs skip cleanly (`engines/blocks.py`), and `get_query_data` is
+  type-guarded (`logic/resolution/resolver.py`). Verified: 14 continuous days of
+  Cartoon Network now schedule content with no crash.
+
+- ~~🔴 **Marathons overran their window by days.** A marathon whose content is
+  unbounded (a whole show, no episode range — e.g. `simpsons_random_marathon`)
+  resolved to `play_count = None`, which `_convert_marathon_to_block` replaced
+  with `DEFAULT_MARATHON_LIMIT = 1000` "to ensure continuous play". That became
+  a single `add_count(count=1000)`, and ErsatzTV's `AddCountInternal` applies no
+  time bound at all — it commits every item in one call. `strict_window` could
+  not help: it is checked *between* block items, and the marathon block held
+  exactly one. A 6-hour Simpsons slot became ~14 days of playout.~~ Fixed:
+  `Program.fill_window` marks unbounded marathon content, and the engine asks
+  for exactly the remaining window via `add_duration` (`playout.play_for_duration`).
+  Verified: the 2026-04-30 Simpsons marathon now runs 16 items inside 16:00–22:00,
+  down from 1000 items spanning 13d 21h. Regression test:
+  `TestMarathonWindow.test_unbounded_marathon_stays_in_window`.
+- ~~🟠 **`pad_until` / `wait_until` silently did nothing across month
+  boundaries.**~~ The HH:MM endpoints carry the date in a separate `tomorrow`
+  flag, and ErsatzTV schedules *nothing* (no error) when the target time of day
+  has passed and `tomorrow` is false. All three call sites computed it as
+  `target.day > now.day`, which is False on Aug 31 → Sep 1 (`1 > 31`). That is
+  the "pad under-filled" failure the safety net in `fill_to_boundary` was
+  papering over. Fixed: `fill_until_time` / `wait_until_time` take a `datetime`
+  and call `pad_until_exact` / `wait_until_exact`, which also avoid ErsatzTV's
+  own acknowledged DST bug in the time-of-day variants.
+- ~~🟠 **The simulator could not reproduce API-contract bugs.** `MockAPI.add_count`
+  ignored `count`, there was no per-key enumerator, and `pad_until`/`wait_until`
+  always jumped to their target.~~ Fixed: the mock now follows
+  `SchedulingEngine.cs`, the build window defaults to 2 days (matching
+  `PlayoutDaysToBuild`), and API round trips are counted. Pinned by
+  `TestApiContract` (8 tests). See [ERSATZTV_API.md](ERSATZTV_API.md).
+
 ## Open
 
 ### 🟠 Correctness / robustness
+
+- [ ] **Redundant `get_context` on the hottest path.** Every scheduling endpoint
+  (`add_count`, `add_duration`, `pad_*`, `wait_until*`) already returns a
+  `PlayoutContext`, but `playout.play_item` discards it and issues a separate
+  `get_context`, doubling HTTP round trips per item. ErsatzTV kills the build at
+  30s (`PlayoutScriptedScheduleTimeoutSeconds`) and a non-zero exit fails it
+  outright; a Cartoon Network day currently costs ~300 calls, roughly half of
+  them redundant. `play_for_duration`, `fill_until_time` and `wait_until_time`
+  already return the API's own response — `play_item` is the one left.
 
 - [ ] **Errors swallowed into dead air.** `playout.play_item` catches all
   exceptions and returns an unadvanced context; pre-registration and several

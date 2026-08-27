@@ -9,10 +9,10 @@ from typing import Any, Dict, Optional, Union, Tuple, List, TYPE_CHECKING
 from scripts.logic.resolution.resolver import ContentResolver
 from scripts.logic.resolution.pipeline import resolve_content, apply_injections, resolve_scheduled_content
 from scripts.core.logger import ChannelLogger
-from scripts.playout import play_item, epg_group, fill_until_time, play_with_fallback, wait_until_time, circuit_breaker
+from scripts.playout import play_item, epg_group, fill_until_time, play_with_fallback, play_for_duration, wait_until_time, circuit_breaker
 from scripts.logic.models import Fallback, CommercialBreak
 from scripts.logic.structures import Block, Program
-from scripts.logic.resolution.playback import hour_in_window
+from scripts.logic.resolution.playback import hour_in_window, calculate_boundary_dt
 from scripts.library.queries import extract_episode_range
 from etv_client.models import ControlSkipToItem
 from scripts.logic.resolution.config_utils import resolve_feature, resolve_commercial_duration, resolve_filler_content, resolve_bumper_collection
@@ -234,11 +234,25 @@ def _resolve_and_prepare_program_content(
         return content_key, count
 
     # 2. Static Content
+    # An appointment program that is off-season (no scheduled_result above) and
+    # has no static content must be skipped — NOT routed through the channel-level
+    # fallback, which may be a Block/Collection and is invalid as program content
+    # (nested block). Pulling it in here previously crashed the entire run.
+    if program.content is None:
+        session.logger.warn(f"Program '{program.name}' has no active scheduled content and no static content; skipping.")
+        return None, 0
+
     session.logger.info(f"     Playing static content for '{program.name}'")
     res = resolve_content(program.content, session.boss, session.holiday_ctx, session.config, session.resolver, session.logger, parent_item=program)
-    
+
     content_key = res.resolved_content
     count = program.play_count or 1
+
+    # Resolution can still yield a non-string wrapper (e.g. a Block) — that is not
+    # valid as a single program's content. Skip cleanly rather than crash downstream.
+    if content_key is not None and not isinstance(content_key, (str, Fallback)):
+        session.logger.warn(f"Program '{program.name}' resolved to non-playable {type(content_key).__name__}; skipping.")
+        return None, 0
 
     # Handle start_point for static content (marathon-converted programs)
     if program.start_point and isinstance(program.start_point, tuple) and len(program.start_point) == 2:
@@ -317,8 +331,17 @@ def play_program(session: PlayoutSession, program: Program, start_hour: int, end
     session.context = _handle_program_bumpers(session, program, parent_block, content_key, bumpers_enabled)
 
     last_time = session.context.current_time
-    session.context = play_with_fallback(session.api, session.build_id, content_key, session.logger, context=session.context, count=count)
-    
+    if program.fill_window:
+        # Open-ended content: bound by the clock, not by a guessed item count.
+        boundary_dt = calculate_boundary_dt(session.context, start_hour, effective_end_hour)
+        session.context = play_for_duration(
+            session.api, session.build_id, content_key, session.logger,
+            until=boundary_dt, context=session.context,
+            filler_key=session.config.filler_content if isinstance(session.config.filler_content, str) else None
+        )
+    else:
+        session.context = play_with_fallback(session.api, session.build_id, content_key, session.logger, context=session.context, count=count)
+
     session.context = _handle_program_commercials(session, program, parent_block, slot_name)
 
     effective_end_hour = force_end_hour if force_end_hour is not None else end_hour
@@ -345,11 +368,9 @@ def _handle_block_item_commercial_break(
         
     if cb.duration_seconds > 0:
         target_dt = session.context.current_time + timedelta(seconds=cb.duration_seconds)
-        target_time_str = target_dt.strftime("%H:%M")
-        is_tomorrow = target_dt.day > session.context.current_time.day
-        
+
         session.logger.info(f"   ☕ Block Item: Commercial Break ({cb.duration_seconds}s)")
-        return fill_until_time(session.api, session.build_id, session.context, session.logger, target_time_str, filler_key=cb_key, tomorrow=is_tomorrow)
+        return fill_until_time(session.api, session.build_id, session.context, session.logger, target_dt, filler_key=cb_key)
     
     # If duration is 0, fall through by returning None
     return None

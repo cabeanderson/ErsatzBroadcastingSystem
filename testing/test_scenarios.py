@@ -6,6 +6,8 @@ Covers Smoke Tests, Edge Cases, and Feature Toggles.
 
 import sys
 import os
+import io
+import contextlib
 import unittest
 from datetime import datetime, date, timedelta
 from unittest.mock import MagicMock, patch
@@ -30,6 +32,11 @@ from scripts.logic.resolution.config_utils import resolve_feature
 from scripts.logic.resolution.playback import hour_in_window, calculate_boundary_dt
 from scripts.playout import play_with_fallback
 from scripts.logic.calendar import assemble_day_schedule
+from scripts.testing.simulator import MockAPI, MockContext
+from etv_client.models import (
+    PlayoutCount, PlayoutPadUntil, PlayoutPadUntilExact,
+    ControlWaitUntil, ControlSkipToItem,
+)
 
 class TestScenarios(unittest.TestCase):
 
@@ -254,8 +261,144 @@ class TestScenarios(unittest.TestCase):
             source="test"
         )
         self.assertIsNotNone(res_explicit.wrapper, "Explicit enable should allow injection")
-        
+
         print("✅ Appointment TV injection protection verified")
+
+
+class TestApiContract(unittest.TestCase):
+    """Guards the ErsatzTV API semantics documented in ERSATZTV_API.md.
+
+    These assert against the mock, so they are only as good as the mock's
+    fidelity to SchedulingEngine.cs -- that is the point. Each one previously
+    passed vacuously because the mock did not model the behaviour at all.
+    """
+
+    def _api(self, start=datetime(2026, 4, 30, 12, 0), mode="continue"):
+        ctx = MockContext(start)
+        return MockAPI(ctx, mode=mode), ctx
+
+    def test_add_count_appends_every_item(self):
+        """add_count(N) appends N items -- it is not a single-item call."""
+        api, ctx = self._api()
+        api.content_durations["show"] = 30
+        api.add_count("b", PlayoutCount(content="show", count=4))
+
+        played = [e for e in api.schedule if e['type'] == 'content']
+        self.assertEqual(len(played), 4, "add_count must append `count` items")
+        self.assertEqual(ctx.current_time, datetime(2026, 4, 30, 14, 0),
+                         "time must advance by the total duration of all items")
+        print("✅ add_count honors count")
+
+    def test_add_count_has_no_time_bound(self):
+        """add_count applies no boundary; it will run past the build window.
+
+        This is the behaviour that turned a 6-hour marathon slot into days of
+        playout, so it must stay visible rather than be smoothed over.
+        """
+        api, ctx = self._api(start=datetime(2026, 4, 30, 22, 0))
+        api.content_durations["show"] = 30
+        api.add_count("b", PlayoutCount(content="show", count=200))
+
+        self.assertGreater(ctx.current_time, ctx.finish_time,
+                           "add_count is expected to overrun the build window")
+        print("✅ add_count overruns the window (bounding is the caller's job)")
+
+    def test_enumerator_persists_across_calls(self):
+        """One cursor per content key, advancing across separate calls."""
+        api, _ = self._api()
+        api.content_counts["show"] = 10
+        for _ in range(3):
+            api.add_count("b", PlayoutCount(content="show", count=1))
+
+        indices = [e['item_index'] for e in api.schedule if e['type'] == 'content']
+        self.assertEqual(indices, [0, 1, 2],
+                         "separate add_count calls must continue the sequence")
+        print("✅ enumerator persists across calls")
+
+    def test_skip_to_item_positions_cursor_once(self):
+        """skip_to_item repositions; it does not pin the cursor."""
+        api, _ = self._api()
+        api.content_counts["show"] = 30
+        api.skip_to_item("b", ControlSkipToItem(content="show", season=3, episode=5))
+        api.add_count("b", PlayoutCount(content="show", count=3))
+
+        indices = [e['item_index'] for e in api.schedule if e['type'] == 'content']
+        self.assertEqual(indices, [4, 5, 6], "playback must continue from the skip point")
+        print("✅ skip_to_item positions the cursor")
+
+    def test_pad_until_is_a_silent_noop_when_target_passed(self):
+        """The documented trap: past target + tomorrow=False schedules nothing."""
+        api, ctx = self._api(start=datetime(2026, 4, 30, 23, 40))
+        api.pad_until("b", PlayoutPadUntil(content="filler", when="00:00", tomorrow=False))
+
+        self.assertEqual(ctx.current_time, datetime(2026, 4, 30, 23, 40),
+                         "pad_until must not advance time when the target has passed")
+        self.assertEqual([e for e in api.schedule if e['type'] == 'content'], [],
+                         "pad_until must schedule no content in this case")
+        print("✅ pad_until no-op semantics modelled")
+
+    def test_wait_until_does_not_roll_to_tomorrow_on_its_own(self):
+        """wait_until with tomorrow=False does not advance a passed target."""
+        api, ctx = self._api(start=datetime(2026, 4, 30, 23, 40))
+        api.wait_until("b", ControlWaitUntil(when="00:00", tomorrow=False))
+
+        self.assertEqual(ctx.current_time, datetime(2026, 4, 30, 23, 40),
+                         "wait_until must not silently roll forward a day")
+        print("✅ wait_until no-op semantics modelled")
+
+    def test_wait_until_rewinds_only_during_reset(self):
+        """rewind_on_reset moves the clock backward, but only in reset mode."""
+        api, ctx = self._api(start=datetime(2026, 4, 30, 6, 0), mode="reset")
+        api.wait_until("b", ControlWaitUntil(when="00:00", tomorrow=False, rewind_on_reset=True))
+        self.assertEqual(ctx.current_time, datetime(2026, 4, 30, 0, 0),
+                         "reset builds may rewind to the target")
+
+        api2, ctx2 = self._api(start=datetime(2026, 4, 30, 6, 0), mode="continue")
+        api2.wait_until("b", ControlWaitUntil(when="00:00", tomorrow=False, rewind_on_reset=True))
+        self.assertEqual(ctx2.current_time, datetime(2026, 4, 30, 6, 0),
+                         "continue builds must not rewind")
+        print("✅ wait_until rewind is reset-only")
+
+    def test_exact_variants_cross_month_boundary(self):
+        """The month-boundary case that broke the HH:MM + `tomorrow` pairing.
+
+        Aug 31 23:40 -> Sep 1 00:00 computed `tomorrow` as `1 > 31` == False,
+        so the old code asked to pad until a time already past and got silence.
+        """
+        api, ctx = self._api(start=datetime(2026, 8, 31, 23, 40))
+        api.content_durations["filler"] = 5
+        target = datetime(2026, 9, 1, 0, 0)
+        api.pad_until_exact("b", PlayoutPadUntilExact(content="filler", when=target))
+
+        self.assertEqual(ctx.current_time, target,
+                         "pad_until_exact must fill across a month boundary")
+        print("✅ exact variants cross month boundaries")
+
+
+class TestMarathonWindow(unittest.TestCase):
+    """A marathon must stay inside the hours its channel gave it."""
+
+    def test_unbounded_marathon_stays_in_window(self):
+        from scripts.channels import cartoon_network
+
+        # 2026-04-30 is a Simpsons Marathon trigger date (16:00-22:00 window).
+        ctx = MockContext(datetime(2026, 4, 30))
+        api = MockAPI(ctx)
+        with contextlib.redirect_stdout(io.StringIO()):
+            cartoon_network.build_playout(api, ctx, "marathon-window")
+
+        simpsons = [e for e in api.schedule
+                    if e['type'] == 'content' and 'simpsons' in str(e['content']).lower()]
+        self.assertTrue(simpsons, "expected the Simpsons marathon to trigger on 2026-04-30")
+
+        first, last = simpsons[0]['time'], simpsons[-1]['time']
+        self.assertEqual(first.date(), date(2026, 4, 30), "marathon must start on its own day")
+        self.assertEqual(last.date(), date(2026, 4, 30),
+                         f"marathon must not spill into later days (ran to {last})")
+        self.assertLess(last, datetime(2026, 4, 30, 22, 0),
+                        f"marathon must end by its 22:00 boundary (last item at {last})")
+        print(f"✅ marathon bounded: {len(simpsons)} items, {first:%H:%M}-{last:%H:%M}")
+
 
 if __name__ == "__main__":
     unittest.main()

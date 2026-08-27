@@ -90,11 +90,9 @@ def play_commercials(
 
         if filler_key:
             target_dt = session.context.current_time + timedelta(seconds=duration)
-            target_time_str = target_dt.strftime("%H:%M")
-            is_tomorrow = target_dt.day > session.context.current_time.day
-            
+
             session.logger.info(f"{log_indent}☕ Commercials ({duration}s)")
-            session.context = fill_until_time(session.api, session.build_id, session.context, session.logger, target_time_str, filler_key=filler_key, tomorrow=is_tomorrow)
+            session.context = fill_until_time(session.api, session.build_id, session.context, session.logger, target_dt, filler_key=filler_key)
         else:
             session.logger.warn(f"Commercial break skipped: ad pool '{ad_pool_key}' could not be resolved.")
             
@@ -243,29 +241,29 @@ def fill_to_boundary(
     
     if session.context.current_time < boundary_dt:
         target_ts = boundary_dt.strftime("%H:%M")
-        is_tomorrow = boundary_dt.day > session.context.current_time.day
-        
+
         if strategy == "gap":
             session.logger.info(f"{log_indent}Fill Strategy: 'gap'. Waiting until {target_ts}.")
-            session.context = wait_until_time(session.api, session.build_id, session.context, session.logger, target_ts, tomorrow=is_tomorrow)
-            
+            session.context = wait_until_time(session.api, session.build_id, session.context, session.logger, boundary_dt)
+
         elif strategy == "fill":
             # Resolve filler
             filler_to_use = filler_content or session.config.filler_content
             res = resolve_content(filler_to_use, session.boss, session.holiday_ctx, session.config, session.resolver, session.logger, parent_item=parent_item)
-            
+
             if res.resolved_content:
                 session.logger.info(f"{log_indent}Fill Strategy: 'fill'. Filling with '{res.resolved_content}' until {target_ts}.")
-                session.context = fill_until_time(session.api, session.build_id, session.context, session.logger, target_ts, filler_key=res.resolved_content, tomorrow=is_tomorrow)
+                session.context = fill_until_time(session.api, session.build_id, session.context, session.logger, boundary_dt, filler_key=res.resolved_content)
             else:
                 session.logger.warn(f"{log_indent}Fill Strategy: 'fill' failed, filler not resolved. Waiting instead.")
-                session.context = wait_until_time(session.api, session.build_id, session.context, session.logger, target_ts, tomorrow=is_tomorrow)
-        
-        # SAFETY: Ensure we actually reached the boundary.
-        # If pad_until under-filled or failed silently, force a hard wait to prevent infinite loops in Runner.
+                session.context = wait_until_time(session.api, session.build_id, session.context, session.logger, boundary_dt)
+
+        # SAFETY: Ensure we actually reached the boundary. pad_until_exact stops
+        # before the boundary when no whole item fits, which is expected; this
+        # closes the remainder so the Runner cannot spin on the same slot.
         if session.context.current_time < boundary_dt:
             session.logger.warn(f"{log_indent}⚠️ Fill/Pad didn't reach boundary. Forcing wait until {target_ts}.")
-            session.context = wait_until_time(session.api, session.build_id, session.context, session.logger, target_ts, tomorrow=is_tomorrow)
+            session.context = wait_until_time(session.api, session.build_id, session.context, session.logger, boundary_dt)
     
     return session.context
 

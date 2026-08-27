@@ -192,6 +192,11 @@ class Program:
     scheduling: Optional[Dict[str, Any]] = None
     fill_strategy: str = "yield" # "fill", "yield", "gap"
     play_count: Optional[int] = None # For marathon items
+    # For marathon items whose content is unbounded (a whole show, no episode
+    # range). Instead of guessing a huge play_count -- which ErsatzTV commits in
+    # full, with no time bound, overrunning the slot by days -- the engine asks
+    # for exactly the remaining window via add_duration.
+    fill_window: bool = False
     start_point: Optional[Tuple[int, int]] = None # For marathon items (season, episode)
     force_start: bool = False # If True, force skip to start_point on every play (for Marathons)
     filler: Optional[Any] = None

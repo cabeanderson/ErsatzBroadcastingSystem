@@ -23,6 +23,7 @@ This framework separates **scheduling logic** from **channel configuration**. In
 *   [Architecture Guide](ARCHITECTURE.md) - Deep dive into the "Architect", "Brain", and "Vault".
 *   [Core Concepts](CONCEPTS.md) - Understanding Labels, Signals, and Resolution.
 *   [Import Reference](IMPORTS.md) - Cheat sheet for imports and classes.
+*   [ErsatzTV API Contract](ERSATZTV_API.md) - The scripted-schedule endpoints, their real semantics, and where the simulator's mock does and does not match them.
 *   [Known Issues & Tech Debt](KNOWN_ISSUES.md) - Tracked findings and fixes-for-later.
 
 ## Project Structure
