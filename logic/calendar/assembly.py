@@ -9,7 +9,6 @@ from scripts.logic.models import BlockProfile, HolidayProfile, Marathon, Maratho
 from scripts.logic.structures import Block, Program, MarathonSequence
 from scripts.library.queries import get_play_count, extract_episode_range
 from abc import ABC, abstractmethod
-import random
 
 if TYPE_CHECKING:
     from scripts.scheduling.config import ScheduleConfig
@@ -87,9 +86,20 @@ def _convert_marathon_to_block(marathon: Marathon, marathon_key: Any, resolver: 
         play_count, q_season, q_episode = item.get_playback_params(resolver, forced_play_count)
         start_point = (q_season, q_episode) if q_season is not None and q_episode is not None else None
 
-        if i == 0 and start_mode == "random" and play_count and play_count > 1:
+        # A random start needs somewhere to start from, which means more than one
+        # item. play_count is None for unbounded content (a whole show) and a
+        # positive int otherwise -- so the only case with no room is exactly 1.
+        # Testing `play_count > 1` excluded None, which is precisely the
+        # unbounded content that declares start_mode="random" in the first
+        # place, so this never fired for any marathon in the library.
+        if i == 0 and start_mode == "random" and play_count != 1:
             r_season = meta_season if meta_season is not None else q_season
-            if isinstance(meta_season, list): r_season = random.randint(meta_season[0], meta_season[1])
+            if isinstance(meta_season, list):
+                # Must be deterministic: the same date has to produce the same
+                # schedule across processes. random.randint() reseeds per
+                # process and would break that promise for the whole day.
+                seasons = list(range(meta_season[0], meta_season[1] + 1))
+                r_season = boss.pick(f"marathon_season:{epg_title}", seasons)
             if r_season is not None:
                 start_point = (r_season, 1)
                 logger.info(f"   🎲 Marathon random start configured: S{r_season}E1")

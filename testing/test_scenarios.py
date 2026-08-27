@@ -400,5 +400,108 @@ class TestMarathonWindow(unittest.TestCase):
         print(f"✅ marathon bounded: {len(simpsons)} items, {first:%H:%M}-{last:%H:%M}")
 
 
+class TestMarathonStartPoint(unittest.TestCase):
+    """Marathon episode positioning: it must fire, be deterministic, and land."""
+
+    @staticmethod
+    def _build(day):
+        from scripts.channels import cartoon_network
+        ctx = MockContext(day)
+        api = MockAPI(ctx)
+        with contextlib.redirect_stdout(io.StringIO()):
+            cartoon_network.build_playout(api, ctx, "start-point")
+        return api
+
+    def _skips(self, api):
+        out = []
+        for e in api.schedule:
+            if e['type'] != 'skip':
+                continue
+            body = e['content'].split(': ', 1)[1]
+            key, _, se = body.rpartition(' S')
+            out.append((key, se))
+        return out
+
+    def test_random_start_actually_fires(self):
+        """start_mode='random' must produce a skip, not be silently ignored.
+
+        The guard was `play_count > 1`, but play_count is None for the unbounded
+        content that declares a random start -- so it never fired for any
+        marathon in the library.
+        """
+        api = self._build(datetime(2026, 4, 30))  # Simpsons Marathon trigger date
+        simpsons_skips = [s for s in self._skips(api) if 'simpsons' in s[0].lower()]
+        self.assertTrue(simpsons_skips,
+                        "a random-start marathon must issue skip_to_item")
+
+        season = int(simpsons_skips[0][1].split('E')[0])
+        self.assertIn(season, range(3, 10),
+                      f"season {season} must fall in the declared start_season [3, 9]")
+        print(f"✅ random start fires (S{season}E1)")
+
+    def test_random_start_is_deterministic(self):
+        """Same date -> same season. The old code used the global random module.
+
+        Two DayDirectors built from the same date must agree; the framework's
+        core promise is that a date reproduces its schedule.
+        """
+        seasons = [self._skips(self._build(datetime(2026, 4, 30)))[0][1]
+                   for _ in range(3)]
+        self.assertEqual(len(set(seasons)), 1,
+                         f"random start must be deterministic, got {seasons}")
+
+        # ...and different dates should not all collapse to one season.
+        across = {self._skips(self._build(d))[0][1]
+                  for d in (datetime(2026, 4, 30), datetime(2026, 5, 27), datetime(2026, 6, 19))}
+        self.assertGreater(len(across), 1,
+                           "different dates should not all pick the same season")
+        print(f"✅ random start deterministic, varies by date: {sorted(across)}")
+
+    def test_skip_targets_the_key_that_actually_plays(self):
+        """skip_to_item must be issued after injections settle the final key.
+
+        Issuing it earlier aimed it at the pre-injection key (skipping
+        '..._eps_23_26' while playing '..._eps_23_26_auto_spring'), leaving the
+        skip orphaned and the marathon starting from episode 1.
+        """
+        # 2026-04-17 is a Cowboy Bebop trigger date during the spring injection
+        # window, which is what rewrites the key.
+        api = self._build(datetime(2026, 4, 17))
+        sched = api.schedule
+        orphaned = []
+        for i, e in enumerate(sched):
+            if e['type'] != 'skip':
+                continue
+            key = e['content'].split(': ', 1)[1].rpartition(' S')[0]
+            for later in sched[i + 1:]:
+                if later['type'] == 'skip':
+                    break
+                if later['type'] == 'content' and later['content'] == key:
+                    break
+            else:
+                orphaned.append(key)
+                continue
+
+        self.assertEqual(orphaned, [],
+                         f"every skip must target the key that plays; orphaned: {orphaned}")
+        print("✅ skips land on the post-injection key")
+
+
+class TestCallEfficiency(unittest.TestCase):
+    """ErsatzTV kills a scripted build at 30s, so round trips are a budget."""
+
+    def test_play_item_does_not_double_call(self):
+        """add_count returns the context; following it with get_context is waste."""
+        from scripts.playout import play_item
+        ctx = MockContext(datetime(2026, 4, 30, 12, 0))
+        api = MockAPI(ctx)
+        logger = ChannelLogger(verbose=False)
+
+        play_item(api, "b", "some_show", logger, count=1)
+        self.assertEqual(api.call_count, 1,
+                         "play_item should cost one round trip, not two")
+        print("✅ play_item costs one round trip")
+
+
 if __name__ == "__main__":
     unittest.main()

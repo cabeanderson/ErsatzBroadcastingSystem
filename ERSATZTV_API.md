@@ -127,6 +127,12 @@ positioning operations, not per-play modifiers: issuing `skip_to_item` before
 every single-item add pins the cursor and replays the same episode forever.
 Position once, then pull.
 
+They are also keyed by content, so they must be issued against the key that
+will actually play. Anything that rewrites the key afterwards — a seasonal or
+holiday injection turning `foo` into `foo_auto_spring` — leaves the skip
+positioning an enumerator nobody reads. `play_program` therefore resolves
+injections first and skips last.
+
 ### `add_count` has no time bound
 
 `AddCountInternal` contains no comparison against `finishTime`, `isDone`, or any

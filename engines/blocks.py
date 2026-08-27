@@ -221,17 +221,21 @@ def _resolve_and_prepare_program_content(
         session.logger.info(f"     Scheduling active: Playing '{key}' (Episode {ep_str}/{ep_count})")
         
         content_key, count = session.resolver.resolve(key), ep_per_slot
-        
-        # Attempt to skip to the exact episode for robust playback
+
+        # Work out where to start, but do NOT issue the skip here -- injections
+        # downstream can still rewrite content_key, and a skip aimed at the old
+        # key positions an enumerator we never play from. play_program issues it
+        # once the final key is known.
+        skip_point = None
         try:
             q_data = session.resolver.get_query_data(key)
             query = q_data.get("query") if isinstance(q_data, dict) else q_data
             if query and (q_season := extract_episode_range(query)[0]) is not None:
-                session.api.skip_to_item(session.build_id, ControlSkipToItem(content=key, season=q_season, episode=ep_num))
-        except Exception as e: 
-            session.logger.warn(f"Failed to force sequence for '{key}': {e}")
+                skip_point = (q_season, ep_num)
+        except Exception as e:
+            session.logger.warn(f"Failed to determine start point for '{key}': {e}")
 
-        return content_key, count
+        return content_key, count, skip_point
 
     # 2. Static Content
     # An appointment program that is off-season (no scheduled_result above) and
@@ -240,7 +244,7 @@ def _resolve_and_prepare_program_content(
     # (nested block). Pulling it in here previously crashed the entire run.
     if program.content is None:
         session.logger.warn(f"Program '{program.name}' has no active scheduled content and no static content; skipping.")
-        return None, 0
+        return None, 0, None
 
     session.logger.info(f"     Playing static content for '{program.name}'")
     res = resolve_content(program.content, session.boss, session.holiday_ctx, session.config, session.resolver, session.logger, parent_item=program)
@@ -252,17 +256,15 @@ def _resolve_and_prepare_program_content(
     # valid as a single program's content. Skip cleanly rather than crash downstream.
     if content_key is not None and not isinstance(content_key, (str, Fallback)):
         session.logger.warn(f"Program '{program.name}' resolved to non-playable {type(content_key).__name__}; skipping.")
-        return None, 0
+        return None, 0, None
 
-    # Handle start_point for static content (marathon-converted programs)
+    # start_point for static content (marathon-converted programs). Reported,
+    # not issued -- see the note in the Appointment TV branch above.
+    skip_point = None
     if program.start_point and isinstance(program.start_point, tuple) and len(program.start_point) == 2:
-        season, episode = program.start_point
-        try:
-            session.api.skip_to_item(session.build_id, ControlSkipToItem(content=content_key, season=season, episode=episode))
-        except Exception as e:
-            session.logger.warn(f"Failed to force sequence for '{content_key}' via start_point: {e}")
+        skip_point = program.start_point
 
-    return content_key, count
+    return content_key, count, skip_point
 
 def _handle_program_bumpers(
     session: PlayoutSession, program: Program, parent_block: Optional[Block], content_key: str, enabled: bool
@@ -314,9 +316,9 @@ def play_program(session: PlayoutSession, program: Program, start_hour: int, end
     bumpers_enabled = resolve_feature(program.enable_bumpers, block_bumpers, session.config.enable_bumpers)
     slot_name = session.config.timeslot_reverse_map.get((start_hour, end_hour))
 
-    content_key, count = _resolve_and_prepare_program_content(session, program)
+    content_key, count, skip_point = _resolve_and_prepare_program_content(session, program)
 
-    if not content_key: 
+    if not content_key:
         session.logger.warn(f"Could not resolve content for Program '{program.name}'. Skipping.")
         return session.context
 
@@ -324,6 +326,17 @@ def play_program(session: PlayoutSession, program: Program, start_hour: int, end
     res = apply_injections(content_key, program=program, block=parent_block, config=session.config, resolver=session.resolver, boss=session.boss, holiday_ctx=session.holiday_ctx, logger=session.logger, source="program")
 
     content_key = res.resolved_content
+
+    # Position the enumerator only now that the final key is settled. Issuing
+    # this before injections aimed it at the pre-injection key (e.g. skipping
+    # '..._eps_23_26' while playing '..._eps_23_26_auto_spring'), so the skip
+    # was orphaned and the marathon silently started from episode 1.
+    if skip_point and isinstance(content_key, str):
+        season, episode = skip_point
+        try:
+            session.api.skip_to_item(session.build_id, ControlSkipToItem(content=content_key, season=season, episode=episode))
+        except Exception as e:
+            session.logger.warn(f"Failed to force sequence for '{content_key}': {e}")
 
     if bumpers_enabled: 
         session.context = play_block_intro(session, program.intro)

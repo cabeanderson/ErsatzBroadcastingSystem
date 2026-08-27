@@ -44,14 +44,21 @@ def play_item(api: Any, build_id: str, content_key: str, logger: ChannelLogger, 
         content_key = str(content_key)
         
     try:
-        api.add_count(build_id, PlayoutCount(content=content_key, count=count))
+        # add_count returns the updated PlayoutContext, so there is no need to
+        # follow it with get_context. This is the hottest path in the framework
+        # -- one extra round trip here doubled the API calls for a whole build,
+        # against ErsatzTV's 30s scripted-schedule timeout.
+        context = api.add_count(build_id, PlayoutCount(content=content_key, count=count))
         logger.debug(f"API add_count successful for {content_key}") # Add debug log for successful add_count
+        if context is not None:
+            return context
     except Exception as e:
         if suppress_errors:
             logger.debug(f"API add_count failed for {content_key} (suppressed): {e}")
         else:
             logger.warn(f"API add_count failed for {content_key}: {e}")
-        
+
+    # Only on failure, or if the client returned nothing, ask for the context.
     return api.get_context(build_id)
 
 

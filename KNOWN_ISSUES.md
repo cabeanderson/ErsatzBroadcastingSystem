@@ -64,18 +64,36 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
   `PlayoutDaysToBuild`), and API round trips are counted. Pinned by
   `TestApiContract` (8 tests). See [ERSATZTV_API.md](ERSATZTV_API.md).
 
+- ~~🟠 **Marathon random start never fired.** `simpsons_random_marathon` declares
+  `start_mode="random"` with `start_season=[3, 9]`, but the guard in
+  `_convert_marathon_to_block` read `play_count and play_count > 1`.
+  `play_count` is `None` for unbounded content — which is exactly the content
+  that declares a random start — so the branch was dead and every Simpsons
+  marathon opened on the same episode. It was also the only marathon in the
+  library using `start_mode="random"`.~~ Fixed: the guard is now
+  `play_count != 1` (None and >1 both have room to start somewhere), and season
+  selection uses `boss.pick()` instead of `random.randint()`, which reseeded per
+  process and would have broken same-date reproducibility once the branch went
+  live. Verified: S9/S5/S9 on three trigger dates, identical across processes.
+- ~~🟠 **`skip_to_item` was orphaned by injections.** The skip was issued inside
+  `_resolve_and_prepare_program_content`, before `apply_injections` could
+  rewrite the content key. Seasonal injection turned
+  `auto_gen_cowboy_bebop_eps_23_26_d1e246` into `..._auto_spring`, so the skip
+  positioned an enumerator that was never played from and the marathon silently
+  started at episode 1. The Appointment TV branch had the same shape, skipping
+  the registry key while playing `resolver.resolve(key)`.~~ Fixed: both branches
+  now *report* a start point and `play_program` issues the skip once the final
+  key is known. Verified: orphaned skips across two years of Cartoon Network
+  went 30 → 0, with all 3001 correct skips preserved.
+- ~~🟠 **Redundant `get_context` on the hottest path.** Every scheduling endpoint
+  already returns a `PlayoutContext`, but `playout.play_item` discarded it and
+  issued a separate `get_context`, doubling round trips against ErsatzTV's 30s
+  build timeout.~~ Fixed: `play_item` uses the returned context and only falls
+  back to `get_context` on failure. A Cartoon Network day went 295 → 152 calls.
+
 ## Open
 
 ### 🟠 Correctness / robustness
-
-- [ ] **Redundant `get_context` on the hottest path.** Every scheduling endpoint
-  (`add_count`, `add_duration`, `pad_*`, `wait_until*`) already returns a
-  `PlayoutContext`, but `playout.play_item` discards it and issues a separate
-  `get_context`, doubling HTTP round trips per item. ErsatzTV kills the build at
-  30s (`PlayoutScriptedScheduleTimeoutSeconds`) and a non-zero exit fails it
-  outright; a Cartoon Network day currently costs ~300 calls, roughly half of
-  them redundant. `play_for_duration`, `fill_until_time` and `wait_until_time`
-  already return the API's own response — `play_item` is the one left.
 
 - [ ] **Errors swallowed into dead air.** `playout.play_item` catches all
   exceptions and returns an unadvanced context; pre-registration and several
