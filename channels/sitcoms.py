@@ -30,7 +30,7 @@ SCHEDULES = {
         "afternoon": sitcoms.NINETIES_FAMILY,
         "evening": sitcoms.NINETIES_PRIMETIME, # Changed from early_evening
         "prime": sitcoms.TGIF_BLOCK, # Our branded block from 19:00 - 22:00
-        "night": sitcoms.NICK_AT_NITE    # Changed from late_night
+        "night": sitcoms.LATE_NIGHT_SYNDICATION
     },
     "WEEKDAY": {
         "overnight": sitcoms.CLASSIC_SITCOMS_60s_70s,
@@ -48,7 +48,7 @@ SCHEDULES = {
             "THURSDAY": sitcoms.MUST_SEE_THURSDAY,
             "default": sitcoms.SITCOM_WEEKDAY_PRIME
         },
-        "night": sitcoms.NICK_AT_NITE
+        "night": sitcoms.LATE_NIGHT_SYNDICATION
     },
     "WEEKEND": {
         "overnight": sitcoms.CLASSIC_SITCOMS_60s_70s,
@@ -58,7 +58,7 @@ SCHEDULES = {
         "noon": sitcoms.NINETIES_DAYTIME,
         "afternoon": sitcoms.NINETIES_PRIMETIME,
         "prime": sitcoms.SITCOM_WEEKEND_PRIME,
-        "night": sitcoms.NICK_AT_NITE
+        "night": sitcoms.LATE_NIGHT_SYNDICATION
     }
 }
 
@@ -124,7 +124,9 @@ def build_playout(api, context, build_id):
         block_profiles={},
         # filler_content="commercials_spot", # TODO: Add collections.BUMPERS when available
         logger=ChannelLogger(prefix="[SITCOMS]"),
-        fallback_content=sitcoms.CLASSIC_SITCOMS_60s_70s,
+        # Not CLASSIC_SITCOMS_60s_70s: a fallback firing after 21:00 would
+        # put the shared classics up against Nick at Nite.
+        fallback_content=sitcoms.LATE_NIGHT_SYNDICATION,
         enable_holiday_injection=True,
         enable_seasonal_injection=True,
         enable_thematic_injection=True,

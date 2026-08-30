@@ -13,18 +13,25 @@ from . import branding
 
 # --- COLLECTIONS ---
 
-# Classic TV - OrderedCollection for nostalgic progression
-NICK_AT_NITE = OrderedCollection([
-    "i_love_lucy_tv",
-    "andy_griffith_tv",
-    "dick_van_dyke_tv",
-    "bewitched_tv",
-    "gilligans_island_tv",
-    "mary_tyler_moore_tv",
-    "bob_newhart_tv",
-    "taxi_tv",
+# Everything Good Times runs that Nick at Nite does not.
+#
+# The sharing rule (reference/channel-plan.md): the nine classics on both
+# channels -- Bewitched, Bob Newhart, Dick Van Dyke, Gilligan's Island, I Love
+# Lucy, Mary Tyler Moore, Taxi, Andy Griffith, MASH -- stay off Good Times
+# between 21:00 and 02:00, which is Nick at Nite's window. Good Times keeps
+# them all; it just airs them in the morning and daytime instead. So the late
+# slots and the channel fallback draw from this pool rather than the classics.
+LATE_NIGHT_SYNDICATION = OrderedCollection([
     "cheers_tv",
-    "wonder_years_tv"
+    "wonder_years_tv",
+    "married_children_tv",
+    "newsradio_tv",
+    "drew_carey_tv",
+    "wings_tv",
+    "mad_about_you_tv",
+    "3rd_rock_tv",
+    "nanny_tv",
+    "coach_tv"
 ])
 
 SEVENTIES_MORNING = RandomCollection([
@@ -46,6 +53,17 @@ CLASSIC_SITCOMS_60s_70s = RandomCollection([
     "mash_tv",
     "good_times_tv",
     "sanford_and_son_tv"
+])
+
+# The winter stand-in for CLASSIC_SITCOMS_60s_70s in the prime slots, which run
+# to 23:00 and so overlap Nick at Nite. Same cosy register, later decade.
+EIGHTIES_NINETIES_CLASSICS = RandomCollection([
+    "cheers_tv",
+    "wonder_years_tv",
+    "married_children_tv",
+    "home_improvement_tv",
+    "coach_tv",
+    "full_house_tv"
 ])
 
 # 1990s Programming Blocks - OrderedCollection for branded lineups
@@ -151,7 +169,9 @@ SITCOM_WEEKDAY_PRIME = SeasonalBlock(
     base=MUST_SEE_TV,
     seasonal={
         "SUMMER": Swap(NINETIES_TEEN), # Saved by the Bell, etc.
-        "WINTER": Feather(CLASSIC_SITCOMS_60s_70s, ratio=0.4) # 40% chance of Classics in Winter
+        # Not CLASSIC_SITCOMS_60s_70s: prime runs to 23:00 and would
+        # collide with Nick at Nite. See LATE_NIGHT_SYNDICATION.
+        "WINTER": Feather(EIGHTIES_NINETIES_CLASSICS, ratio=0.4)
     },
     blend_ratio=1.0 # Default to full swap for Summer
 )
@@ -168,7 +188,7 @@ SITCOM_WEEKEND_PRIME = SeasonalBlock(
     base=MUST_SEE_TV,
     seasonal={
         "SUMMER": Swap(NINETIES_TEEN),
-        "WINTER": Swap(CLASSIC_SITCOMS_60s_70s)
+        "WINTER": Swap(EIGHTIES_NINETIES_CLASSICS)  # see SITCOM_WEEKDAY_PRIME
     },
     blend_ratio=1.0
 )
