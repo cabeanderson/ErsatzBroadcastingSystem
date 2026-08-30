@@ -91,6 +91,11 @@ DISNEY_MORNING = Block(
 )
 
 # Cartoon Network
+#
+# Gravity Falls and The Owl House left with the Disney channel
+# (scripts/library/disney.py), which airs them 17:00-19:00 and after midnight.
+# Daria, Animaniacs and Pinky and the Brain are Nick's and still need to go;
+# they come out in the CN restructure. See reference/channel-plan.md.
 CARTOON_NETWORK_CLASSICS = Block(
     name="Cartoon Network Classics",
     items=RandomCollection([
@@ -98,10 +103,8 @@ CARTOON_NETWORK_CLASSICS = Block(
         {"title": "daria"},
         {"title": "dexter's laboratory"},
         {"title": "the powerpuff girls"},
-        {"title": "gravity falls"},
         {"title": "infinity train"},
         {"title": "johnny bravo"},
-        {"title": "the owl house"},
         {"title": "animaniacs"},
         {"title": "pinky and the brain"}
     ])

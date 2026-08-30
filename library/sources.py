@@ -350,6 +350,58 @@ NICK_REGISTRY = {
 }
 
 # ============================================================================
+# 3c. DISNEY
+# ============================================================================
+
+DISNEY_REGISTRY = {
+    # --- THE SERIALIZED STRIPS ---
+    # Star Wars and the modern Disney Channel shows are the only serialized
+    # content on the channel, so they carry the chronological-weekday /
+    # shuffle-weekend split. As on Nick, that is two content keys per show --
+    # an ErsatzTV key carries its playback order, and one key would be pinned
+    # to whichever order registered first in the build.
+    "clone_wars_chronological_tv": playback_order(
+        show_by_title("Star Wars The Clone Wars"), force="Chronological"),
+    "clone_wars_shuffle_tv": playback_order(
+        show_by_title("Star Wars The Clone Wars"), force="Shuffle"),
+    "rebels_chronological_tv": playback_order(
+        show_by_title("Star Wars Rebels"), force="Chronological"),
+    "rebels_shuffle_tv": playback_order(
+        show_by_title("Star Wars Rebels"), force="Shuffle"),
+    "bad_batch_chronological_tv": playback_order(
+        show_by_title("Star Wars The Bad Batch"), force="Chronological"),
+    "bad_batch_shuffle_tv": playback_order(
+        show_by_title("Star Wars The Bad Batch"), force="Shuffle"),
+
+    "gravity_falls_chronological_tv": playback_order(
+        show_by_title("Gravity Falls"), force="Chronological"),
+    "gravity_falls_shuffle_tv": playback_order(
+        show_by_title("Gravity Falls"), force="Shuffle"),
+    "owl_house_chronological_tv": playback_order(
+        show_by_title("The Owl House"), force="Chronological"),
+    "owl_house_shuffle_tv": playback_order(
+        show_by_title("The Owl House"), force="Shuffle"),
+    "amphibia_chronological_tv": playback_order(
+        show_by_title("Amphibia"), force="Chronological"),
+    "amphibia_shuffle_tv": playback_order(
+        show_by_title("Amphibia"), force="Shuffle"),
+
+    # Everything animated with Star Wars on the front. The rerun bed the four
+    # Saturday-night events fall back on for the ~30 weeks a year none of them
+    # is in season, and the collection the May 4th marathon draws from.
+    "star_wars_animation_tv": playback_order(
+        f'{show_by_title("Star Wars")} AND show_genre:animation',
+        force="Shuffle"),
+
+    # --- DISAMBIGUATION ---
+    # "Hercules" alone matches the 1998 Disney cartoon *and* Hercules: The
+    # Legendary Journeys, which is live action and belongs to Other Worlds.
+    # The genre is what separates them.
+    "hercules_animated_tv":
+        f'{show_by_title("Hercules")} AND show_genre:animation',
+}
+
+# ============================================================================
 # 4. THEME & HOLIDAY REGISTRY
 # ============================================================================
 
@@ -574,6 +626,7 @@ MASTER_SOURCES = {
     **TV_REGISTRY,
     **ANIMATED_REGISTRY,
     **NICK_REGISTRY,
+    **DISNEY_REGISTRY,
     **THEME_REGISTRY,
     **MARATHONS,
     **SEASONAL_VARIANTS,

@@ -11,7 +11,7 @@ Snapshots of `/media` taken 2026-08-29, for use when writing channel and block d
 | [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs |
 | [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel |
 | [channel-plan.md](channel-plan.md) | The working plan — lineup, programming mechanics, sharing rules, gaps |
-| [next-session.md](next-session.md) | Build order and carry-forward notes for CN / Disney |
+| [next-session.md](next-session.md) | Build order and carry-forward notes — the collision report, then CN |
 | [channel-coverage.md](channel-coverage.md) | All 576 shows + 2,067 movies mapped to channels; orphans and conflicts |
 
 Episode counts come from files under `Season NN/` folders. Two shows read as zero and need attention: `Bullwinkle Show, The (1959)` is an empty directory, and `Smurfs, The (1981)` holds 405 episodes flat with no season folders and no `tvshow.nfo`.

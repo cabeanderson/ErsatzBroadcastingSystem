@@ -93,6 +93,31 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
 
 ## Open
 
+- [ ] 🔴 **`premiere_season=("SEASON", "DAY")` silently schedules nothing.**
+  `annual_show()` passes `(year, premiere_season)` to
+  `states.resolve_season_date`, which only understands `(int, str)`. Given a
+  tuple season it returns `None`, `_build_season_windows` skips that season, and
+  `_resolve_appointment_schedule` returns `None` on the empty window list — so
+  the Program plays its `reruns` forever and never premieres. There is no
+  warning: an appointment that never fires looks exactly like one between
+  seasons. Reproduce:
+
+  ```python
+  from scripts.logic.resolution.pipeline import _build_season_windows
+  p = annual_show(show_title="X", episodes_per_season=[6], premiere_year=2026,
+                  premiere_season=("SPRING", "SATURDAY"), frequency=["SATURDAY"])
+  _build_season_windows(p.scheduling["seasons"], 1, ["SATURDAY"], date.today())
+  # -> []   (a bare "SPRING" returns a real window)
+  ```
+
+  Affects every appointment in `library/sitcoms.py` (The Office, Parks and Rec,
+  Community, 30 Rock) and `library/detective.py` (True Detective, Fargo) — six
+  Programs that have never premiered. `library/disney.py` passes bare season
+  strings to avoid it. Fix is either in `resolve_season_date` (accept the tuple
+  and use the day for alignment) or in `annual_show` (unpack the tuple before
+  building `season_list`); the day half is currently redundant with `frequency`
+  either way.
+
 ### 🟠 Correctness / robustness
 
 - [ ] **Errors swallowed into dead air.** `playout.play_item` catches all
