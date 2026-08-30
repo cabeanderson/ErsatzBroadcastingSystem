@@ -44,8 +44,8 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 
 | Channel | Pool | Shows | Notes |
 |---|---:|---:|---|
-| **Boomerang** | 1,193 (1,598 w/ Smurfs fixed) | 16 | Pre-1990 only, keeps it clear of CN |
-| **Modern movies** | ~1,390 films | — | 1990-present; the largest untapped thing in the library |
+| **Modern movies** | ~1,390 films | — | 1990-present; the largest untapped thing in the library. No contention |
+| ~~Boomerang~~ | ~0 usable | 2 | **Blocked — see below.** The Cartoon Network restructure took the pre-1990 library |
 
 ---
 
@@ -119,8 +119,18 @@ Avatar and Korra are the evening strip and the only serialized shows on the chan
 
 Filler is Schoolhouse Rock — three minutes a piece, and the only interstitial the channel has assets for. There are no Nick bumpers on disk.
 
-### Boomerang
-Pre-1990 as a hard rule — keeps it from competing with CN for Dexter/PPG/Johnny Bravo. Two things gate it: Smurfs (405 eps, flat, no `tvshow.nfo`, won't index) and Bullwinkle (empty directory).
+### Boomerang — blocked, and the blocker changed
+
+The original plan was "pre-1990 as a hard rule", which kept it clear of CN when CN's vault sat in the 02:00–06:00 overnight dead zone. **The restructure moved that vault to the centre of the channel** — 06:00–08:00 daily, 12:00–14:00 weekdays, Sunday midday, Saturday morning, and the Saturday Syndication Hour. Pre-1990 stopped being free the day that landed.
+
+Counted against the library: of **24 pre-1990 animated series, 22 are now claimed** — 20 by Cartoon Network, plus DuckTales and Chip 'n' Dale on Disney and Schoolhouse Rock on Nick. What is left is:
+
+| Show | Eps | State |
+|---|---:|---|
+| Smurfs, The (1981) | 405 | flat, no `tvshow.nfo` — will not index |
+| Bullwinkle Show, The (1959) | 0 | empty directory |
+
+**A usable pool of zero.** The channel's whole premise is now inside another channel's identity, and the one show that would justify it does not index. Two things would have to happen to revive it: fix Smurfs on disk, and re-found the channel on a different principle than "pre-1990" — a second window on a shared library, the way Nick at Nite and Good Times share sixteen titles by splitting the clock. That is a sharing-rule design, and with three channels already sharing the animation library it needs the collision report to police it rather than another hand-maintained list.
 
 ### Travelers Table
 Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.
