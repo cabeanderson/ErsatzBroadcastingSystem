@@ -1,0 +1,253 @@
+# Filler Taxonomy — Proposal
+
+Status: **agreed and applied 2026-08-29.** 6,658 files moved, 7,501 verified present, none lost. Undo manifest retained.
+Companion to [bumper-inventory.md](bumper-inventory.md), which this document corrects in four places.
+
+> **How this was verified.** There is no ErsatzTV instance, database, or container on this machine, so nothing here was confirmed against a live index. Every claim about tag behaviour was read from ErsatzTV's source on `main` — the scanner, the fallback metadata provider, the Lucene index writer and the query analyzer, each cited inline. File counts come from a full walk of `/media/filler` on 2026-08-29. One consequence is flagged as open question 7.
+
+---
+
+## 1. The assumption, verified
+
+The prior session's premise was "ErsatzTV derives tags from the folder path, so the folder tree is the tag schema."
+
+**Confirmed for Other Videos**, at source. `ErsatzTV.Core/Metadata/FallbackMetadataProvider.cs::GetOtherVideoMetadata`:
+
+```csharp
+string libraryPath = metadata.OtherVideo.LibraryPath.Path;
+string parent      = Directory.GetParent(libraryPath)?.FullName ?? libraryPath;
+string diff        = Path.GetRelativePath(parent, folder);
+var tags = diff.Split(Path.DirectorySeparatorChar).Map(t => new Tag { Name = t }).ToList();
+```
+
+Three consequences the premise did not capture, each of which changes the design.
+
+### 1a. Tags are flat, not hierarchical
+
+The path is *split* into independent tags. `bumpers/cartoon network/toonami/naruto` yields four separate tags — `bumpers`, `cartoon network`, `toonami`, `naruto` — with no record of their order or nesting. Two folders with the same name anywhere in the tree are indistinguishable afterwards. `toonami/general` and `cartoon network/general` both produce the tag `general`, which is why `toonami_bumpers` has to AND `tag:toonami` to mean anything.
+
+Two useful corollaries:
+
+- **Depth is free.** Adding a level costs one extra tag and nothing else.
+- **Adding a level never breaks an existing query.** `tag:"toonami" AND tag:"naruto"` keeps matching after `naruto/` moves under a new `shows/` parent — the query just becomes less specific than it could be. This is why the registry keys below were safe to ship before the tree is reorganized.
+
+### 1b. `tag` is tokenized; `tag_full` is exact — and we are using the wrong one
+
+Both fields are populated from the same value (`LuceneSearchIndex.cs:1275`) but indexed differently, and `SearchQueryParser.AnalyzerWrapper()` assigns them different analyzers:
+
+| Field | Analyzer | Behaviour |
+|---|---|---|
+| `tag` | `CustomAnalyzer` — `WhitespaceTokenizer` + `LowerCaseFilter` | split on spaces, lowercased |
+| `tag_full` | `KeywordAnalyzer` | whole value, **case-sensitive** |
+
+So `tag:eureka` matches the `eureka` folder **and** the `eureka 7` folder, because both emit the token `eureka`. Same for `tag:naruto` against `naruto` and `naruto shippuden`. Every registry key that addresses one folder should use `tag_full`. Folder names on disk are lowercase, so `tag_full` queries must be written lowercase to match.
+
+There is no stopword filtering or stemming, so `tag:"the room"` is safe as a phrase.
+
+### 1c. Music videos are a different library kind, and derive **no** tags from folders
+
+This is the correction that matters most for The Beat. `GetMusicVideoMetadata` sets `Tags = []`, `Genres = []`, `Artists = []` and derives only a title, from an `Artist - Title.ext` filename pattern. `MusicVideoFolderScanner` calls `ListSubdirectories(libraryPath.Path)` — **immediate children only** — and treats each as one artist.
+
+So under `/media/music_videos`, the folders `hip_hop`, `rock`, `pop`, `oldies`, `dance` are currently being ingested as five *artists*, and the 239 files nested beneath them are attributed to those "artists". The folder tree is not a tag schema here; it is an artist list, exactly one level deep. Genre blocks for The Beat cannot come from folders at all — they need NFO sidecars or ErsatzTV collections.
+
+---
+
+## 2. Corrections to the prior inventory
+
+| Claim | Actual |
+|---|---|
+| Adult Swim `seasonal` — 0, EMPTY | **233 files** across 8 subfolders: holidays 88, christmas 64, halloween 32, thanksgiving 16, summer 11, spring 9, winter 9, fall 4 |
+| Toonami `marathon`, `seasonal` — 0, EMPTY | `marathon/cowboy bebop` has 18 (+1 in `intro/`); `seasonal` is genuinely empty |
+| `commercials/90s` is "mostly 2000s UK adverts" | Correct on country, **wrong on decade.** `s2006`–`s2013` is the ripper's season numbering (episode = MMDDHH), not the advert date. Reading the descriptions instead: 57 are explicitly 1990s, 2 are 1980s, 1 is 2000s, 50 carry no year. The folder is correctly named `90s`. |
+| Toonami tree fully accounted for | **93 files sit loose at `toonami/` root**, tagged `toonami` and nothing else |
+
+Also: Adult Swim `marathon/astroboy` vs Toonami `astro boy` are inconsistent spellings and produce different tags.
+
+---
+
+## 3. Proposed taxonomy
+
+One rule, from which the rest follows:
+
+> **Every leaf folder is a schedulable pool, and no folder holds both loose files and subfolders.**
+
+A file loose at a level that also has subfolders picks up no leaf tag, so it can only be addressed as "everything under the parent" — which is exactly why 93 Toonami files and 5,316 Adult Swim files are currently unaddressable at any useful granularity. The fix is a `general/` sibling wherever that happens.
+
+The path reads **network → brand → function → subject**.
+
+```
+filler/
+  bumpers/
+    cartoon network/
+      general/                       0  ← empty; CN daytime branding is a real gap
+      adult swim/
+        intro/                      29
+        outro/                       5
+        bumps/
+          general/                ~4,600  ← was loose at bumps/
+          schedules/                 134
+          tagged videos/             191
+          pool/                       35
+          fan service/                10
+        shows/                              ← NEW: the auto-sortable 716
+          king of the hill/          107
+          aqua teen hunger force/     74
+          robot chicken/              53
+          metalocalypse/              52
+          ... 27 more with >=5 files
+        seasonal/
+          christmas/ halloween/ thanksgiving/ holidays/
+          winter/ spring/ summer/ fall/
+        marathon/
+          general/                    25  ← was loose at marathon/
+          astro boy/                   6  ← renamed from "astroboy"
+          cowboy bebop/               13
+          yu yu hakusho/              13
+        april fools/                  46
+        the room/                     43
+        childrens hospital/           31
+      toonami/
+        intro/                        84
+        outro/                         6
+        general/                     111  ← 18 existing + the 93 loose at toonami/
+        bumps/                         3
+        shows/                              ← the 33 existing per-show folders move here
+          naruto/ inuyasha/ cowboy bebop/ ...
+        marathon/
+          cowboy bebop/               18
+  commercials/
+    uk/
+      80s/                             6
+      90s/                           104
+        toys/ beer/                    6
+    us/                                     ← empty, ready for US spots
+  marathons/
+```
+
+### Why these shapes
+
+**`shows/` as an explicit level.** It buys a "any per-show bumper" pool (`tag_full:"toonami" AND tag_full:"shows"`), and it separates subject folders from function folders so that a future show named e.g. *Marathon* cannot collide with the `marathon/` function. Because tags are flat and AND-ed, it does not invalidate the 33 per-show keys already in `sources.py`.
+
+**Show folder names should match library titles exactly.** This is the highest-leverage decision here, because of a mechanism already in the code. `dispatcher.py::play_smart_bumper` builds:
+
+```python
+bumper_query = f'type:"other_video" AND tag:"{title}" AND {" AND ".join(tag_queries)}'
+```
+
+with `required_tags` defaulting to `["bumpers"]` — and `bumpers/` is a real folder in this tree, so that tag already exists on every file. `title` is extracted from the scheduled content's own query. So **if a show's bumper folder is named exactly as its library title, per-show bumpers fire automatically with no registry key at all.** That turns the taxonomy from a filing exercise into working behaviour, and it argues for these renames:
+
+| Current folder | Rename to | Reason |
+|---|---|---|
+| `full metal alchemist` | `fullmetal alchemist brotherhood` | library title is *Fullmetal Alchemist Brotherhood (2009)* |
+| `sym bionic` | `sym-bionic titan` | truncated |
+| `sword art` | `sword art online` | truncated |
+| `astroboy` (AS) | `astro boy` | matches the Toonami spelling |
+| `eureka` + `eureka 7` | **needs your call** — see below |
+
+**`commercials/uk` + `commercials/us`.** The decade folders were never the problem; the country was. Splitting on nationality first means a US-branded channel and Across the Pond (104) can draw from the same tree without either getting the wrong accent, and it preserves the decade tags underneath.
+
+---
+
+## 4. Auto-sorting: what is recoverable, honestly
+
+Measured against the 5,316 loose files in `adult swim/bumps/`, matching a 74-pattern show vocabulary over filenames normalized to space-separated tokens.
+
+| Axis | Files | Share |
+|---|---:|---:|
+| Show-identifiable | 716 | 13.5% |
+| Function-identifiable (schedule / promo / social / PSA / holiday) | 738 | 13.9% |
+| Union of both | ~1,300 | **~25%** |
+| **Must stay generic** | **~4,000** | **~75%** |
+
+Ambiguous matches (two shows in one filename): 5. Effectively zero.
+
+Top show clusters: king of the hill 107, aqua teen hunger force 74, robot chicken 53, metalocalypse 52, inuyasha 35, squidbillies 33, futurama 27, superjail 26, venture bros 26, family guy 22, delocated 20, boondocks 20, eagleheart 18, space ghost 16, china il 15, tim and eric 14. 31 shows clear 5 files; the tail below that is not worth a folder.
+
+**The 75% is not a failure of the regex — it is what Adult Swim bumps are.** The unmatched set is network voice, not show promos: `Millenials_Buy_Impulsively`, `Algebra_Shattered_Our_Faith`, `AS_Complaint_Line_Number`, `Found_Aquaman_on_Drive_Thru`. There is no show to sort these under, and no amount of pattern work will change that. They belong in `bumps/general/` and they are perfectly good as an undifferentiated late-night pool — which is exactly how they were used on air.
+
+### Method
+
+Three passes, each reviewable before the next:
+
+1. **Generate a manifest**, not moves — a TSV of `current path → proposed path → matched pattern`. Nothing touches disk.
+2. **Review the manifest**, especially the ambiguous and the just-above-threshold cases. Correct by editing the TSV.
+3. **Apply** with `git mv`-style logging so any move is reversible from the manifest alone.
+
+A rescan is required after any move, since these tags are fallback metadata computed at scan time.
+
+---
+
+## 5. Commercials
+
+Not a re-dating job. `commercials/90s/` keeps its name; the tree gains a nationality level above it, and the 104 loose files move to `commercials/uk/90s/`. The 6 in `80s/` move to `commercials/uk/80s/`. Both sets are British.
+
+The payoff is that these 110 spots stop being idle: **Across the Pond (104)** is the channel that actually wants them, and it can reach them with `tag_full:"commercials" AND tag_full:"uk"` without a US channel ever drawing a Dime Bar advert.
+
+### Categorised 2026-08-29
+
+The path is now **country / decade / audience-gate / product**, so any combination of the four is an AND of flat tags. The gate level is the one that drives scheduling.
+
+| Gate | Files | |
+|---|---:|---|
+| `alcohol/` | 11 | `beer` 9, `spirits` 2 — must never reach a kids daypart |
+| `kids/` | 37 | `cereal` 9, `confectionery` 11, `snacks` 8, `toys` 7, `drinks` 2 |
+| `christmas/` | 6 | seasonal-block fodder |
+| `general/` | 62 | `confectionery` 18, `food` 16, `drinks` 7, `snacks` 6, `retail` 6, `household` 4, `tech` 2, `leisure` 2, `psa` 1 |
+
+**`commercials_family_safe_spot`** is the key a kids or daytime channel should use — `NOT tag_full:"alcohol"`, resolving to 105 of 116.
+
+Corrections made in the same pass:
+
+- Three decade misfiles: *British Telecom* (1988) and *Country Life butter* (1984) to `80s`, *Gillette Venus* (2000) to `00s`.
+- Two files were never British: `budweiser wassup` to `us/90s`, `7 UP (Australian ad, 1992)` to `au/90s`. The Fosters ad names Mexico but is a UK commercial shot abroad, so it stayed.
+- No byte-identical duplicates exist. The `Pog`/`POG`, Boddingtons, Dairylea and John Smith's pairs are genuinely different ads.
+
+One deliberate call: **`Malibu Mobile Phone Ad` is filed under `alcohol/spirits`** despite the ambiguous name. A false alcohol tag only withholds it from kids blocks; the opposite error would air rum in one.
+
+The empty `general/` and `seasonal/` subfolders under the old `90s/` were removed, but every empty *decade* and *country* folder is kept as scaffolding.
+
+---
+
+## 6. Registry keys — **done**
+
+`scripts/library/sources.py` FILLERS went from 8 keys to 65. All of them address folders that exist on disk today and that this proposal leaves in place, so they work now and survive the reorganization.
+
+- 33 `toonami_<show>_bumpers` keys — the ~940 per-show bumpers, previously reachable by tag but referenced by nothing
+- `adult_swim_outro` — the 5 outros that had no key
+- 8 `adult_swim_seasonal_*` keys — the 233 files the inventory recorded as empty
+- Sub-pools: `adult_swim_schedules`, `adult_swim_tagged_videos`, `adult_swim_pool`, `adult_swim_fan_service`
+- Marathon keys for both networks, `toonami_all_bumpers`, `commercials_80s_spot_folder`
+- A `filler_source(*folders)` builder, matching the file's existing builder-function style, emitting `tag_full` so single-folder keys stop colliding
+
+`toonami_bumpers` still resolves to 21 files. It cannot improve until the 93 loose Toonami files move into `general/`.
+
+`python3 -m scripts.testing.validate_titles` → 1 problem, the pre-existing `Cunk` ambiguity in `library/british.py:178`. No new findings.
+
+---
+
+## 7. What it takes to make filler actually fire
+
+Four independent gates, three of them still shut. `filler_content="adult_swim_bumpers"` is already set on Cartoon Network and does nothing on its own.
+
+| # | Gate | State | Fix |
+|---|---|---|---|
+| 1 | `ENABLE_FILLER = False` (`settings.py:44`) | shut | `enable_filler=True` in CN's `ScheduleConfig`. Gates the hour-boundary filler at `dispatcher.py:286`, the only consumer of `config.filler_content`. |
+| 2 | `ENABLE_SMART_BUMPERS = False` (`settings.py:39`) | shut | This is the per-show bumper mechanism (`dispatcher.py:116`). Read as a module-level constant, **not** resolvable per channel — flipping it is global. |
+| 3 | `config.bumpers` never set | unset | CN passes no channel-level `bumpers=`, so `resolve_bumper_collection` falls through to `None`. Individual blocks in `animation.py` do set `bumpers=`, so block-level branding works and channel-level does not. |
+| 4 | `enable_bumpers=True` | **already set** on CN | drives `play_block_intro` / `play_block_outro` only |
+
+Note that `fill_to_boundary`'s `enabled` parameter defaults to `True` and `blocks.py:155` never passes it, so a block with `fill_strategy="fill"` fills regardless of `ENABLE_FILLER`. Gate 1 governs the hour-boundary path specifically.
+
+Recommended order: turn on gate 1 for CN alone and confirm one build looks right, then gate 2 once show folder names match library titles — turning on smart bumpers before the renames means every lookup misses and quietly populates `BUMPER_FAILURE_CACHE`.
+
+---
+
+## 8. Open questions before any file moves
+
+1. **`eureka` (14) vs `eureka 7` (23).** Toonami aired *Eureka Seven*. Are these one set that got split, or is `eureka` something else? If one set, merge to `eureka seven`. **Cannot determine from filenames alone.**
+2. **`shows/` level — in or out?** It buys an "any per-show bumper" pool and collision safety, at the cost of one more level. Out is defensible; the tree is already unambiguous.
+3. **Show-title renames** — confirm the four in §3. They are what makes smart bumpers work without registry keys.
+4. **`fox kids/`** is empty and its keys (`fox_kids_intro`, `fox_kids_bumper`) are undefined over it. Delete the tree, or keep it as a stub for content you intend to acquire?
+5. **The 5-file threshold** for cutting a show folder out of `bumps/general/`. 31 shows clear it.
+7. **Is `filler` itself a tag?** The relative path is computed from the *parent* of the ErsatzTV library root, so the root folder's own name becomes a tag on every item. If the library is rooted at `.../media/filler`, everything carries `filler` and it is free namespacing; if it is rooted at `.../media`, the first tag is `media` instead. Not determinable from disk — it depends on how the library path is configured in ErsatzTV, which is not on this machine. None of the 65 keys depend on it either way, but it is worth checking on the next scan.
+8. **Music videos** are a separate problem with separate rules (§1c) and no folder-tag lever at all. Worth its own pass rather than being folded into this one — the immediate defect is that 5 genre folders are being ingested as artists, plus ~40 artist folders with trailing spaces in their names.
