@@ -388,6 +388,10 @@ def _apply_schedule_looping(current_date: date, season_windows: List[Tuple[date,
     first_start_date: date = season_windows[0][0]
     last_end_date: date = season_windows[-1][1]
 
+    # A caller may hand this the same ("SEASON", "DAY") pair it gave
+    # premiere_season; the restart only cares about the season.
+    loop_restart_season = states.season_label(loop_restart_season)
+
     if loop and current_date >= last_end_date:
         if loop_restart_season and isinstance(loop_restart_season, str):
             season_config: Optional[Dict[str, Any]] = registry.SEASONAL_RAMPS.get(loop_restart_season.upper())

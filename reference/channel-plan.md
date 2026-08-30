@@ -75,7 +75,7 @@ Sunday 19:00–21:00 is **The Wonderful World of Disney** in place of the Star W
 
 No filler: `filler/bumpers/` has cartoon network and fox kids trees and nothing else, and the library has no Disney shorts to stand in.
 
-`premiere_season` is passed as a bare season string here, not the `("SEASON", "DAY")` tuple used in `sitcoms.py` and `detective.py`. The tuple form does not resolve to a date and silently schedules nothing — see [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+Built against bare season strings while the `("SEASON", "DAY")` tuple form was broken; that form is now fixed and both work. See [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
 
 ### Nick — built
 `scripts/channels/nick.py` · `scripts/library/nickelodeon.py`
@@ -116,7 +116,7 @@ Music videos only — no Daria, no Jersey Shore, and *The Beatles: Get Back* is 
 
 Simulates new episodes on weekdays and reruns on weekends.
 
-**Season-then-wait.** `annual_show(premiere_year=, premiere_season=, reruns=, loop=True)` — Broadcast Mode. Already proven on sitcoms, detective and scifi (Fringe is the model: new season each year, one episode a week). Absent from the cartoon channel.
+**Season-then-wait.** `annual_show(premiere_year=, premiere_season=, reruns=, loop=True)` — Broadcast Mode. In production on sitcoms, detective, scifi and Disney. `premiere_season` takes a bare season (`"FALL"`) or a season/weekday pair (`("FALL", "THURSDAY")`), which pins the premiere to that day of the week. Absent from the cartoon channel.
 
 **Short series as yearly events.** Anything too short to strip becomes an annual appointment rather than a rounding error: Dragon Ball DAIMA (20), Attack on Titan Junior High (12), Over the Garden Wall (10), Police Squad! (6), FLCL (6), the Star Wars *Tales* shorts (6 each), Macross Plus (4).
 

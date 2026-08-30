@@ -178,41 +178,85 @@ def derive_labels(dt: datetime) -> Set[str]:
 
     return labels
 
+# A season may be named on its own ("FALL") or paired with the weekday an
+# appointment airs on (("FALL", "THURSDAY")). Both forms appear in channel
+# configs; these two helpers are the single place that knows the difference.
+
+def season_label(value: Any) -> Any:
+    """
+    The season half of a season spec.
+
+    "FALL" -> "FALL";  ("FALL", "THURSDAY") -> "FALL".  Anything else is
+    returned untouched, so callers can pass through values they do not own.
+    """
+    if isinstance(value, tuple) and value:
+        return value[0]
+    return value
+
+
+def _split_season_spec(value: Any) -> Tuple[Optional[str], Optional[str]]:
+    """Split a season spec into (season, weekday), or (None, None) if invalid."""
+    weekday: Optional[str] = None
+    if isinstance(value, tuple) and len(value) == 2:
+        value, weekday = value
+    if not isinstance(value, str):
+        return None, None
+    season = value.upper()
+    if season not in registry.SEASONAL_RAMPS:
+        return None, None
+    return season, weekday
+
+
+def _align_to_weekday(dt: date, weekday: Optional[str]) -> date:
+    """Move `dt` forward to the first `weekday` on or after it. No-op if unset."""
+    if not isinstance(weekday, str):
+        return dt
+    try:
+        target = registry.WEEKDAYS.index(weekday.upper())
+    except ValueError:
+        return dt
+    return dt + timedelta(days=(target - dt.weekday()) % 7)
+
+
 def resolve_season_date(value: Union[date, tuple, str], current_date: Optional[date] = None) -> Optional[date]:
     """
     Resolves a date from a date object, (Year, Season) tuple, or Season string.
-    
+
+    The season may itself be a (season, weekday) pair, in which case the result
+    is moved forward to the first matching weekday -- so an appointment that
+    premieres in ("FALL", "THURSDAY") lands on a Thursday rather than on
+    whatever day the season's peak happens to start.
+
     Args:
         value: The input to resolve.
         current_date: Reference date for relative season strings (e.g. "WINTER").
-    
+
     Returns:
         Resolved date object, or None if resolution fails.
     """
     if isinstance(value, date):
         return value
-        
-    # Handle (Year, Season) tuple: (2026, "FALL")
-    if isinstance(value, tuple) and len(value) == 2:
-        year, season = value
-        if isinstance(year, int) and isinstance(season, str):
-            season = season.upper()
-            if season in registry.SEASONAL_RAMPS:
-                month, day = registry.SEASONAL_RAMPS[season]["peak_start"]
-                return date(year, month, day)
 
-    # Handle bare season string: "WINTER"
-    if isinstance(value, str) and current_date:
-        season = value.upper()
-        if season in registry.SEASONAL_RAMPS:
+    # Handle (Year, Season) tuple: (2026, "FALL") or (2026, ("FALL", "THURSDAY"))
+    if isinstance(value, tuple) and len(value) == 2:
+        year, spec = value
+        if isinstance(year, int):
+            season, weekday = _split_season_spec(spec)
+            if season:
+                month, day = registry.SEASONAL_RAMPS[season]["peak_start"]
+                return _align_to_weekday(date(year, month, day), weekday)
+
+    # Handle bare season: "WINTER" or ("WINTER", "THURSDAY")
+    if current_date:
+        season, weekday = _split_season_spec(value)
+        if season:
             month, day = registry.SEASONAL_RAMPS[season]["peak_start"]
-            current_year = current_date.year
-            season_start_this_year = date(current_year, month, day)
-            
+            season_start_this_year = date(current_date.year, month, day)
+
             # If today is Jan 2026, and Winter starts Dec 15, we want Dec 2025
             if season_start_this_year > current_date:
-                return date(current_year - 1, month, day)
-            else:
-                return season_start_this_year
-                
+                season_start_this_year = date(current_date.year - 1, month, day)
+
+            return _align_to_weekday(season_start_this_year, weekday)
+
     return None

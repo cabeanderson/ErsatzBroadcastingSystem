@@ -91,32 +91,41 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
   build timeout.~~ Fixed: `play_item` uses the returned context and only falls
   back to `get_context` on failure. A Cartoon Network day went 295 → 152 calls.
 
+- ~~🔴 **`premiere_season=("SEASON", "DAY")` scheduled nothing, silently.**
+  `annual_show()` passes `(year, premiere_season)` to `states.resolve_season_date`,
+  which only understood `(int, str)`. Given a tuple season it returned `None`,
+  `_build_season_windows` skipped every season, and `_resolve_appointment_schedule`
+  bailed on the empty window list — so the Program played its `reruns` forever and
+  never premiered. No warning: an appointment that never fires is indistinguishable
+  from one between seasons. `loop_restart_season` had the same problem from the
+  other end — it defaults to `premiere_season`, and a tuple there failed the
+  `isinstance(str)` check and silently selected the immediate-loop branch instead
+  of the annual restart. Six appointments were dead: The Office, Parks and Rec,
+  Community and 30 Rock (`library/sitcoms.py`), True Detective and Fargo
+  (`library/detective.py`).~~ Fixed at the root: `resolve_season_date` now accepts
+  a `(season, weekday)` pair and moves the resolved date forward to the first
+  matching weekday, so a `("FALL", "THURSDAY")` premiere lands on a Thursday
+  (2026-09-17) rather than on whatever day the season's peak starts (2026-09-15);
+  `states.season_label()` normalises the season half in `annual_show` and
+  `_apply_schedule_looping`. All six now premiere and advance weekly. Covered by
+  `TestSeasonSpecResolution` (9 tests) in `test_scenarios.py`.
+
 ## Open
 
-- [ ] 🔴 **`premiere_season=("SEASON", "DAY")` silently schedules nothing.**
-  `annual_show()` passes `(year, premiere_season)` to
-  `states.resolve_season_date`, which only understands `(int, str)`. Given a
-  tuple season it returns `None`, `_build_season_windows` skips that season, and
-  `_resolve_appointment_schedule` returns `None` on the empty window list — so
-  the Program plays its `reruns` forever and never premieres. There is no
-  warning: an appointment that never fires looks exactly like one between
-  seasons. Reproduce:
-
-  ```python
-  from scripts.logic.resolution.pipeline import _build_season_windows
-  p = annual_show(show_title="X", episodes_per_season=[6], premiere_year=2026,
-                  premiere_season=("SPRING", "SATURDAY"), frequency=["SATURDAY"])
-  _build_season_windows(p.scheduling["seasons"], 1, ["SATURDAY"], date.today())
-  # -> []   (a bare "SPRING" returns a real window)
-  ```
-
-  Affects every appointment in `library/sitcoms.py` (The Office, Parks and Rec,
-  Community, 30 Rock) and `library/detective.py` (True Detective, Fargo) — six
-  Programs that have never premiered. `library/disney.py` passes bare season
-  strings to avoid it. Fix is either in `resolve_season_date` (accept the tuple
-  and use the day for alignment) or in `annual_show` (unpack the tuple before
-  building `season_list`); the day half is currently redundant with `frequency`
-  either way.
+- [ ] 🟠 **Must See Thursday replays each episode two or three times a night.**
+  `sitcoms.MUST_SEE_THURSDAY` is a four-item `DailyOrderedCollection` in a
+  three-hour prime slot (20:00–23:00), so the collection wraps and each
+  appointment resolves to the same episode again: The Office S1E1 airs at 20:00,
+  21:20 and 22:40. Structural and pre-existing — the block has always been four
+  items in a ~six-slot window — but it was invisible while the appointments were
+  dead, because the wrap landed on four different rerun collections instead. Now
+  that they premiere, it shows. `detective.SUNDAY_PRESTIGE_BLOCK` has a mild
+  version of the same thing (one wrap at the tail, 2026-09-20). Fix is a
+  programming decision, not a code one: give the block a syndication tail so the
+  wrap lands on reruns rather than back on the appointment, or shorten the slot.
+  Note that any tail added here has to respect the Nick at Nite sharing rule —
+  the block reaches 23:00, and Good Times stays clear of 21:00–02:00 for the nine
+  shared classics.
 
 ### 🟠 Correctness / robustness
 

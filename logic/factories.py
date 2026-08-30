@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple, Union, Dict, Any
 from datetime import date, timedelta
 import re
 from .structures import Program, OrderedCollection
-from scripts.core import registry
+from scripts.core import registry, states
 from .models import MarathonDefinition
 from scripts.library.queries import show_by_title
 
@@ -52,9 +52,10 @@ def annual_show(
     if not content_pattern and not show_title:
         raise ValueError("Must provide either 'content_pattern' or 'show_title'")
 
-    # Default: loop restarts in same season as premiere
+    # Default: loop restarts in same season as premiere. Only the season half
+    # matters -- `frequency` already carries the day of the week.
     if loop and loop_restart_season is None:
-        loop_restart_season = premiere_season
+        loop_restart_season = states.season_label(premiere_season)
 
     season_list = []
     generated_queries = {}

@@ -107,6 +107,11 @@ MONTHS: Dict[int, str] = {
     9: "SEPTEMBER", 10: "OCTOBER", 11: "NOVEMBER", 12: "DECEMBER"
 }
 
+# Weekday labels, indexed to match datetime.weekday() (Monday == 0).
+WEEKDAYS: List[str] = [
+    "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"
+]
+
 # WEEKDAY_GROUPS should only include weekdays (0–4), not Saturday/Sunday
 WEEKDAY_GROUPS: Dict[str, Set[int]] = {
     "WEEKDAY_A": {0, 2, 4},  # Mon/Wed/Fri

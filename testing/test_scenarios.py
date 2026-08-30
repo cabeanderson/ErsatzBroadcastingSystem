@@ -487,6 +487,111 @@ class TestMarathonStartPoint(unittest.TestCase):
         print("✅ skips land on the post-injection key")
 
 
+class TestSeasonSpecResolution(unittest.TestCase):
+    """
+    A season may be named on its own ("FALL") or paired with the weekday an
+    appointment airs on (("FALL", "THURSDAY")).
+
+    The pair form used to resolve to no date at all, which made
+    `_build_season_windows` return an empty list and
+    `_resolve_appointment_schedule` bail -- so the Program played its reruns
+    forever and never premiered, silently. Six appointments across sitcoms and
+    detective were dead this way. These tests pin both forms.
+    """
+
+    def test_year_and_bare_season_resolves(self):
+        """The original (year, "SEASON") form still resolves to the peak start."""
+        from scripts.core import states
+        self.assertEqual(states.resolve_season_date((2026, "FALL")), date(2026, 9, 15))
+
+    def test_year_and_season_weekday_pair_resolves(self):
+        """(year, ("SEASON", "DAY")) resolves and lands on that weekday."""
+        from scripts.core import states
+        # FALL peaks 9/15, a Tuesday in 2026; the first Thursday after is 9/17.
+        resolved = states.resolve_season_date((2026, ("FALL", "THURSDAY")))
+        self.assertEqual(resolved, date(2026, 9, 17))
+        self.assertEqual(resolved.strftime("%A").upper(), "THURSDAY")
+
+    def test_weekday_alignment_does_not_move_an_already_matching_date(self):
+        """A peak that already falls on the target weekday stays put."""
+        from scripts.core import states
+        # SPRING peaks 3/15, a Sunday in 2026.
+        self.assertEqual(
+            states.resolve_season_date((2026, ("SPRING", "SUNDAY"))),
+            date(2026, 3, 15))
+
+    def test_bare_season_and_pair_both_resolve_relative(self):
+        """Bare "SEASON" and ("SEASON", "DAY") both work without a year."""
+        from scripts.core import states
+        today = date(2026, 8, 29)
+        self.assertEqual(states.resolve_season_date("SUMMER", today), date(2026, 6, 15))
+        # SUMMER peaks 6/15, a Monday in 2026; first Saturday after is 6/20.
+        self.assertEqual(
+            states.resolve_season_date(("SUMMER", "SATURDAY"), today), date(2026, 6, 20))
+
+    def test_unknown_season_still_returns_none(self):
+        """Garbage in stays None -- the fix must not make bad specs resolve."""
+        from scripts.core import states
+        self.assertIsNone(states.resolve_season_date((2026, "HARVEST")))
+        self.assertIsNone(states.resolve_season_date((2026, ("HARVEST", "THURSDAY"))))
+
+    def test_season_label_extracts_the_season_half(self):
+        from scripts.core import states
+        self.assertEqual(states.season_label(("FALL", "THURSDAY")), "FALL")
+        self.assertEqual(states.season_label("FALL"), "FALL")
+        self.assertIsNone(states.season_label(None))
+
+    def test_appointment_with_pair_season_builds_windows(self):
+        """The regression itself: a pair-season appointment has season windows."""
+        from scripts.logic.factories import annual_show
+        from scripts.logic.resolution.pipeline import _build_season_windows
+
+        prog = annual_show(
+            show_title="Test Show",
+            episodes_per_season=[6, 8],
+            premiere_year=2026,
+            premiere_season=("FALL", "THURSDAY"),
+            frequency=["THURSDAY"],
+            reruns="rerun_key",
+            loop=True,
+        )
+        windows = _build_season_windows(
+            prog.scheduling["seasons"], 1, prog.scheduling["frequency"], date(2026, 8, 29))
+
+        self.assertEqual(len(windows), 2, "both seasons must produce a window")
+        self.assertEqual(windows[0][0], date(2026, 9, 17))
+        # Season 2 premieres a year later, also on a Thursday.
+        self.assertEqual(windows[1][0].strftime("%A").upper(), "THURSDAY")
+
+    def test_pair_season_loop_restart_is_normalised(self):
+        """loop_restart_season inherits premiere_season; it must not stay a tuple."""
+        from scripts.logic.factories import annual_show
+        prog = annual_show(
+            show_title="Test Show", episodes_per_season=[6], premiere_year=2026,
+            premiere_season=("FALL", "THURSDAY"), frequency=["THURSDAY"], loop=True)
+        self.assertEqual(prog.scheduling["loop_restart_season"], "FALL",
+                         "a tuple here silently selects the immediate-loop branch")
+
+    def test_appointment_premieres_on_the_day_and_not_before(self):
+        """End to end: episode 1 on premiere day, nothing the Thursday before."""
+        from scripts.logic.factories import annual_show
+        from scripts.logic.resolution.pipeline import resolve_scheduled_content
+
+        prog = annual_show(
+            show_title="Test Show", episodes_per_season=[6], premiere_year=2026,
+            premiere_season=("FALL", "THURSDAY"), frequency=["THURSDAY"],
+            reruns="rerun_key", loop=True)
+
+        self.assertIsNone(resolve_scheduled_content(prog, date(2026, 9, 10)),
+                          "must not air before the premiere")
+        for week, expected in enumerate([1, 2, 3, 4, 5, 6]):
+            day = date(2026, 9, 17) + timedelta(weeks=week)
+            result = resolve_scheduled_content(prog, day)
+            self.assertIsNotNone(result, f"no episode on {day}")
+            self.assertEqual(result[2], expected, f"wrong episode on {day}")
+        print("✅ pair-season appointments premiere and advance weekly")
+
+
 class TestCallEfficiency(unittest.TestCase):
     """ErsatzTV kills a scripted build at 30s, so round trips are a budget."""
 
