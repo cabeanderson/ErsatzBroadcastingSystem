@@ -7,6 +7,7 @@ Mocks the API and provides fast testing with time travel capabilities.
 from datetime import datetime, timedelta
 from uuid import uuid4
 from collections import defaultdict
+import re
 import sys
 
 
@@ -118,30 +119,65 @@ class MockAPI:
         return self.context
 
 
-    @staticmethod
-    def _guess_duration(content_key):
-        """Guess duration from content key."""
+    def _guess_duration(self, content_key):
+        """
+        Guess an item's runtime.
+
+        The registered query is authoritative about *type*; the key name is
+        only a hint, and a misleading one for keys built from show titles.
+        `auto_gen_home_movies_<hash>` is Home Movies, an eleven-minute Adult
+        Swim series -- the old substring match read "movies" and gave it two
+        hours, which swallowed the rest of its block and the slot after it. The
+        simulation stayed green throughout, so the artifact read as a real
+        scheduling failure. Two other library titles trip the same wire
+        ("Home Movie: The Princess Bride", "Life's Too Short").
+
+        Matching is on whole words, so the registry's `..._movie` / `..._tv` /
+        `..._bumpers` suffix convention still works.
+        """
         if not isinstance(content_key, str):
             return 20
-            
-        key_lower = content_key.lower()
-        
-        # Movies
-        if 'movie' in key_lower or 'film' in key_lower:
-            return 120  # 2 hours
-        
+
+        query = self.registered_searches.get(content_key)
+        if isinstance(query, dict):
+            query = query.get('query', '')
+        query = (query or '').lower()
+
+        # A registered query settles the type outright.
+        if query:
+            return 120 if 'type:movie' in query else \
+                   self._guess_duration_from_name(content_key, movies=False)
+
+        return self._guess_duration_from_name(content_key)
+
+    @staticmethod
+    def _guess_duration_from_name(content_key, movies=True):
+        """Name-only guess, for when no query has been registered."""
+        if not isinstance(content_key, str):
+            return 20
+
+        words = set(re.split(r'[^a-z0-9]+', content_key.lower()))
+
+        if movies and words & {'movie', 'movies', 'film', 'films'}:
+            return 120
+
         # Hour-long shows
-        if 'drama' in key_lower or 'procedural' in key_lower or 'star_trek' in key_lower:
+        if words & {'drama', 'procedural'} or {'star', 'trek'} <= words:
             return 60
-        
+
         # Half-hour shows
-        if 'sitcom' in key_lower or 'cartoon' in key_lower or 'tv' in key_lower:
+        if words & {'sitcom', 'sitcoms', 'cartoon', 'cartoons', 'tv'}:
             return 30
-        
-        # Shorts/filler
-        if 'short' in key_lower or 'filler' in key_lower or 'bumper' in key_lower or 'commercial' in key_lower:
+
+        # Shorts/filler. `intro`/`outro` belong here with the bumpers -- they
+        # are branding stings, and defaulting them to 20 minutes put 40 minutes
+        # of ident either side of a block boundary, which is enough to squeeze
+        # a real item out of a one-hour slot.
+        if words & {'short', 'shorts', 'filler', 'bumper', 'bumpers',
+                    'commercial', 'commercials', 'intro', 'outro',
+                    'ident', 'idents', 'promo', 'promos'}:
             return 5
-        
+
         # Default
         return 20
     
@@ -717,12 +753,13 @@ class ChannelSimulator:
 
             # Get duration
             content_key = schedule[i]['content']
-            # We need access to the API instance used to create this schedule to get exact durations,
-            # but since we don't have it here, we'll use the guesser again or assume 20.
-            # For validation purposes, we'll instantiate a temporary MockAPI just for the guesser logic
-            # or better, just replicate the guess logic or assume standard blocks.
-            # Actually, let's just use the guesser logic directly since it's stateless.
-            duration = MockAPI._guess_duration(content_key)
+            # The build already recorded what it actually played, so use that
+            # rather than re-deriving it. Re-guessing here drifted from the
+            # build whenever the guess depended on a registered query, and it
+            # only ever agreed by coincidence.
+            duration = schedule[i].get('duration')
+            if duration is None:
+                duration = MockAPI._guess_duration_from_name(content_key)
             
             expected_end = current_end + timedelta(minutes=duration)
             

@@ -16,7 +16,10 @@ from scripts.logic.resolution.playback import hour_in_window, calculate_boundary
 from scripts.library.queries import extract_episode_range
 from etv_client.models import ControlSkipToItem
 from scripts.logic.resolution.config_utils import resolve_feature, resolve_commercial_duration, resolve_filler_content, resolve_bumper_collection
-from scripts.engines.dispatcher import play_commercials, play_bumper, fill_to_boundary, play_generic_branding
+from scripts.engines.dispatcher import (
+    play_commercials, play_bumper, fill_to_boundary, play_generic_branding,
+    resolve_fallback_key
+)
 
 if TYPE_CHECKING:
     from scripts.core import DayDirector
@@ -138,7 +141,10 @@ def _play_block_internal(session: PlayoutSession, block: Block, start_hour: int,
 
             items_played += 1
             
-            session.context = circuit_breaker(session.api, session.build_id, session.context, last_time, session.logger, fallback_content=session.config.fallback_content, skip_minutes=session.config.circuit_breaker_skip)
+            # Resolved, not raw: `circuit_breaker` passes this straight to
+            # `play_item`, which stringifies a Block or Collection into a key
+            # that matches nothing. See dispatcher.resolve_fallback_key.
+            session.context = circuit_breaker(session.api, session.build_id, session.context, last_time, session.logger, fallback_content=resolve_fallback_key(session, last_time), skip_minutes=session.config.circuit_breaker_skip)
             if session.context.current_time <= last_time:
                 session.logger.warn("Block item failed to advance time. Breaking block.")
                 break

@@ -267,19 +267,45 @@ def fill_to_boundary(
     
     return session.context
 
+def resolve_fallback_key(session: "PlayoutSession", last_time: Any) -> Optional[str]:
+    """
+    Resolve `config.fallback_content` to a content key, or None.
+
+    Every caller must go through this. `circuit_breaker` hands what it is given
+    straight to `play_item`, which stringifies anything that is not already a
+    key -- so a Block fallback reaches ErsatzTV as the text
+    "Block(name='...', items=<...object at 0x7f...>)", matches nothing, and
+    still reports "fallback succeeded". A Collection fails the same way. Both
+    resolve fine; they just have to be resolved first.
+
+    Returns None when time has not stalled, so the resolution cost is only paid
+    when the breaker is actually about to fire.
+    """
+    if session.context.current_time > last_time or not session.config.fallback_content:
+        return None
+
+    try:
+        res = resolve_content(session.config.fallback_content, session.boss,
+                              session.holiday_ctx, session.config,
+                              session.resolver, session.logger)
+        if isinstance(res.resolved_content, str):
+            return res.resolved_content
+        session.logger.warn(
+            f"fallback_content resolved to {type(res.resolved_content).__name__}, "
+            f"not a content key -- the circuit breaker will skip ahead instead. "
+            f"Blocks are not valid here; use a key or a Collection."
+        )
+    except Exception as e:
+        session.logger.warn(f"Failed to resolve fallback content: {e}")
+
+    return None
+
+
 def maintain_playout_invariants(session: "PlayoutSession", last_time: Any) -> Any:
     """
     Handles fallback logic, circuit breaking, and filler at hour boundaries.
     """
-    # Resolve fallback content only if stalled
-    fallback_key = None
-    if session.context.current_time <= last_time and session.config.fallback_content:
-        try:
-            fb_res = resolve_content(session.config.fallback_content, session.boss, session.holiday_ctx, session.config, session.resolver, session.logger)
-            if isinstance(fb_res.resolved_content, str):
-                fallback_key = fb_res.resolved_content
-        except Exception as e:
-            session.logger.warn(f"Failed to resolve fallback content: {e}")
+    fallback_key = resolve_fallback_key(session, last_time)
 
     session.context = circuit_breaker(session.api, session.build_id, session.context, last_time, session.logger, fallback_content=fallback_key, skip_minutes=session.config.circuit_breaker_skip)
 

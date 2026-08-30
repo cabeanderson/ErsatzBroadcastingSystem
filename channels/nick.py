@@ -159,7 +159,9 @@ def build_playout(api, context, build_id):
         # Schoolhouse Rock is three minutes a piece -- the pad the channel
         # actually has assets for. There are no Nick bumpers on disk.
         filler_content="schoolhouse_rock_tv",
-        fallback_content=nickelodeon.NICKTOONS_CLASSIC,
+        # A content key, not the Block -- see disney.py. Nicktoons only, so a
+        # fallback at any hour cannot reach into the shared Nick at Nite set.
+        fallback_content="nicktoons_vault_tv",
         logger=ChannelLogger(prefix="[NICK]"),
         enable_filler=True,
         enable_holiday_injection=True,

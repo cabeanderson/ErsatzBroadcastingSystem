@@ -347,6 +347,18 @@ NICK_REGISTRY = {
     # Three-minute shorts -- the natural pad between programmes on a kids
     # channel, and the only filler Nick has assets for.
     "schoolhouse_rock_tv": show_by_title("Schoolhouse Rock!"),
+
+    # The channel's emergency bed, same contract as `disney_vault_tv`: a
+    # content key, because `fallback_content` cannot be a Block. Nicktoons
+    # only -- the Nick at Nite titles are shared with Good Times, and a
+    # fallback firing at an arbitrary hour must not reach into them.
+    "nicktoons_vault_tv": playback_order(
+        'type:episode AND show_genre:animation AND ('
+        'show_title:"The Ren & Stimpy Show" OR show_title:"Rocko\'s Modern Life"'
+        ' OR show_title:"Aaahh!!! Real Monsters" OR show_title:"The Wild Thornberrys"'
+        ' OR show_title:"SpongeBob SquarePants" OR show_title:"Invader ZIM"'
+        ' OR show_title:"Daria")',
+        force="Shuffle"),
 }
 
 # ============================================================================
@@ -391,6 +403,21 @@ DISNEY_REGISTRY = {
     # is in season, and the collection the May 4th marathon draws from.
     "star_wars_animation_tv": playback_order(
         f'{show_by_title("Star Wars")} AND show_genre:animation',
+        force="Shuffle"),
+
+    # The channel's emergency bed. `fallback_content` is handed to the circuit
+    # breaker and must be a content key -- a Block is stringified into a key
+    # that matches nothing (see engines/dispatcher.py::resolve_fallback_key).
+    # Genre-qualified once for the whole OR, which also settles Hercules.
+    "disney_vault_tv": playback_order(
+        'type:episode AND show_genre:animation AND ('
+        'show_title:"DuckTales" OR show_title:"Darkwing Duck"'
+        ' OR show_title:"Chip \'n\' Dale Rescue Rangers" OR show_title:"TaleSpin"'
+        ' OR show_title:"Gargoyles" OR show_title:"Goof Troop"'
+        ' OR show_title:"Aladdin" OR show_title:"Hercules"'
+        ' OR show_title:"Pepper Ann" OR show_title:"Kim Possible"'
+        ' OR show_title:"Buzz Lightyear of Star Command"'
+        ' OR show_title:"Mighty Ducks: The Animated Series")',
         force="Shuffle"),
 
     # --- DISAMBIGUATION ---

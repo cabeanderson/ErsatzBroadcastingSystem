@@ -641,6 +641,120 @@ class TestSeasonSpecResolution(unittest.TestCase):
         print("✅ pair-season appointments premiere and advance weekly")
 
 
+class TestFallbackResolution(unittest.TestCase):
+    """
+    `fallback_content` reaches `circuit_breaker`, which hands it straight to
+    `play_item`. `play_item` stringifies anything that is not a key, so an
+    unresolved Block arrived at ErsatzTV as
+    "Block(name='...', items=<...object at 0x7f...>)" -- matching nothing,
+    carrying a memory address, and still logging "fallback succeeded".
+
+    `engines/blocks.py` passed it raw while `engines/dispatcher.py` resolved
+    first, so the same config behaved differently depending on which call site
+    fired. Both now go through `resolve_fallback_key`.
+    """
+
+    def _session(self, fallback, stalled=True):
+        from types import SimpleNamespace
+        from scripts.library.sources import MASTER_SOURCES
+        now = datetime(2026, 9, 1, 12, 0)
+        ctx = MagicMock(); ctx.current_time = now
+        boss = DayDirector(ctx)
+        logger = ChannelLogger(verbose=False)
+        cfg = ScheduleConfig(schedules={"WEEKDAY": {}}, fallback_content=fallback)
+        session = SimpleNamespace(
+            context=ctx, config=cfg, boss=boss,
+            holiday_ctx=HolidayContext(boss), logger=logger,
+            resolver=ContentResolver(MagicMock(), "b", MASTER_SOURCES, logger),
+        )
+        # last_time >= now means "stalled"; a past last_time means time moved.
+        return session, (now if stalled else now - timedelta(minutes=30))
+
+    def test_string_key_passes_through(self):
+        from scripts.engines.dispatcher import resolve_fallback_key
+        session, last = self._session("procedural_tv")
+        self.assertEqual(resolve_fallback_key(session, last), "procedural_tv")
+
+    def test_collection_resolves_to_a_key(self):
+        from scripts.engines.dispatcher import resolve_fallback_key
+        from scripts.library import movies
+        session, last = self._session(movies.GOLDEN_AGE_CINEMA)
+        key = resolve_fallback_key(session, last)
+        self.assertIsInstance(key, str)
+        self.assertIn(key, ("30s_golden_age_movie", "classic_hollywood_movie"))
+
+    def test_block_never_leaks_through_as_a_key(self):
+        """The actual regression: a Block must yield None, not a stringified Block."""
+        from scripts.engines.dispatcher import resolve_fallback_key
+        from scripts.library import disney
+        session, last = self._session(disney.THE_DISNEY_AFTERNOON)
+        key = resolve_fallback_key(session, last)
+        self.assertIsNone(key)
+
+    def test_not_resolved_when_time_has_not_stalled(self):
+        from scripts.engines.dispatcher import resolve_fallback_key
+        session, last = self._session("procedural_tv", stalled=False)
+        self.assertIsNone(resolve_fallback_key(session, last))
+
+    def test_every_channel_fallback_is_usable(self):
+        """
+        Repo-wide invariant. A fallback that cannot resolve is invisible until
+        the day something stalls, which is exactly the day it is needed.
+        """
+        import importlib, inspect, re as _re
+        bad = []
+        for name in ("british", "cartoon_network", "classic_movies", "detective",
+                     "disney", "eighties", "nick", "scifi", "sitcoms"):
+            mod = importlib.import_module(f"scripts.channels.{name}")
+            src = inspect.getsource(mod.build_playout)
+            m = _re.search(r"fallback_content=([^,\n]+)", src)
+            if not m:
+                continue
+            value = eval(m.group(1).strip(), mod.__dict__)  # noqa: S307 - test fixture
+            session, last = self._session(value)
+            from scripts.engines.dispatcher import resolve_fallback_key
+            if not isinstance(resolve_fallback_key(session, last), str):
+                bad.append(f"{name} ({type(value).__name__})")
+        self.assertEqual(bad, [], f"channels whose fallback cannot resolve: {bad}")
+        print("✅ every channel fallback resolves to a content key")
+
+
+class TestSimulatorDurationGuess(unittest.TestCase):
+    """
+    The mock guessed runtime by substring, so the *show* Home Movies -- key
+    `auto_gen_home_movies_<hash>` -- was read as a two-hour film. That one item
+    ate the rest of its block and the whole hour after it, which looked like a
+    real scheduling failure in an otherwise-green simulation.
+    """
+
+    def _api(self):
+        api = MockAPI(MockContext(datetime(2026, 9, 4, 12, 0)))
+        api.registered_searches["auto_gen_home_movies_x"] = {
+            "query": 'type:episode AND show_title:"Home Movies"', "order": "Shuffle"}
+        api.registered_searches["disney_movie"] = {
+            "query": "type:movie AND genre:animation", "order": "Shuffle"}
+        return api
+
+    def test_show_titled_movies_is_not_a_film(self):
+        self.assertEqual(self._api()._guess_duration("auto_gen_home_movies_x"), 20)
+
+    def test_registered_movie_query_still_two_hours(self):
+        self.assertEqual(self._api()._guess_duration("disney_movie"), 120)
+
+    def test_unregistered_movie_key_falls_back_to_the_name(self):
+        self.assertEqual(self._api()._guess_duration("30s_golden_age_movie"), 120)
+
+    def test_branding_stings_are_short(self):
+        api = self._api()
+        for key in ("adult_swim_intro", "adult_swim_outro", "toonami_bumpers"):
+            self.assertEqual(api._guess_duration(key), 5, key)
+
+    def test_matching_is_on_whole_words(self):
+        api = self._api()
+        self.assertEqual(api._guess_duration("auto_gen_star_trek_voyager_x"), 60)
+        self.assertEqual(api._guess_duration("nicktoons_vault_tv"), 30)
+
+
 class TestCallEfficiency(unittest.TestCase):
     """ErsatzTV kills a scripted build at 30s, so round trips are a budget."""
 

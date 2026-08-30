@@ -110,6 +110,42 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
   `_apply_schedule_looping`. All six now premiere and advance weekly. Covered by
   `TestSeasonSpecResolution` (9 tests) in `test_scenarios.py`.
 
+- ~~🔴 **`fallback_content` was silently dead on five channels.** It reaches
+  `circuit_breaker`, which hands it straight to `play_item` — and `play_item`
+  stringifies anything that is not already a key. A Block fallback arrived at
+  ErsatzTV as the literal text `Block(name='The Disney Afternoon', items=<...
+  object at 0x7f...>)`: matching nothing, carrying a memory address so it was
+  not even stable between runs, and still logging "✅ Fallback succeeded". The
+  two call sites disagreed — `engines/dispatcher.py` resolved first,
+  `engines/blocks.py:141` passed it raw — so the same config behaved differently
+  depending on which one fired.~~ Fixed: both now go through
+  `dispatcher.resolve_fallback_key()`, which resolves, returns a key or None,
+  and warns when a fallback resolves to something unusable. That makes
+  Collections work at both sites (british, classic_movies, sitcoms were already
+  passing Collections); Blocks remain invalid per `pipeline.py:109`, so Disney
+  and Nick moved to new `disney_vault_tv` / `nicktoons_vault_tv` keys —
+  genre-qualified OR queries over each channel's own shows, following the
+  `toonami_vault_tv` pattern. Nick's deliberately excludes the Nick at Nite
+  titles, which are shared with Good Times. Covered by `TestFallbackResolution`,
+  including a repo-wide test that every channel's fallback resolves to a key.
+
+- ~~🟠 **The simulator sized content by substring, inventing a failure.**
+  `MockAPI._guess_duration` matched `'movie' in key`, so the *show* Home Movies
+  — key `auto_gen_home_movies_<hash>` — was treated as a two-hour film. That one
+  item ate the rest of its Adult Swim block and all of the hour after it, which
+  made Cartoon Network appear to drop its Friday 23:00 slot every single week
+  and never air Attack on Titan Junior High. `validate_schedule` reported no
+  gaps throughout, so it read as a real scheduling bug rather than an artifact.
+  `intro`/`outro` were also absent from the shorts list while `bumper`/`filler`
+  were present, so branding stings were sized at 20 minutes — 40 minutes of
+  ident either side of a block boundary, enough to squeeze a real item out of a
+  one-hour slot.~~ Fixed: a registered `type:movie` query is now authoritative,
+  name matching is on whole words rather than substrings, and `intro`/`outro`/
+  `ident`/`promo` are shorts. `validate_schedule` uses the duration the build
+  actually recorded instead of re-deriving it. Three library titles tripped the
+  old wire; only Home Movies was scheduled anywhere. Covered by
+  `TestSimulatorDurationGuess`.
+
 ## Open
 
 - [ ] 🟠 **Must See Thursday replays each episode two or three times a night.**

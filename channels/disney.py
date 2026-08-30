@@ -178,7 +178,9 @@ def build_playout(api, context, build_id):
         # No filler: `filler/bumpers/` has cartoon network and fox kids trees
         # and nothing else, and there are no Disney shorts in the library to
         # stand in. See reference/bumper-inventory.md.
-        fallback_content=disney.THE_DISNEY_AFTERNOON,
+        # A content key, not the Block. `fallback_content` goes to the circuit
+        # breaker, which needs something `play_item` can send as-is.
+        fallback_content="disney_vault_tv",
         logger=ChannelLogger(prefix="[DISNEY]"),
         enable_marathons=True,
         enable_holiday_injection=True,
