@@ -22,6 +22,7 @@ from .filters import (
     SHORT, NO_COMEDY, NO_HORROR,
     TV_CLASSIC, TV_GOLDEN_AGE, TV_HD, TV_VINTAGE,
     NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI, NO_WESTERN, MODERN_FILM_ERA, PRE_EIGHTIES_ERA,
+    POST_EIGHTIES_ERA,
     SIXTIES, SITCOM_80S_VIBE, SITCOM_90S_VIBE
 )
 
@@ -47,6 +48,15 @@ MOVIE_REGISTRY = {
     "film_history_all_movie": movie_source(era=CLASSIC_ERA),
     "70s_movie": movie_source(era=SEVENTIES),
     "80s_movie": movie_source(era=EIGHTIES),
+    # The two decades minus the horror shelf, on the `_pure_` convention: the
+    # era with what another channel owns taken out. Classic Cinema's weekday
+    # prime is New Hollywood, and the unfiltered keys put 67 eighties horror
+    # films and 20 seventies ones on it -- the same films Nightmare Theatre runs
+    # at 22:00. The Eighties channel had already drawn this line for itself:
+    # `eighties_daytime_movie` has carried NOT genre:horror all along.
+    # 137 -> 117 and 296 -> 229.
+    "70s_pure_movie": movie_source(era=SEVENTIES, extra=NO_HORROR),
+    "80s_pure_movie": movie_source(era=EIGHTIES, extra=NO_HORROR),
     "90s_movie": movie_source(era=NINETIES),
     "00s_movie": movie_source(era=Y2K_ERA),
     "10s_movie": movie_source(era=TENS),
@@ -67,7 +77,33 @@ MOVIE_REGISTRY = {
     "kids_safe_movie": movie_source(rating="(content_rating:TV-G OR content_rating:TV-Y)"),
 
     # --- HORROR VAULT ---
-    "classic_horror_movie": movie_source(genre="horror", era=EIGHTIES, extra=NO_COMEDY),
+    # Three era shelves, not two. 242 non-animated horror films is five times the
+    # western pool, and Nightmare Theatre runs seventeen hours of film a day --
+    # a single `horror_movie` key on the whole grid would cycle the same shelf
+    # through breakfast and midnight alike.
+    #
+    # `classic_horror_movie` was `era=EIGHTIES` and meant the 1980s, which is
+    # not what "classic horror" names anywhere else. It is now the pre-1980
+    # shelf it sounds like -- Nosferatu, Frankenstein, Freaks, King Kong,
+    # Godzilla, Body Snatchers, Psycho, Night of the Living Dead, The Exorcist,
+    # Texas Chain Saw, Jaws, Halloween, Alien -- and the old 1980s definition
+    # moved to `eighties_horror_movie` unchanged. The only consumer was
+    # `movies.HORROR_VAULT`, which no channel scheduled, so nothing on air
+    # changed meaning under it.
+    "classic_horror_movie": movie_source(genre="horror", era=PRE_EIGHTIES_ERA, extra=NO_COMEDY),   #  39
+    "eighties_horror_movie": movie_source(genre="horror", era=EIGHTIES, extra=NO_COMEDY),          #  50
+    "modern_horror_movie": movie_source(genre="horror", era=POST_EIGHTIES_ERA, extra=NO_COMEDY),   # 102
+    # The whole shelf, comedies still out. For the wide afternoon block that is
+    # allowed to draw any era -- the one place the channel puts 1931 Frankenstein
+    # next to 2018 Hereditary on purpose.
+    "horror_movie": movie_source(genre="horror", extra=NO_COMEDY),                                 # 191
+    # The 51 films every other horror key throws away. NO_COMEDY is right for a
+    # block that means to frighten and wrong as a library policy: it discards
+    # An American Werewolf in London, Re-Animator, Return of the Living Dead,
+    # Fright Night, Gremlins, Creepshow, Evil Dead II and Shaun of the Dead.
+    # They are not a lesser horror shelf, they are a different room -- Saturday
+    # night, after the appointment.
+    "horror_comedy_movie": movie_source(genre="horror", extra="genre:comedy"),                     #  51
     "horror_zombies_movie": movie_source(genre="horror", tags="tag:zombie", extra=NO_COMEDY),
     "horror_werewolf_movie": movie_source(genre="horror", tags="tag:werewolf", extra=NO_COMEDY),
     "horror_vampire_movie": movie_source(genre="horror", tags="tag:vampire", extra=NO_COMEDY),
@@ -227,8 +263,26 @@ TV_REGISTRY = {
     # Westworld, both tagged Western and neither one. Use the era keys above, or
     # name the shows -- which is what `library/western.py` does.
     "western_tv": show_source(genre="western"),
+    # The raw genre tag, and the same trap `western_tv` carries. Do not schedule
+    # it: genre:horror reaches The X-Files (Other Worlds' Investigation strand),
+    # Millennium (Mystery Theatre's anchor) and Beyond Belief (Other Worlds'
+    # Saturday), so a horror channel drawing this key airs three other channels'
+    # spines. Use `horror_pure_tv` or name the shows.
     "horror_tv": show_source(genre="horror"),
-    "classic_horror_tv": show_source(genre="horror", era=TV_CLASSIC),
+    # Was `era=TV_CLASSIC` (1976-1989) and returned **nothing**, the same class
+    # of bug `classic_western_tv` carried: there is no horror television in this
+    # library before 1989, and the one 1989 show -- Tales from the Crypt -- is
+    # tagged Comedy/Crime/Mystery/Science Fiction and so is not reachable by
+    # genre:horror at all. The era that actually holds content is 1989-2009:
+    # Nightmare Cafe, Poltergeist: The Legacy and Darkplace, once the other
+    # channels' shows are excluded. Named for the window rather than the vibe,
+    # because "classic horror TV" is a thing this library does not have.
+    "classic_horror_tv": show_source(
+        genre="horror",
+        era="release_date:[* TO 2009-12-31]",
+        extra='NOT show_title:"The X-Files" AND NOT show_title:"Millennium" '
+              'AND NOT show_title:"Beyond Belief: Fact or Fiction"'
+    ),
     "modern_horror_tv": show_source(genre="horror", era=TV_HD),
     "thriller_tv": show_source(genre="thriller"),
     # Was genre:"(supernatural OR tag:paranormal)". There is no Supernatural
@@ -341,7 +395,13 @@ TV_REGISTRY = {
     "eighties_scifi_v": show_by_title("V"),
     "eighties_drama_movie": movie_source(genre="drama", era=EIGHTIES),
     "eighties_music_videos": 'type:"music_video" AND year:[1980 TO 1989]',
-    "eighties_weekend_movie": movie_source(era=EIGHTIES),
+    # NO_HORROR, matching `eighties_daytime_movie` above, which has carried the
+    # exclusion since before there was a horror channel to justify it. Without
+    # it this key is the whole 1980s and contains `eighties_horror_movie`
+    # outright -- Totally 80s' weekend film against Nightmare Theatre's name
+    # block, drawing the same 67 films at the same hour. Caught by section 3 of
+    # the collision report.
+    "eighties_weekend_movie": movie_source(era=EIGHTIES, extra=NO_HORROR),
     "eighties_cult_movie": movie_source(era=EIGHTIES, tags="tag:cult"),
     "commercials_80s_spot": 'type:"other_video" AND tag:commercial AND tag:80s',
 

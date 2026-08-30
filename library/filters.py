@@ -30,6 +30,11 @@ STREAMING_ERA = "release_date:[2010-01-01 TO *]"
 # have the whole 365 without airing the other's overnight.
 PRE_EIGHTIES_ERA = "release_date:[* TO 1979-12-31]"
 MODERN_FILM_ERA = "release_date:[1980-01-01 TO *]"
+# The far side of the 1980s. Pairs with PRE_EIGHTIES_ERA to cut a genre into
+# three shelves -- before, during, after -- which is what Nightmare Theatre
+# needed: 242 horror films is too many for the two-way classic/modern split
+# High Noon used on 46 westerns.
+POST_EIGHTIES_ERA = "release_date:[1990-01-01 TO *]"
 
 # --- TV ERAS ---
 TV_VINTAGE = "release_date:[* TO 1975-12-31]"

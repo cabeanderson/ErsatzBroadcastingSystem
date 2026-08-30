@@ -20,6 +20,16 @@ def on_date(month, day):
     """
     return lambda boss: boss.now.month == month and boss.now.day == day
 
+def day_of_month(day):
+    """
+    True on a given day number in any month.
+
+    Composes with the weekday labels the day director already derives, which is
+    the only way to reach a floating date that is not in `registry.HOLIDAYS`:
+        triggers.all_of(triggers.has_label("FRIDAY"), triggers.day_of_month(13))
+    """
+    return lambda boss: boss.now.day == day
+
 def in_range(start_month, start_day, end_month, end_day):
     """
     True within a date range (inclusive).

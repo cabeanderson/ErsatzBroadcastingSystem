@@ -47,15 +47,12 @@ SCIFI_CULT = OrderedCollection([
     {"title": "Dark Angel", "order": "Chronological"}
 ])
 
-# Horror television, not science fiction. Off Other Worlds and waiting for
-# Nightmare Theatre; kept here rather than deleted because the block works and
-# only its home is wrong. `thriller_tv` needs narrowing before it is scheduled
-# again -- genre:thriller reaches Columbo and Remington Steele.
-PARANORMAL_FILES = RandomCollection([
-    "supernatural_tv",
-    "thriller_tv",
-    "horror_tv"
-])
+# PARANORMAL_FILES is gone. It was horror television parked here after Other
+# Worlds became science-fiction-only, waiting for a channel to want it.
+# Nightmare Theatre exists now and builds its own spine from named shows in
+# `library/horror.py`, which is what the pool needed: `horror_tv` reaches The
+# X-Files and Beyond Belief -- two of this channel's own strands -- so the
+# collection could never have been scheduled there as written.
 
 SCIFI_MYTHS = RandomCollection([
     {"title": "Beyond Belief: Fact or Fiction", "query": 'show_title:"beyond belief*"', "order": "Shuffle"},

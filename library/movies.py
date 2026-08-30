@@ -15,7 +15,11 @@ SILENT_CINEMA = RandomCollection(["20s_silent_movie"])
 # Other Worlds owns that shelf and airs it in the same hours; the afternoon
 # feature and the seasonal variants still use the unfiltered key.
 GOLDEN_AGE_CINEMA = RandomCollection(["30s_golden_age_movie", "classic_hollywood_pure_movie"])
-NEW_HOLLYWOOD_CINEMA = RandomCollection(["70s_movie", "80s_movie"])
+# The `_pure_` variants, not the raw decades. This is the channel's weekday
+# prime and the raw keys carry 87 horror films between them -- the shelf
+# Nightmare Theatre airs at the same hour. Same eviction Other Worlds got for
+# science fiction and High Noon for westerns.
+NEW_HOLLYWOOD_CINEMA = RandomCollection(["70s_pure_movie", "80s_pure_movie"])
 # Currently on no channel. Kept because the modern-film channel wants this pool;
 # it was on Classic Cinema's summer prime, which is not where it belongs.
 MODERN_BLOCKBUSTERS = RandomCollection(["90s_movie", "00s_movie", "10s_movie", "blockbuster_action_movie"])
@@ -23,7 +27,6 @@ MODERN_BLOCKBUSTERS = RandomCollection(["90s_movie", "00s_movie", "10s_movie", "
 # Spotlights
 CYBERPUNK_SPOTLIGHT = RandomCollection(["cyberpunk_movie", "classic_scifi_movie"])
 TIME_TRAVEL_SPOTLIGHT = RandomCollection(["classic_scifi_movie", "modern_scifi_movie", "80s_movie"])
-ALIEN_INVASION_SPOTLIGHT = RandomCollection(["horror_aliens_movie", "classic_scifi_movie"])
 
 # Genre Marquees
 # WESTERN_MATINEE is gone. It was `western_movie` -- all 46 western films --
@@ -39,11 +42,16 @@ COMEDY_NIGHT = RandomCollection(["80s_comedy_movie", "90s_comedy_movie"])
 NOIR_NIGHT = RandomCollection(["classic_noir_movie", "classic_crime_movie"])
 SCI_FI_SHOWCASE = RandomCollection(["classic_scifi_movie", "modern_scifi_movie", "cyberpunk_movie"])
 
-# Monster Vault
-CREATURE_FEATURE = RandomCollection(["horror_kaiju_movie", "horror_werewolf_movie"])
-UNDEAD_CINEMA = RandomCollection(["horror_zombies_movie", "horror_vampire_movie"])
-STALKER_CINEMA = RandomCollection(["horror_slasher_movie", "psych_thriller_movie"])
-HORROR_VAULT = RandomCollection(["classic_horror_movie", "horror_found_footage_movie", "horror_aliens_movie"])
+# The Monster Vault is gone -- CREATURE_FEATURE, UNDEAD_CINEMA, STALKER_CINEMA
+# and HORROR_VAULT, plus ALIEN_INVASION_SPOTLIGHT above. All five were defined
+# here and scheduled by no channel: Other Worlds dropped the two it used when it
+# became science-fiction-only, and Classic Cinema never took them up. They were
+# holding the whole 242-film horror shelf in a classic-cinema module on behalf
+# of a channel that did not exist yet.
+#
+# Nightmare Theatre exists now and owns `genre:horror` outright. The equivalents
+# live in `library/horror.py`, built against era keys sized to the airtime they
+# carry rather than against sub-genre tag pools of a dozen films each.
 
 # Holiday Movies (Plain lists for event programming)
 HALLOWEEN_MARATHON_EVENT = RandomCollection([

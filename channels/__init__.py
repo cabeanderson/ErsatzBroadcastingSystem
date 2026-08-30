@@ -8,6 +8,7 @@ from . import detective
 from . import disney
 from . import high_noon
 from . import nick
+from . import nightmare_theatre
 from . import scifi
 from . import sitcoms
 
@@ -18,6 +19,7 @@ __all__ = [
     'disney',
     'high_noon',
     'nick',
+    'nightmare_theatre',
     'scifi',
     'sitcoms'
 ]

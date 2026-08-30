@@ -39,7 +39,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 241 | Makers Corner | DIY & craft | no |
 | 242 | Corncob TV | absurd comedy | no |
 | 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
-| 244 | Nightmare Theatre | horror, TV + film | no — 244 films, but horror TV is only 21 shows / 799 eps |
+| 244 | Nightmare Theatre | horror, TV + film | yes — **built**. The film is the spine: 242 features, 17 h/day |
 | 246 | The Beat | **music videos only** | no |
 
 ### To build
@@ -161,6 +161,47 @@ Six appointments on one channel is the most in the lineup, and it works because 
 **Its own timeslot map, split at midnight.** Prime is 20:00–22:00, not the default's 20:00–23:00: the appointment is two episodes of a 45-minute cable drama and a three-hour slot leaves an hour of bed behind it every night. And the default's `night: (23, 2)` wraps midnight, which is the bug Cartoon Network, Nick and Disney each carry their own map to avoid.
 
 No filler and no bumpers — there are no western assets on disk.
+
+### Nightmare Theatre — built
+`scripts/channels/nightmare_theatre.py` · `scripts/library/horror.py`
+
+**The inverse of High Noon, and the library forces it.** High Noon is television with a film shelf — 946 episodes carry fifteen hours a day. Horror is the other way round: **242 non-animated features against about 370 usable episodes**, so this is a film channel with a television spine. Seventeen hours of film, seven of TV.
+
+**There is no classic horror television in this library.** Nothing before 1989, and the one 1989 show — Tales from the Crypt — is tagged *Comedy; Crime; Mystery; Science Fiction* and never Horror. The obvious spine, a black-and-white anthology in the Twilight Zone position, does not exist and cannot be built. Only two shows strip: **Tales from the Crypt** (93 eps, half-hours, anthology, host) and **Poltergeist: The Legacy** (87 eps, hour-long, episodic). Everything else that survives is serialized and can only be an appointment.
+
+**The organizing axis is the clock, not the era.** The channel gets darker as the night goes on. A horror channel that runs a slasher at nine in the morning has no idea what it is.
+
+| Slot | Mon–Fri | Saturday | Sunday |
+|---|---|---|---|
+| 00–02 night | The Witching Hour | Midnight Movie | The Witching Hour |
+| 02–06 overnight | Insomnia Theatre | ← | ← |
+| 06–09 early | Creature Feature | ← | ← |
+| 09–12 morning | The Vault *(pre-1980)* | ← | ← |
+| 12–17 afternoon | Matinee of the Damned | ← | ← |
+| 17–19 evening | The Legacy | The Legacy | After Hours Animation |
+| 19–20 crypt | **Tales from the Crypt** | The Late Shift *(comedies)* | **Tales from the Crypt** |
+| 20–22 prime | **The appointment** | Limited Series | **Twin Peaks** |
+| 22–24 late | **NIGHTMARE THEATRE** | Midnight Movie | **NIGHTMARE THEATRE** |
+
+Simulated over 365 continuous days: **no gaps, no overlaps, no circuit breakers, no unresolved programs**, 6,283 programme plays.
+
+**Airtime was budgeted against pool size** so nothing cycles faster than about three weeks — classic 39 films / 3 h a day, eighties 50 / 2 h, modern 102 / 6 h, the whole shelf 191 / 5 h. The two strip shows get an hour and two hours respectively, which cycles 93 and 87 episodes in a little over six weeks; any more airtime and they burn through in a fortnight.
+
+**Saturday is the funny night.** The 51 horror-comedies every other key on the channel excludes — *An American Werewolf in London*, *Re-Animator*, *Return of the Living Dead*, *Fright Night*, *Gremlins*, *Creepshow* — play 22:00–02:00, with the comedy half-hours (What We Do in the Shadows, Santa Clarita Diet, Darkplace, Wednesday) at 19:00. A midnight-movie crowd is a different room from a Tuesday at ten.
+
+**Nine annual appointments, more than any other channel.** Six weeknights — Hannibal (Mon), Evil (Tue), FROM (Wed), Yellowjackets (Thu), Ash vs Evil Dead (Fri), Twin Peaks (Sun) — plus three limited series that share Saturday by season: The Walking Dead (spring), Lovecraft Country (summer), Midnight Mass (autumn, landing next to Halloween on purpose). `modern_horror_movie` is the bed under all of them.
+
+**Saturday's three share a slot by season label, not by collection.** Two earlier shapes failed. An `OrderedCollection` of the three replayed their 23 episodes thirteen times a year. Stacking three Programs in a `DailyOrderedCollection` behind a film key was worse: `annual_show(reruns=...)` hangs the bed on the Program, so the first entry resolved every week and the other two **never aired at all** in a 365-day run — and dropping `reruns` did not help, because a Program that resolves to nothing yields the *whole slot* rather than passing the turn to the next item. A label-keyed dict, the same idiom `PRIME_BLOCK` uses for weekdays, resolves exactly one branch a night.
+
+**Halloween is a schedule, not a marathon — it has to be.** `find_active_marathon` returns nothing while `holiday_ctx.is_holiday_season` is true, and Halloween is one, so a marathon triggered on 30 or 31 October **can never fire**. Holidays outrank marathons on exactly the dates a horror channel most wants one. The holiday schedule does the work: horror from noon, three hours of Tales from the Crypt at 17:00, and the Michael Myers run in order at 20:00 and 22:00. Friday the 13th and Krampusnacht are real marathons because their dates fall outside any holiday season.
+
+**Marathons must be `MarathonSequence`, not a collection.** `find_active_marathon` calls `.pick()` on anything that has one, so a `RandomCollection` or `OrderedCollection` handed to a `Marathon` collapses to a single item — the block plays one film, yields, and the rest of the window falls back to the ordinary grid. Only a `MarathonSequence` survives as a sequence.
+
+**Every franchise title is year-bounded.** `movie_by_title` builds a phrase match: `title:"Halloween"` also returns Halloween II, III, 4 and The Halloween Tree, and `title:"Friday the 13th"` returns all eight sequels plus the 2009 remake. Unbounded, an ordered marathon becomes a shuffle of the whole series — the same fix `library/scifi.py` uses for Star Trek 1966.
+
+**Its own timeslot map**, nine slots rather than the default's ten or the `movies` preset's four. A 104-minute mean running time cuts in half in a two-hour daypart and disappears entirely in a six-hour one. `night` is 00–02 and `late` is 22–24 as separate slots, avoiding the wrapping-midnight bug the other custom-map channels each carry.
+
+No filler and no bumpers — there are no horror assets on disk. **This is the channel's biggest gap:** Nightmare Theatre is a *hosted* format and it currently has no host.
 
 ### Boomerang — closed
 
@@ -335,3 +376,5 @@ often, which is fine.
 | **Largest untapped** | ~1,390 films from 1990 on |
 | **Manifests overstate episodes** | `library-tv.tsv` counts `extras/` folders as episodes — Justified reads 117 for 78, Deadwood 51 for 36, Rifleman 167 for 166. Count off disk before sizing an `annual_show()` |
 | **Genre tags are not genres** | Breaking Bad, Westworld and Cowboy Bebop all carry a Western tag. `western_tv` returns all three, which is why High Noon names its shows instead |
+| **No classic horror TV at all** | Not one pre-1989 horror show is on disk — no Dark Shadows, Kolchak, Night Gallery, Tales from the Darkside, Monsters, Thriller. This is why Nightmare Theatre came out film-led. Shopping list in [acquisitions.md](acquisitions.md) |
+| **Nightmare Theatre has no host** | A hosted format running unhosted, with no horror bumpers on disk. Joe Bob Briggs / Svengoolie / Elvira are worth more to the channel than most shows |
