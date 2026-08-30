@@ -26,7 +26,9 @@ TIME_TRAVEL_SPOTLIGHT = RandomCollection(["classic_scifi_movie", "modern_scifi_m
 ALIEN_INVASION_SPOTLIGHT = RandomCollection(["horror_aliens_movie", "classic_scifi_movie"])
 
 # Genre Marquees
-WESTERN_MATINEE = RandomCollection(["western_movie"])
+# WESTERN_MATINEE is gone. It was `western_movie` -- all 46 western films --
+# across both weekend afternoons, 12 hours a week, and High Noon now owns that
+# shelf outright. Same eviction Other Worlds got for science fiction.
 MUSICAL_MARQUEE = RandomCollection(["musical_movie"])
 WAR_CHRONICLES = RandomCollection(["war_movie"])
 ACTION_ADRENALINE = RandomCollection(["80s_action_movie", "90s_action_movie", "blockbuster_action_movie"])
@@ -87,8 +89,27 @@ WEEKEND_MARQUEE = RandomCollection([
     "70s_movie"
 ])
 
+# Was `classic_hollywood_movie`, the unfiltered 1950-69 era. The `_pure_`
+# variant is the same shelf with science fiction and westerns removed, which is
+# what keeps this off Other Worlds' and High Noon's film at the same hour.
 MOVIE_AFTERNOON_FEATURE = SeasonalBlock(
-    base="classic_hollywood_movie",
+    base="classic_hollywood_pure_movie",
     seasonal={},
+    auto_tag=True
+)
+
+# The weekend afternoon, in place of the western matinee. Base is the channel's
+# own era so the slot is never thin; the four seasonal keys only Feather on top,
+# which is what they were built for and where `classic_hollywood_summer_movies`
+# and `classic_hollywood_fall_movies` finally get used -- both had been in the
+# registry and on no channel.
+WEEKEND_MATINEE = SeasonalBlock(
+    base="classic_hollywood_pure_movie",
+    seasonal={
+        "WINTER": Feather("classic_hollywood_winter_movies", 0.5),
+        "SPRING": Feather("classic_hollywood_spring_movies", 0.5),
+        "SUMMER": Feather("classic_hollywood_summer_movies", 0.5),
+        "FALL":   Feather("classic_hollywood_fall_movies", 0.5),
+    },
     auto_tag=True
 )

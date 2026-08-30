@@ -11,6 +11,7 @@ NO_SCIFI = 'NOT genre:"science fiction"'
 NO_COMEDY = "NOT genre:comedy"
 NO_BBC = "NOT studio:bbc"
 NO_HORROR = "NOT genre:horror"
+NO_WESTERN = "NOT genre:western"
 SHORT = "minutes:[* TO 40]"
 
 # --- MOVIE ERAS ---

@@ -21,7 +21,7 @@ from .filters import (
     FALL_TAGS, SPRING_TAGS, SILENT_ERA, GOLDEN_AGE, SEVENTIES, Y2K_ERA, TENS, TWENTIES,
     SHORT, NO_COMEDY, NO_HORROR,
     TV_CLASSIC, TV_GOLDEN_AGE, TV_HD, TV_VINTAGE,
-    NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI, MODERN_FILM_ERA, PRE_EIGHTIES_ERA,
+    NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI, NO_WESTERN, MODERN_FILM_ERA, PRE_EIGHTIES_ERA,
     SIXTIES, SITCOM_80S_VIBE, SITCOM_90S_VIBE
 )
 
@@ -34,12 +34,16 @@ MOVIE_REGISTRY = {
     "20s_silent_movie": movie_source(era=SILENT_ERA),
     "30s_golden_age_movie": movie_source(era=GOLDEN_AGE),
     "classic_hollywood_movie": movie_source(era=CLASSIC_ERA),
-    # Same era with science fiction removed: 119 films of the 137. Classic
-    # Cinema's morning block used the unfiltered key, which put Forbidden
+    # Same era with science fiction and westerns removed: ~108 films of the 137.
+    # Classic Cinema's morning block used the unfiltered key, which put Forbidden
     # Planet, Day the Earth Stood Still, Godzilla and 15 others on it at the
     # same hour Other Worlds airs `classic_scifi_movie` -- the same 1950-69
-    # shelf. Follows the `_pure_` convention: the genre minus its overlap.
-    "classic_hollywood_pure_movie": movie_source(era=CLASSIC_ERA, extra=NO_SCIFI),
+    # shelf. Westerns joined the exclusion when High Noon was built: the 1950-69
+    # slice is The Searchers, Shane, Giant, The Magnificent Seven, the Leone
+    # trilogy and Butch Cassidy -- eleven films that are the western channel's
+    # centre, not Classic Cinema's afternoon. Follows the `_pure_` convention:
+    # the era minus what another channel owns.
+    "classic_hollywood_pure_movie": movie_source(era=CLASSIC_ERA, extra=f"{NO_SCIFI} AND {NO_WESTERN}"),
     "film_history_all_movie": movie_source(era=CLASSIC_ERA),
     "70s_movie": movie_source(era=SEVENTIES),
     "80s_movie": movie_source(era=EIGHTIES),
@@ -82,7 +86,14 @@ MOVIE_REGISTRY = {
     "blockbuster_action_movie": movie_source(genre="action", tags="(studio:Marvel OR studio:DC OR tag:superhero)"),
     "80s_comedy_movie": movie_source(genre="comedy", era=EIGHTIES),
     "90s_comedy_movie": movie_source(genre="comedy", era=NINETIES),
-    "western_movie": movie_source(genre="western"),
+    # High Noon's shelf, all 46 films. Cabes Classic Cinema used to run the whole
+    # of it across both weekend afternoons; it handed the pool back when the
+    # western channel was built, the same way Other Worlds took science fiction.
+    "western_movie": movie_source(genre="western"),                                   #  46
+    # The two halves, for when a block wants one era rather than the shelf.
+    # Both are High Noon's -- this is not an ownership split like the crime keys.
+    "classic_western_movie": movie_source(genre="western", era=PRE_EIGHTIES_ERA),     #  17
+    "modern_western_movie": movie_source(genre="western", era=MODERN_FILM_ERA),       #  29
     "musical_movie": movie_source(genre="musical"),
     "war_movie": movie_source(genre="war"),
 
@@ -203,8 +214,18 @@ TV_REGISTRY = {
     "true_crime_tv": show_source(genre="documentary", extra="genre:crime"),
     
     # --- WESTERN, HORROR, THRILLER ---
-    "classic_western_tv": show_source(genre="western", era=TV_CLASSIC),
-    "modern_western_tv": show_source(genre="western", era=STREAMING_ERA),
+    # Was `era=TV_CLASSIC` (1976-1989) and returned **nothing**: every classic
+    # western in the library is 1955-1959, which is TV_VINTAGE. The key naming
+    # High Noon's entire spine resolved to zero shows, and nothing caught it
+    # because no channel had ever scheduled it. Now the five B&W network
+    # westerns -- Bonanza, Gunsmoke, The Rifleman, Wanted: Dead or Alive,
+    # Rawhide -- 946 episodes.
+    "classic_western_tv": show_source(genre="western", era=TV_VINTAGE),
+    # NO_SCIFI drops Westworld, which carries a Western genre tag and is not one.
+    "modern_western_tv": show_source(genre="western", era=STREAMING_ERA, extra=NO_SCIFI),
+    # The raw genre tag. Do not schedule this: it also returns Breaking Bad and
+    # Westworld, both tagged Western and neither one. Use the era keys above, or
+    # name the shows -- which is what `library/western.py` does.
     "western_tv": show_source(genre="western"),
     "horror_tv": show_source(genre="horror"),
     "classic_horror_tv": show_source(genre="horror", era=TV_CLASSIC),

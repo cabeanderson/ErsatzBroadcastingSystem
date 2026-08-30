@@ -77,7 +77,10 @@ SCHEDULES = {
     "WEEKEND": {
         "overnight": movies.NOIR_NIGHT,
         "morning": movies.SILENT_CINEMA,
-        "afternoon": movies.WESTERN_MATINEE,
+        # Was WESTERN_MATINEE -- all 46 western films, both weekend
+        # afternoons. High Noon owns that shelf now; this is the same era the
+        # channel already runs, with the seasonal keys blended on top.
+        "afternoon": movies.WEEKEND_MATINEE,
         # Was SCI_FI_SHOWCASE, which Other Worlds also hands its Saturday prime.
         # Neither channel ever drew the same key -- they picked different arms
         # of the same collection -- so both ran sci-fi features 20:00-24:00

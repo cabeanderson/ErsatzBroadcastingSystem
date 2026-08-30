@@ -12,7 +12,9 @@ This is the rule everything else follows from. ErsatzTV earns its keep when you 
 
 Every channel already in the lineup selects for episodic content without anyone having decided it: sitcoms, westerns, detective-of-the-week, horror anthology, cartoons, sketch, cooking, DIY, 80s action. That is why they work, and it is why ~75% of the 108 unhomed shows are unhomed — they're serialized.
 
-The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronological, weekly, reruns filling the gap. That converts a serialized show into appointment TV, which is a different promise — "this channel has a Thursday show" rather than "turn it on whenever." Good for one or two anchors per channel. Never for a whole channel.
+The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronological, weekly, reruns filling the gap. That converts a serialized show into appointment TV, which is a different promise — "this channel has a Thursday show" rather than "turn it on whenever."
+
+**How many a channel can carry is not a number.** What governs it is whether each appointment has its own night and its own bed. An appointment needs a slot that gates it — a weekday arm of the schedule, not `frequency` — and something to run in that slot the other fifty weeks. Give it both and a channel can carry one or six; High Noon carries six, one a night, with a film bed under each. What breaks a channel is appointments sharing a slot, because a `DailyOrderedCollection` that wraps replays the same episode twice a night — which is the actual defect behind Good Times' `MUST_SEE_THURSDAY`, and it happens at four appointments in one slot just as readily as at two.
 
 ---
 
@@ -25,7 +27,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 104 | Across the Pond | British comedy & panel | yes |
 | 116 | Cartoon Network | CN originals + Toonami + Adult Swim | yes — **rebuilt** |
 | 120 | Lucy TV | I Love Lucy 24/7 | no |
-| 142 | Cabes Classic Cinema | classic film | yes — modern film handed back |
+| 142 | Cabes Classic Cinema | classic film | yes — modern film **and westerns** handed back |
 | 144 | Mystery Theatre | detective / procedural | yes — **refined** |
 | 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
 | 164 | Japanorama | anime | no |
@@ -36,7 +38,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 240 | Travelers Table | cooking — **+ nature docs** | no |
 | 241 | Makers Corner | DIY & craft | no |
 | 242 | Corncob TV | absurd comedy | no |
-| 243 | High Noon | westerns | no — 46 films but **1,373 episodes**; the TV is the spine, not the film |
+| 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
 | 244 | Nightmare Theatre | horror, TV + film | no — 244 films, but horror TV is only 21 shows / 799 eps |
 | 246 | The Beat | **music videos only** | no |
 
@@ -119,6 +121,46 @@ The channel does not use the default timeslot preset: Nick at Nite needs 21:00�
 Avatar and Korra are the evening strip and the only serialized shows on the channel, so they carry the chronological-weekday / shuffle-weekend split — two content keys per show, because an ErsatzTV key carries its playback order and one key would be pinned to whichever order registered first.
 
 Filler is Schoolhouse Rock — three minutes a piece, and the only interstitial the channel has assets for. There are no Nick bumpers on disk.
+
+### High Noon — built
+`scripts/channels/high_noon.py` · `scripts/library/western.py`
+
+Two libraries that do not mix, dayparted so they never argue.
+
+**The spine is five black-and-white network westerns**, 1955–1963, **946 episodes**: Bonanza (431, complete run), Gunsmoke (233, the half-hour Dennis Weaver years), The Rifleman (166, complete), Wanted: Dead or Alive (94, complete), Rawhide (22, season one only). All episodic, all standalone. That is the channel for fifteen hours a day.
+
+The plan's old figure of 1,373 episodes was three things at once. It counted **Cowboy Bebop** (anime, already Toonami's), **Breaking Bad** and **Westworld** — all three carry a Western genre tag and none is a western — and it counted `extras/` folders as episodes. The honest number is 946 for the spine and 234 for the moderns.
+
+| Slot | Mon–Fri | Saturday | Sunday |
+|---|---|---|---|
+| 00–02 night | Late feature | ← | ← |
+| 02–06 overnight | The Long Ride | ← | ← |
+| 06–08 early | Wanted: Dead or Alive | Half-Hour West | Half-Hour West |
+| 08–10 morning | The Rifleman | Half-Hour West | Dodge City |
+| 10–12 midday | Dodge City *(Gunsmoke)* | The Rifleman | Wanted: Dead or Alive |
+| 12–14 noon | **High Noon** — the feature | ← | ← |
+| 14–17 afternoon | The Ponderosa *(Bonanza)* | Weekend Matinee | Weekend Matinee |
+| 17–20 evening | The Trail Drive | Brisco County | The Ponderosa |
+| 20–22 prime | **The appointment** | Saturday film night | **Bass Reeves** |
+| 22–24 late | Late feature | Saturday film night | Late feature |
+
+Simulated over 365 continuous days: no gaps, no overlaps, no circuit breakers, 17,377 programme plays. Re-run over three years to check the appointments advance.
+
+**Split by running time, not by title.** A two-hour daypart holds four half-hours or two hour-longs, and mixing them strands the slot's tail. Gunsmoke, The Rifleman and Wanted: Dead or Alive are the half-hours; Bonanza and Rawhide are the hour-longs. Each morning strip is one show, so the hour reads as *The Rifleman is on at eight* rather than *westerns are on*.
+
+**Rawhide rides behind Bonanza.** 22 episodes cannot strip — a nightly hour exhausts it in three weeks. It shares the evening wheel instead, where it surfaces every other night and stays a treat. Bonanza carries the afternoon alone; at 431 episodes it is 46% of the spine.
+
+**Six serialized shows, six nights, one season a year.** Justified (Mon), Longmire (Tue), Deadwood (Wed), Dark Winds (Thu), Yellowstone (Fri), Lawmen: Bass Reeves (Sun) — `annual_show()` Broadcast Mode, premieres staggered across the four seasons so the channel always has one or two first-run nights and never six. `modern_western_movie` is the bed under all of them. Saturday has no appointment and runs 20:00–24:00 of film, which is where a 168-minute *Hateful Eight* can actually play.
+
+Six appointments on one channel is the most in the lineup, and it works because each has its own night and its own bed. The alternative was leaving 234 episodes of the 2004+ pool unused, or stripping serialized drama nobody can drop into.
+
+**The day-gating comes from the slot, not from `frequency`.** `PRIME_BLOCK` is a weekday dict, the same shape Mystery Theatre uses. `frequency=["MONDAY"]` alone would air Monday's episode all seven nights. Verified over three simulated years: every appointment aired on its own weekday and nowhere else, and seasons advanced s1→s2→s3 with Yellowstone looping back to s1 after its two on-disk seasons.
+
+**Season lengths are counted off disk**, not read from `library-tv.tsv`, which counts `extras/` folders as episodes — it overstates Justified by 39 and Deadwood by 15. Yellowstone has two of its five seasons on disk and the appointment declares two, rather than opening windows for episodes that would resolve to nothing and stall the block.
+
+**Its own timeslot map, split at midnight.** Prime is 20:00–22:00, not the default's 20:00–23:00: the appointment is two episodes of a 45-minute cable drama and a three-hour slot leaves an hour of bed behind it every night. And the default's `night: (23, 2)` wraps midnight, which is the bug Cartoon Network, Nick and Disney each carry their own map to avoid.
+
+No filler and no bumpers — there are no western assets on disk.
 
 ### Boomerang — closed
 
@@ -247,6 +289,22 @@ with science fiction excluded; the unfiltered key was putting Forbidden Planet,
 Day the Earth Stood Still and Godzilla opposite Other Worlds' own classic sci-fi
 film. Other Worlds gave back Disney's `star_wars_animation_tv` in exchange.
 
+**High Noon vs. Cabes Classic Cinema — settled by eviction.** Classic Cinema ran
+`WESTERN_MATINEE` — all 46 western films — across *both* weekend afternoons,
+twelve hours a week, and it was the only claim on the pool. High Noon takes the
+shelf whole, the same eviction Other Worlds got for science fiction. Classic
+Cinema's weekend afternoon is now `movies.WEEKEND_MATINEE`, a `SeasonalBlock`
+on its own era with the four `classic_hollywood_<season>_movies` keys feathered
+on top — which is where `..._summer_movies` and `..._fall_movies` finally get
+used, both having been in the registry and on no channel.
+
+`classic_hollywood_pure_movie` also drops westerns now, not just science
+fiction. The 1950–69 slice is The Searchers, Shane, Giant, The Magnificent
+Seven, the Leone trilogy and Butch Cassidy — eleven films that are the western
+channel's centre, and they were on Classic Cinema's weekday afternoon.
+An era split was considered and rejected: 46 films is too few to halve, and the
+pre-1980 half is precisely the half High Noon cannot do without.
+
 **Mystery Theatre vs. Cabes Classic Cinema — settled by era split.** Both want
 crime film and both run it overnight. `mystery_crime_movie` (365 films) is now
 `classic_crime_movie` (pre-1980, 74) for Classic Cinema and `modern_crime_movie`
@@ -275,3 +333,5 @@ often, which is fine.
 | **Broken on disk** | Smurfs (405 eps, unindexable), Bullwinkle (empty dir) |
 | **Dead code** | `FOX_KIDS_BLOCK`, `ACTION_ANIMATION`, `SYNDICATED_CARTOONS`, `BRANDING_90S_KIDS` |
 | **Largest untapped** | ~1,390 films from 1990 on |
+| **Manifests overstate episodes** | `library-tv.tsv` counts `extras/` folders as episodes — Justified reads 117 for 78, Deadwood 51 for 36, Rifleman 167 for 166. Count off disk before sizing an `annual_show()` |
+| **Genre tags are not genres** | Breaking Bad, Westworld and Cowboy Bebop all carry a Western tag. `western_tv` returns all three, which is why High Noon names its shows instead |
