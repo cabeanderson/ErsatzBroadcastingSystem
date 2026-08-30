@@ -328,6 +328,28 @@ ANIMATED_REGISTRY = {
 }
 
 # ============================================================================
+# 3b. NICKELODEON
+# ============================================================================
+
+NICK_REGISTRY = {
+    # The Avatar strip runs chronologically on weekdays and shuffled at the
+    # weekend. An ErsatzTV content key carries its playback order, so that is
+    # two keys per show, not one key played two ways.
+    "avatar_chronological_tv": playback_order(
+        show_by_title("Avatar: The Last Airbender"), force="Chronological"),
+    "avatar_shuffle_tv": playback_order(
+        show_by_title("Avatar: The Last Airbender"), force="Shuffle"),
+    "korra_chronological_tv": playback_order(
+        show_by_title("The Legend of Korra"), force="Chronological"),
+    "korra_shuffle_tv": playback_order(
+        show_by_title("The Legend of Korra"), force="Shuffle"),
+
+    # Three-minute shorts -- the natural pad between programmes on a kids
+    # channel, and the only filler Nick has assets for.
+    "schoolhouse_rock_tv": show_by_title("Schoolhouse Rock!"),
+}
+
+# ============================================================================
 # 4. THEME & HOLIDAY REGISTRY
 # ============================================================================
 
@@ -551,6 +573,7 @@ MASTER_SOURCES = {
     **PLAYLIST_REGISTRY,
     **TV_REGISTRY,
     **ANIMATED_REGISTRY,
+    **NICK_REGISTRY,
     **THEME_REGISTRY,
     **MARATHONS,
     **SEASONAL_VARIANTS,
