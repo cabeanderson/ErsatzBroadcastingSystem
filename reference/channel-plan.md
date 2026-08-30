@@ -44,8 +44,8 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 
 | Channel | Pool | Shows | Notes |
 |---|---:|---:|---|
-| **Modern movies** | ~1,390 films | — | 1990-present; the largest untapped thing in the library. No contention |
-| ~~Boomerang~~ | ~0 usable | 2 | **Blocked — see below.** The Cartoon Network restructure took the pre-1990 library |
+| **Modern movies** | ~1,390 films | — | **Next.** 1990-present, 67% of the movie library. Contention with Cabes Classic Cinema's summer swap |
+| ~~Boomerang~~ | 1 show | 1 | **Closed — see below.** Disk problems fixed; the premise is what is gone |
 
 ---
 
@@ -119,7 +119,7 @@ Avatar and Korra are the evening strip and the only serialized shows on the chan
 
 Filler is Schoolhouse Rock — three minutes a piece, and the only interstitial the channel has assets for. There are no Nick bumpers on disk.
 
-### Boomerang — blocked, and the blocker changed
+### Boomerang — closed
 
 The original plan was "pre-1990 as a hard rule", which kept it clear of CN when CN's vault sat in the 02:00–06:00 overnight dead zone. **The restructure moved that vault to the centre of the channel** — 06:00–08:00 daily, 12:00–14:00 weekdays, Sunday midday, Saturday morning, and the Saturday Syndication Hour. Pre-1990 stopped being free the day that landed.
 
@@ -130,7 +130,31 @@ Counted against the library: of **24 pre-1990 animated series, 22 are now claime
 | Smurfs, The (1981) | 405 | flat, no `tvshow.nfo` — will not index |
 | Bullwinkle Show, The (1959) | 0 | empty directory |
 
-**A usable pool of zero.** The channel's whole premise is now inside another channel's identity, and the one show that would justify it does not index. Two things would have to happen to revive it: fix Smurfs on disk, and re-found the channel on a different principle than "pre-1990" — a second window on a shared library, the way Nick at Nite and Good Times share sixteen titles by splitting the clock. That is a sharing-rule design, and with three channels already sharing the animation library it needs the collision report to police it rather than another hand-maintained list.
+As of 2026-08-30 the disk problems are mostly fixed, and they turned out not to be the binding constraint:
+
+| Show | State |
+|---|---|
+| Smurfs, The (1981) | **Fixed** — 8 season folders, 367 eps, `tvshow.nfo` present. Season 9 still missing |
+| Bullwinkle Show, The (1959) | **Gone from `tv/`** under any name; files exist elsewhere, unidentified and unplaced |
+| Popeye the Sailor (1933) | Indexes, but foldered by broadcast *year* — `season_number:` against it means the year |
+| Superman (1941) | Clean; already on CN's Saturday morning via `superman_fleischer_tv` |
+
+So the pool is **one show**. Smurfs alone is not a channel, and everything else it would have programmed is now Cartoon Network's identity rather than its overflow.
+
+Reviving it would mean re-founding it on a different principle than "pre-1990" — a second window on a shared library, the way Nick at Nite and Good Times share sixteen titles by splitting the clock. That is a sharing-rule design, and with three channels already sharing the animation library it needs the collision report to police it rather than another hand-maintained list. **Until then it is closed, not deferred.**
+
+### Modern movies — next to build
+~1,390 films from 1990 on, 67% of the movie library and the largest untapped pool. The framing is a **video store, not a cinema**: Friday-night new releases, weekend matinees, late-night cult. That gives the channel a *week*, which is what distinguishes it from Cabes Classic Cinema (an era) and Other Worlds (a genre).
+
+It is not clean greenfield, and that is the thing to settle first:
+
+- **Cabes Classic Cinema swaps its whole prime to `MODERN_BLOCKBUSTERS` every summer** (`movies.MOVIE_PRIMETIME_FEATURE`) — 90s/00s/10s films plus `blockbuster_action_movie`, three months a year on a classic-cinema channel. That swap only exists because there was nowhere else to put them, and it should hand them back.
+- **Other Worlds and Mystery Theatre take genre slices across all eras** — modern sci-fi, cyberpunk, four horror pools, mystery/crime. This is the lineup's first genuinely hard sharing question: unlike the CN restructure, where every collision had a clean owner and eviction was the answer, a modern movie channel and a sci-fi channel both have a real claim on the same film. Split by hours, not by library.
+- Disney (Sunday 19:00–21:00) and CN (Sunday Cartoon Theatre) are narrow and fixed — easy to work around.
+
+Key coverage is uneven. Era keys are complete (`90s_movie` … `20s_movie`), but **genre × era exists only for the 80s and 90s**, and `classic_horror_movie` is 1980s-only, so post-1990 horror has no key at all. Expect to add keys before writing blocks — the same order Disney and CN were built in.
+
+Use the `"movies"` timeslot preset (four six-hour slots) or something close. A two-hour daypart map cuts features in half.
 
 ### Travelers Table
 Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.
