@@ -25,9 +25,9 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 104 | Across the Pond | British comedy & panel | yes |
 | 116 | Cartoon Network | CN originals + Toonami + Adult Swim | yes — **rebuilt** |
 | 120 | Lucy TV | I Love Lucy 24/7 | no |
-| 142 | Cabes Classic Cinema | classic film | yes |
-| 144 | Mystery Theatre | detective / procedural | yes |
-| 151 | Other Worlds | sci-fi & fantasy | yes |
+| 142 | Cabes Classic Cinema | classic film | yes — modern film handed back |
+| 144 | Mystery Theatre | detective / procedural | yes — **refined** |
+| 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
 | 164 | Japanorama | anime | no |
 | 180 | Totally 80s | 80s TV — **stays 80s** | yes |
 | 190 | Good Times | sitcoms | yes |
@@ -36,15 +36,16 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 240 | Travelers Table | cooking — **+ nature docs** | no |
 | 241 | Makers Corner | DIY & craft | no |
 | 242 | Corncob TV | absurd comedy | no |
-| 243 | High Noon | westerns | no |
-| 244 | Nightmare Theatre | horror, TV + film | no |
+| 243 | High Noon | westerns | no — 46 films but **1,373 episodes**; the TV is the spine, not the film |
+| 244 | Nightmare Theatre | horror, TV + film | no — 244 films, but horror TV is only 21 shows / 799 eps |
 | 246 | The Beat | **music videos only** | no |
 
 ### To build
 
 | Channel | Pool | Shows | Notes |
 |---|---:|---:|---|
-| **Modern movies** | ~1,390 films | — | **Next.** 1990-present, 67% of the movie library. Contention with Cabes Classic Cinema's summer swap |
+| **Modern movies** | ~1,390 films | — | **Next.** 1990-present, 67% of the movie library. Classic Cinema's summer swap is gone, so the contention is resolved |
+| **Fantasy** | 238 films / 40 shows | 40 | Registry and `library/fantasy.py` built 2026-08-30; **channel deliberately deferred**. Content is there — 333 fantasy films, more than horror |
 | ~~Boomerang~~ | 1 show | 1 | **Closed — see below.** Disk problems fixed; the premise is what is gone |
 
 ---
@@ -236,6 +237,27 @@ No channel airs a title *while* another channel is airing it. Sharing itself is 
 **Nick vs. Cartoon Network — settled.** The Nicktoons Vault is retired, and Daria, Animaniacs and Pinky and the Brain are Nick's alone. Ed, Edd n Eddy went the other way: it is a Cartoon Cartoon and had been filed under Nicktoons.
 
 **Still crossed:** `common.HALLOWEEN_TEEN_FRIGHTS` is Gravity Falls (Disney), Infinity Train and Courage (both Cartoon Network), and **Nick** is the only channel still using it — so on Halloween Nick airs three shows it does not own. Nick's problem to fix, in Nick's session; it wants a `NICK_HALLOWEEN` the way Disney and CN now have their own.
+
+**Other Worlds vs. Cabes Classic Cinema — settled by eviction.** Both handed
+Saturday prime to `movies.SCI_FI_SHOWCASE`, and because each drew a different arm
+of the collection they never shared a *key* — nothing flagged it while both ran
+sci-fi features 20:00–24:00 every week. Classic Cinema gave it up. Its morning
+block also moved to `classic_hollywood_pure_movie`, which is the same 1950–69 era
+with science fiction excluded; the unfiltered key was putting Forbidden Planet,
+Day the Earth Stood Still and Godzilla opposite Other Worlds' own classic sci-fi
+film. Other Worlds gave back Disney's `star_wars_animation_tv` in exchange.
+
+**Mystery Theatre vs. Cabes Classic Cinema — settled by era split.** Both want
+crime film and both run it overnight. `mystery_crime_movie` (365 films) is now
+`classic_crime_movie` (pre-1980, 74) for Classic Cinema and `modern_crime_movie`
+(1980+, 291) for Mystery Theatre. Neither can draw the other's film. This is the
+first era-split on the lineup and it is the pattern to reach for when two
+channels have an equally real claim on one genre.
+
+**Mystery Theatre vs. Across the Pond — shared on purpose.** Poirot and Miss
+Marple air on both. Decided, not an oversight: both channels have a real claim
+and the hours do not overlap. Across the Pond airs them roughly three times as
+often, which is fine.
 
 **Adult Swim vs. Corncob TV.** Tim and Eric, The Eric Andre Show, Check It Out! with Dr. Steve Brule. Adult Swim is **first-run** — chronological, appointment-scheduled, late. Corncob is **syndication** — shuffled, daytime, drop in anywhere. Same show, two presentations. This generalizes: it's the cross-channel form of the chronological-weekday / shuffle-weekend pattern.
 

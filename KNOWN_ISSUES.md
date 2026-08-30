@@ -5,6 +5,84 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
 
 ## Resolved
 
+### 2026-08-30 — content-key and schedule-shape bugs
+
+Found by the collision report and the library census, both added this session.
+Every one of these was silent: the schedule built, the simulation stayed green,
+and the channel aired something. What it aired was wrong.
+
+- ~~🔴 **Noir November had never once aired.** Mystery Theatre's signature
+  seasonal takeover lived on `PRIME_BLOCK["default"]`, behind five explicitly
+  named weekdays. `PRIME_BLOCK` is only wired into `SCHEDULES["WEEKDAY"]`, and
+  Saturday/Sunday have their own prime, so nothing could ever reach the default
+  arm.~~ Fixed: `"NOVEMBER"` is now the first key in the dict and dict resolution
+  takes the first matching label. Scoped to November rather than FALL on purpose
+  — a season-level swap would delete the Mon–Fri lineup for three months.
+  Verified with Dark Winds, the one title unique to the block: 0 airings in
+  October, 30 in November, 0 in December. `test_03_resolution_pipeline` now
+  asserts the takeover instead of asserting that *something* resolved.
+
+- ~~🔴 **Unreachable `default` arms across two channels.** When a block's guards
+  are `WEEKEND` + `WEEKDAY_A` + `WEEKDAY_B`, or all seven day names, they cover
+  the week and any `default` behind them is dead.~~ Five of Other Worlds' eight
+  blocks had one. `EARLY_BLOCK`'s was the only weekday fantasy on the channel, so
+  it never aired at all. Fixed: no block on either channel has an unreachable
+  arm now.
+
+- ~~🔴 **`supernatural_tv` queried a genre that does not exist.** It was
+  `genre:"(supernatural OR tag:paranormal)"`. There is no Supernatural genre in
+  the library and `tag:paranormal` is on three shows, so a near-empty key held a
+  third of a daily block.~~ Fixed: `tag:supernatural OR tag:paranormal`, which is
+  12 shows. `tag:supernatural` is the tag that actually exists.
+
+- ~~🔴 **`true_crime_tv` resolved to one show with six episodes.**
+  `genre:documentary AND genre:crime`. It was in `DETECTIVE_LATE_NIGHT`, which
+  covers overnight, early *and* night — six episodes carrying 47 hours a
+  month.~~ Fixed: true crime dropped from Mystery Theatre; the slot went to
+  Alfred Hitchcock Presents (268 episodes, previously on no channel).
+
+- ~~🟠 **A whole-season `Swap` deleted Other Worlds' weekday prime for three
+  months.** `"SPRING": Swap(MODERN_SCIFI_BLOCK)` sat at the top level of the
+  seasonal dict rather than inside a day map, so it replaced all five days.
+  X-Files, Babylon 5, BSG and Sarah Connor each dropped to about 45 minutes a
+  week.~~ Fixed: spring is per-day, matching how summer was already written.
+  **General trap:** at the top level of a `SeasonalBlock`, `Swap` replaces every
+  day. Nest it in a day map unless a total takeover is the intent.
+
+- ~~🟠 **`space_opera_tv` was the widest pool in the registry.**
+  `genre:"science fiction" AND NOT tag:sitcom` — the only sci-fi key without a
+  `NOT genre:fantasy` clause, so it returned everything `scifi_tv` did plus
+  Stargate SG-1, Quantum Leap, Xena and Sabrina the Teenage Witch. It was
+  scheduled 52 hours a week as though it were a themed block.~~ Renamed
+  `scifi_all_tv` and used deliberately for one broad slot. **Do not simply add
+  `NO_FANTASY` to it:** this library tags Stargate SG-1 and Quantum Leap as
+  Fantasy, and that clause is exactly why the named title collections exist.
+
+- ~~🟠 **`MYSTERY_MOVIE_WHEEL` contained no movies.** Named for the NBC wheel;
+  held Columbo, Poirot, Miss Marple and Murder She Wrote, all television. It was
+  Saturday evening *and* prime.~~ Fixed: the TV rotation is `WHODUNIT_WHEEL` and
+  the movie wheel shows film. Mystery Theatre went from 2% film to 18%, against
+  a library of 365 crime and mystery features.
+
+- ~~🟠 **Title queries that matched the wrong thing, or nothing.**~~
+  `show_by_title("Magnum P.I.")` against a folder named `Magnum, P.I.`;
+  `show_title:"Star Trek"` is a phrase match and returned every Trek series,
+  making Other Worlds' vault a second Trek playlist; a bare `"House"` also
+  returns House of the Dragon and House Of Cosbys. Fixed by correcting the comma
+  and year-bounding the other two. **Verify title queries against
+  `reference/library-tv.tsv` — the simulator cannot catch these, because it
+  generates a key from whatever title it is given.**
+
+- ~~🟠 **`collision_report.base_key()` collapsed every appointment show to
+  `_`.**~~ `factories.annual_show` mints `__auto_<title>_s<n>`, which matched the
+  tag-injection suffix pattern the normalizer strips. Lost, Alias and Fringe all
+  became the same key, which would have invented collisions between them. Fixed
+  with a prefix guard.
+
+- ~~🟡 **`golden_scifi_tv` duplicates `syndicated_scifi_tv`** byte for byte.~~
+  Still both present; `golden_scifi_tv` is on no channel. Left in place rather
+  than deleted, but it is a trap.
+
 - ~~🔴 **`id()`-seeded RNG broke determinism.** Collections/list picks seeded RNG
   with memory addresses, so output changed every process run.~~ Fixed: seeds now
   use `core/identity.stable_hash()`; `OrderedCollection` is date-anchored;
@@ -218,6 +296,17 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
   "Configuration Objects" prose still use historical names
   (`resolve_schedule_target`, `collections.py`, `run_marathon`, etc.).
   `CONCEPTS.md` and `IMPORTS.md` likely drifted too — audit and update.
+- [ ] **The collision report's SAME COLLECTION tier attributes through
+  unscheduled collections.** `collection_membership()` maps keys to every named
+  collection that lists them, including ones no channel airs, so findings read
+  as "via `movies.TIME_TRAVEL_SPOTLIGHT`" when that spotlight is scheduled
+  nowhere. The underlying clash is real; the attribution is misleading. Either
+  restrict the tier to referenced collections or label dead ones. Related:
+  `CYBERPUNK_SPOTLIGHT`, `TIME_TRAVEL_SPOTLIGHT` and `ALIEN_INVASION_SPOTLIGHT`
+  in `library/movies.py` are all defined and used by nothing.
+- [ ] **`test_imports.py` at the repo root is broken.** It does
+  `from channels import cartoon_network`, which has not been the module path
+  since the `scripts/` package reorganisation. Predates this session.
 - [ ] **Thin automated tests.** `testing/test_comprehensive.py` is print-based
   (no asserts). `test_scenarios.py` does use `unittest`. Add assertion coverage
   for date math (leap years, year wraparound), determinism (same date → same
