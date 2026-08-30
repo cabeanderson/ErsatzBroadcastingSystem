@@ -14,7 +14,11 @@ Snapshots of `/media` taken 2026-08-29, for use when writing channel and block d
 | [next-session.md](next-session.md) | Build order and carry-forward notes — framework bugs found in the CN restructure, then the collision report |
 | [channel-coverage.md](channel-coverage.md) | All 576 shows + 2,067 movies mapped to channels; orphans and conflicts |
 
-Episode counts come from files under `Season NN/` folders. Two shows read as zero and need attention: `Bullwinkle Show, The (1959)` is an empty directory, and `Smurfs, The (1981)` holds 405 episodes flat with no season folders and no `tvshow.nfo`.
+Episode counts come from files under `Season NN/` folders.
+
+Two long-standing exceptions were resolved on 2026-08-30. **Smurfs** is reorganized and indexes: 8 season folders, 367 episodes, `tvshow.nfo` present — season 9 is still missing, and the count is down from the 405 loose files because of it. **Bullwinkle** is no longer in `tv/` under any name and has been dropped from these lists; the files exist elsewhere but have not been identified or placed, so nothing can schedule it yet.
+
+`Popeye the Sailor (1933)` seasons are foldered by broadcast **year** (`Season 1943` … `Season 1949`), not by season number. It indexes, but any query using `season_number:` against it means the year.
 
 Regenerate the flat lists with `ls /media/tv` and `ls .../movies`. Per-file `.nfo` genre scanning over NFS is impractically slow — the animation lists were built by title sweep and hand-checked.
 
