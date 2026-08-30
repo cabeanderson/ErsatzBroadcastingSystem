@@ -1,5 +1,15 @@
 # Cartoon Network channel — programming review
 
+> **Status: implemented 2026-08-30.** This is the audit the restructure was built from, kept as written for the reasoning. The grid that shipped is in [channel-plan.md](channel-plan.md#cartoon-network--rebuilt); §1 and §2 below describe the channel as it *was*.
+>
+> Departures from the recommendations here, all deliberate:
+> - **Sat 14–17 and Sun 14–17** in §8 hand out Nicktoons Vault and Disney Afternoon, which belong to channels built after this review. Saturday got Action Hour as the ramp into Toonami Saturday; Sunday got three hours of CN Modern.
+> - **Primal** is TV-MA and aired on Adult Swim, so it went to the Midnight Run rather than the 10:00 CN Modern slot. **Infinity Train** went the other way, out of Cartoon Cartoons into CN Modern — it is a 2019 show and was never part of that brand.
+> - **Akira and Ghost in the Shell** are R-rated and §14 put them in a Sunday-lunchtime film pool. They run in the Saturday overnight Toonami block instead.
+> - **Item 9 (commercials) is not done.** The 110 files under `commercials/90s` are mislabelled 2000s British adverts, as §4 itself notes; sorting them is the prerequisite. Item 7 (daytime CN branding) is likewise still an asset job — the channel now runs no daytime filler at all rather than Adult Swim's.
+> - **Item 10 (Smurfs, Bullwinkle)** is library work, untouched.
+> - **Item 8 (per-show Toonami bumpers) is done**, and Adult Swim's 5,316 too.
+
 Reviewed `scripts/channels/cartoon_network.py` + `scripts/library/animation.py` against the library at `/media` on 2026-08-29.
 
 Companion references: [library-animation-tv.md](library-animation-tv.md) · [library-animation-movies.md](library-animation-movies.md) · [bumper-inventory.md](bumper-inventory.md) · [library-tv-all.txt](library-tv-all.txt) · [library-movies-all.txt](library-movies-all.txt)

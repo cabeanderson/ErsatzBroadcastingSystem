@@ -9,9 +9,9 @@ Snapshots of `/media` taken 2026-08-29, for use when writing channel and block d
 | [library-animation-tv.md](library-animation-tv.md) | 151 animated series with episode and season counts |
 | [library-animation-movies.md](library-animation-movies.md) | 94 animated features, grouped by studio |
 | [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs |
-| [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel |
+| [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel — **implemented**, see its status header |
 | [channel-plan.md](channel-plan.md) | The working plan — lineup, programming mechanics, sharing rules, gaps |
-| [next-session.md](next-session.md) | Build order and carry-forward notes — the collision report, then CN |
+| [next-session.md](next-session.md) | Build order and carry-forward notes — framework bugs found in the CN restructure, then the collision report |
 | [channel-coverage.md](channel-coverage.md) | All 576 shows + 2,067 movies mapped to channels; orphans and conflicts |
 
 Episode counts come from files under `Season NN/` folders. Two shows read as zero and need attention: `Bullwinkle Show, The (1959)` is an empty directory, and `Smurfs, The (1981)` holds 405 episodes flat with no season folders and no `tvshow.nfo`.

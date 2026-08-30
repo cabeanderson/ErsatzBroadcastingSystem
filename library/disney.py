@@ -25,10 +25,12 @@ chronological-weekday / shuffle-weekend split, which is first-run and reruns
 out of one library, and they stay off the bench -- a serialized show dropped
 into a random rotation is the thing the channel plan says not to do.
 
-Sharing rule: Gravity Falls and The Owl House were on Cartoon Network's
-CARTOON_NETWORK_CLASSICS and have been handed back. Cartoon Network still airs
-DISNEY_MORNING and DISNEY_AFTERNOON out of `library/animation.py` until its
-restructure. See reference/channel-plan.md.
+Sharing rule: none left. Gravity Falls and The Owl House came back from
+Cartoon Network's CARTOON_NETWORK_CLASSICS when this channel was built, and the
+CN restructure returned the rest -- DISNEY_MORNING, DISNEY_AFTERNOON, Gargoyles
+and the Star Wars Day marathon. `star_wars_animation_tv` is also Other Worlds'
+06:00 block, which is nowhere near this channel's Star Wars hours.
+See reference/channel-plan.md.
 """
 
 from scripts.logic.structures import (

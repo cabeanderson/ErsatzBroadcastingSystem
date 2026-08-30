@@ -8,14 +8,14 @@ from scripts.logic.models import Branding
 
 BRANDING_ADULT_SWIM = Branding(
     intro="adult_swim_intro",
+    outro="adult_swim_outro",
     bumpers="adult_swim_bumpers",
 )
 
-BRANDING_90S_KIDS = Branding(
-    intro="fox_kids_intro",
-    outro="fox_kids_bumper", # Reusing bumper as outro if specific outro missing
-    bumpers="fox_kids_bumper",
-)
+# BRANDING_90S_KIDS was here. It named fox_kids_intro and fox_kids_bumper,
+# neither of which is defined in sources.py, and filler/bumpers/fox kids/ is an
+# empty tree on disk. Its only consumer was animation.FOX_KIDS_BLOCK, which
+# nothing referenced. Both went in the Cartoon Network restructure.
 
 BRANDING_TOONAMI = Branding(
     intro="toonami_intro",

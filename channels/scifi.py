@@ -69,7 +69,9 @@ EARLY_BLOCK = {
     "WEEKDAY_B": "classic_scifi_movie", # Tue/Thu
     "WEEKDAY_A": {                      # Mon/Wed/Fri
         "WEDNESDAY": RandomCollection(["orville_tv", "farscape_chronological_tv"]),
-        "default": animation.STAR_WARS_ANIMATION
+        # Disney's key, not Cartoon Network's -- CN's Star Wars block went
+        # with the restructure. Disney airs these 19:00-24:00, this is 06:00.
+        "default": "star_wars_animation_tv"
     },
     "default": scifi.FANTASY_ADVENTURE
 }

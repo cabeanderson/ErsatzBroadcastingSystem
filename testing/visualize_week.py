@@ -26,18 +26,46 @@ from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.core.logger import ChannelLogger
 from scripts.library.filters import INJECTION_RULES, SEASONAL_TAG_QUERIES
 
-# Import channels
-from scripts.channels import cartoon_network, detective, scifi, sitcoms, classic_movies, eighties, british
+# Channels, discovered rather than listed. The hardcoded table this replaces
+# had gone stale -- nick and disney were built and never added to it, so the
+# visualiser could not see them at all.
+import pkgutil
+import importlib
+import scripts.channels as _channels_pkg
 
-CHANNELS = {
-    "cartoon_network": {"module": cartoon_network, "preset": "default"},
-    "detective": {"module": detective, "preset": "default"},
-    "scifi": {"module": scifi, "preset": "default"},
-    "sitcoms": {"module": sitcoms, "preset": "default"},
-    "classic_movies": {"module": classic_movies, "preset": "movies"},
-    "eighties": {"module": eighties, "preset": "default"},
-    "british": {"module": british, "preset": "default"},
-}
+# Modules whose content keys are deliberate placeholders, not library content.
+_SKIP = {"example_channel", "test_channel"}
+
+# Named presets, for the channels that use one. Everything else is read off the
+# channel's own `*_TIMESLOTS` map, which is how nick, disney and cartoon_network
+# express dayparts the default preset cannot -- a night that does not wrap
+# midnight, a two-hour afternoon, a block running to 02:00.
+_PRESET_OVERRIDES = {"classic_movies": "movies"}
+
+
+def _timeslot_preset(name, module):
+    if name in _PRESET_OVERRIDES:
+        return _PRESET_OVERRIDES[name]
+    for attr in dir(module):
+        if attr.endswith("_TIMESLOTS") and isinstance(getattr(module, attr), dict):
+            return getattr(module, attr)
+    return "default"
+
+
+def _discover_channels():
+    found = {}
+    for mod in pkgutil.iter_modules(_channels_pkg.__path__):
+        if mod.name.startswith("_") or mod.name in _SKIP:
+            continue
+        module = importlib.import_module(f"scripts.channels.{mod.name}")
+        if not hasattr(module, "SCHEDULES"):
+            continue
+        found[mod.name] = {"module": module,
+                           "preset": _timeslot_preset(mod.name, module)}
+    return found
+
+
+CHANNELS = _discover_channels()
 
 def find_variable_name(obj):
     """Attempt to find the variable name for a collection object in loaded modules."""

@@ -129,6 +129,40 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
 
 ### 🟠 Correctness / robustness
 
+- [ ] **`frequency` paces an appointment, it does not gate the airing.**
+  `_find_active_episode` returns the current episode for *any* date inside the
+  season window; `frequency` only controls how fast the episode index advances.
+  So an `annual_show()` with `frequency=["FRIDAY"]` sitting in a block that runs
+  seven nights a week airs the same episode all seven of them — a premiere that
+  premieres every night. Every appointment in the library gets away with it
+  today only because its block happens to be day-gated: Disney's four Saturday
+  events live in a Saturday-only slot, and Cartoon Network's Attack on Titan
+  Junior High needed a Friday-only block variant
+  (`animation.MIDNIGHT_RUN_PREMIERE`) for the same reason. Either the resolver
+  should return `None` off-frequency, or `annual_show()` should refuse a
+  frequency the caller cannot honour. Found in the CN restructure.
+
+- [ ] **`circuit_breaker` never resolves `fallback_content`.**
+  `playout.circuit_breaker` hands `config.fallback_content` straight to
+  `play_item`, which requires a string key — so a `Block` or a Collection logs
+  "play_item received non-string content", advances nothing, and the breaker
+  still reports "✅ Fallback succeeded". Cartoon Network now passes a key
+  (`"animated_classic_tv"`); **nick, disney, detective and sitcoms all still
+  pass Blocks or Collections** and have a fallback that cannot fire. Fix either
+  end: resolve in the breaker, or make `ScheduleConfig` reject a non-key
+  fallback at construction rather than at the worst possible moment.
+
+- [ ] **A Contiguous-Mode strip goes dark waiting for autumn.**
+  `annual_show()` defaults `loop_restart_season` to the season half of
+  `premiere_season`, which is `"FALL"` — including in Contiguous Mode, where the
+  caller passed `start_date` and never named a premiere season at all. A weekday
+  strip that finishes its run in June then resolves to nothing until
+  mid-September, the block skips the item, time does not advance, and the slot
+  falls through to the circuit breaker. Cartoon Network's six Toonami strips now
+  pass `loop_restart_season=False` and a `reruns=` bed explicitly; the default
+  should probably be `False` whenever `start_date` was used.
+
+
 - [ ] **Errors swallowed into dead air.** `playout.play_item` catches all
   exceptions and returns an unadvanced context; pre-registration and several
   helpers `except Exception` → warn; the circuit breaker then force-skips time. A

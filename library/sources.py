@@ -402,6 +402,47 @@ DISNEY_REGISTRY = {
 }
 
 # ============================================================================
+# 3d. CARTOON NETWORK
+# ============================================================================
+
+# Four disambiguations. Every one of them is a title that resolves to two shows
+# now that the restructure airs both halves of the pair on the same channel.
+CARTOON_NETWORK_REGISTRY = {
+    # The 1941 Fleischer shorts (17, nine minutes each) open the Saturday
+    # morning vault. Superman: The Animated Series is a different show and airs
+    # in Action Hour the same afternoon; a bare title matches both.
+    "superman_fleischer_tv": playback_order(
+        f'{show_by_title("Superman")} AND release_date:[1941-01-01 TO 1945-12-31]',
+        force="Chronological"),
+
+    # X-Men (1992). A bare title also matches X-Men '97, which is 2024 and
+    # Disney's.
+    "xmen_animated_tv":
+        f'{show_by_title("X-Men")} AND release_date:[1992-01-01 TO 1997-12-31]',
+
+    # Attack on Titan proper. The phrase is also a prefix of Attack on Titan
+    # Junior High, which is the Friday appointment this is the rerun bed for.
+    "attack_on_titan_tv":
+        f'{show_by_title("Attack on Titan")} AND NOT show_title:"Junior High"',
+
+    # The rerun bed behind the Dragon Ball DAIMA appointment on Toonami
+    # Saturday, for the 32 weeks a year DAIMA is not in season.
+    "dragon_ball_super_tv": show_by_title("Dragon Ball Super"),
+
+    # The rerun bed behind the six weekday Toonami strips. Each is an
+    # `annual_show()` in Contiguous Mode, and a contiguous strip has dead
+    # stretches -- before its anchor date, and between the end of a run and the
+    # start of the next loop. Without a rerun bed the Program resolves to
+    # nothing, the block skips it, and a whole item slot stalls into the
+    # circuit breaker. This is what plays instead.
+    "toonami_vault_tv": playback_order(
+        'type:episode AND (show_title:"Dragon Ball Z" OR show_title:"Naruto"'
+        ' OR show_title:"InuYasha" OR show_title:"Yu Yu Hakusho"'
+        ' OR show_title:"Rurouni Kenshin" OR show_title:"Sailor Moon")',
+        force="Shuffle"),
+}
+
+# ============================================================================
 # 4. THEME & HOLIDAY REGISTRY
 # ============================================================================
 
@@ -627,6 +668,7 @@ MASTER_SOURCES = {
     **ANIMATED_REGISTRY,
     **NICK_REGISTRY,
     **DISNEY_REGISTRY,
+    **CARTOON_NETWORK_REGISTRY,
     **THEME_REGISTRY,
     **MARATHONS,
     **SEASONAL_VARIANTS,

@@ -17,10 +17,11 @@ Schedule shape:
 - Prime      (19-21): Star Wars; Tales on Saturday, the movie on Sunday
 - Late       (21-24): the Star Wars vault
 
-Sharing rule: Cartoon Network still airs `animation.DISNEY_MORNING` at 06:00
-and `animation.DISNEY_AFTERNOON` inside CN_AFTERNOON_BLOCK, and still holds a
-Star Wars Day marathon. Those are this channel's now and come out in the CN
-restructure. See reference/channel-plan.md.
+No sharing rules. Cartoon Network handed back DISNEY_MORNING, DISNEY_AFTERNOON,
+Gargoyles and the Star Wars Day marathon in its restructure, so every title here
+airs on this channel and nowhere else. Other Worlds draws the Star Wars vault at
+06:00 through this channel's `star_wars_animation_tv` key -- different hours from
+the 19:00-24:00 strip. See reference/channel-plan.md.
 """
 
 # ErsatzTV

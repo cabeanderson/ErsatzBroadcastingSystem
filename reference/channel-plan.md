@@ -23,7 +23,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | # | Channel | Content | Scripted |
 |---|---|---|---|
 | 104 | Across the Pond | British comedy & panel | yes |
-| 116 | Cartoon Network | CN + Toonami + Adult Swim | yes |
+| 116 | Cartoon Network | CN originals + Toonami + Adult Swim | yes — **rebuilt** |
 | 120 | Lucy TV | I Love Lucy 24/7 | no |
 | 142 | Cabes Classic Cinema | classic film | yes |
 | 144 | Mystery Theatre | detective / procedural | yes |
@@ -51,10 +51,37 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 
 ## Channel notes
 
-### Cartoon Network
-CN originals + Toonami + Adult Swim on one channel, dayparted. Keeping Adult Swim attached is right — each daypart draws its own pool, so nothing competes. Dragon Ball after school is the anchor.
+### Cartoon Network — rebuilt
+`scripts/channels/cartoon_network.py` · `scripts/library/animation.py`
 
-Rough shape: vault 06–08 · CN originals 08–15 · action syndication 15–16 as a ramp · **Toonami 16–20** · Adult Swim 20–02 · acquisitions 02–06.
+Restructured against [cartoon-network-review.md](cartoon-network-review.md), which is the audit this grid came from. The channel was giving **27 hours a week to Disney and 13 to Nickelodeon** while Cartoon Network's own originals held five, and Adult Swim ran 20:00–02:00 with Hanna-Barbera behind it until 06:00 — the exact inverse of the real thing. Both other claimants on the animation library were built first, so the eviction list was written down rather than derived.
+
+| Slot | Mon–Thu | Friday | Saturday | Sunday |
+|---|---|---|---|---|
+| 00–02 after hours | Midnight Run | Midnight Run | Midnight Run | Adult Swim originals *(Sun night)* |
+| 02–06 overnight | Adult Swim, acquisitions | ← | ← | **Toonami: The Midnight Run** *(Sat night)* |
+| 06–08 early | The Vault | ← | ← | ← |
+| 08–10 morning | Cartoon Cartoons | ← | Saturday Morning | The Scooby Block |
+| 10–12 midday | Cartoon Network | ← | Cartoon Cartoons | The Vault |
+| 12–14 noon | The Vault | ← | Syndication Hour | Cartoon Theatre |
+| 14–17 afternoon | Action Hour | ← | Action Hour | Cartoon Network |
+| 17–20 evening | **Toonami** | Cartoon Cartoon Fridays | **Toonami Saturday** | Cartoon Cartoons |
+| 20–23 prime | Adult Swim originals A/B | A | Toonami Saturday cont. | FOX Primetime |
+| 23–24 night | Midnight Run | Midnight Run **premiere** | Midnight Run | Adult Swim originals |
+
+Simulated over 365 continuous days: no gaps, no circuit breakers, no unresolved programs. Airtime share of ~21,000 programme plays — **CN originals 22.6%, anime/Toonami 16.7%, Adult Swim originals 11.1%** (50.4% between them, against ~9% before), acquisitions 14.3%, the vault 19.3%, superhero 9.9%. Disney and Nickelodeon are at zero.
+
+**Adult Swim runs last, not first.** Originals at 20:00, the anime Midnight Run at 23:00, acquisitions 02:00–06:00. The old grid had the 2009–2014 acquisitions as the 20:00 marquee and the Williams Street originals behind them.
+
+**Own timeslot map, split at midnight.** The default preset's `night: (23, 2)` wraps, and a wrapping slot is entered twice under two different day labels — so "Sunday night" resolved to two different nights and a `DailyOrderedCollection` replayed its first items across the boundary. `night` is 23–24 and `after_hours` is 00–02, each with its own block. Same reason Nick and Disney carry their own maps.
+
+**Two appointments, both day-gated by their block.** Dragon Ball DAIMA (20 eps) premieres Saturdays inside Toonami Saturday; Attack on Titan Junior High (12 eps) premieres Fridays at 23:00 inside a Friday-only variant of the Midnight Run. The gating has to come from the slot — `frequency` only paces the episode index, it does not stop the appointment airing on other days. See [KNOWN_ISSUES.md](../KNOWN_ISSUES.md).
+
+**Per-show bumpers are wired.** ~940 Toonami and 5,316 Adult Swim files were unreachable; each Toonami and Adult Swim item now carries its own set through a `Program` wrapper (`animation._with_bumpers`). `play_smart_bumper` would find them by title on its own, but it requires a `bumpers` tag and the trees are tagged `bumps`/`shows`.
+
+**No daytime filler.** `filler_content="adult_swim_bumpers"` was channel-wide and only the five branded blocks overrode it, so ~14 hours of every 24 — Saturday-morning Scooby-Doo included — ran Adult Swim bumps. There is nothing to replace it with: `filler/bumpers/cartoon network/general/` is empty and the 110 files under `commercials/90s` are mislabelled 2000s British adverts. Silence is closer to Cartoon Network than Adult Swim is. Sourcing checkerboard / Powerhouse / CN City branding is the outstanding asset job.
+
+Summer (Jun–Aug) hands weekday 08:00–14:00 to CN's own shows and drops the vault from lunchtime; spring still leans Marvel, in the Action Hour rather than the retired 08:00 superhero hour. Marathons are date-anchored — Thanksgiving and New Year's Toonami, July 4th DBZ, Memorial Day Bebop, first Saturday of the month CN — each keeping its old random chance on top via `triggers.any_of`.
 
 ### Disney — built
 `scripts/channels/disney.py` · `scripts/library/disney.py`
@@ -158,7 +185,7 @@ Reads the manifests in `reference/`, so it runs offline with no ErsatzTV.
 
 ### Still needs building
 
-**Collision report.** The framework has no cross-channel awareness. Sharing rules stay a convention until something can simulate N days across all channels and flag a title double-booked in the same hour. `visualize_week.py` and the walker in `validate_titles.py` are the two halves of it — same traversal, plus a time dimension. Deferred again in favour of the Cartoon Network restructure, on the grounds that CN's eviction list is already written down rather than needing deriving. That reasoning expires the moment a fourth channel wants the same library. See [next-session.md](next-session.md).
+**Collision report.** The framework has no cross-channel awareness. Sharing rules stay a convention until something can simulate N days across all channels and flag a title double-booked in the same hour. `visualize_week.py` and the walker in `validate_titles.py` are the two halves of it — same traversal, plus a time dimension. Deferred through the Cartoon Network restructure, on the grounds that CN's eviction list was written down rather than needing deriving. That list is now cleared, so the next time two channels overlap nothing will be holding the answer — and `common.HALLOWEEN_TEEN_FRIGHTS` is already one live example. See [next-session.md](next-session.md).
 
 ---
 
@@ -170,7 +197,11 @@ No channel airs a title *while* another channel is airing it. Sharing itself is 
 
 *Done in code when Nick was built.* Good Times used to run a collection literally named `NICK_AT_NITE` in its 23:00–02:00 slot. That is now `LATE_NIGHT_SYNDICATION` — Cheers, Wonder Years, Married… with Children, Newsradio, Drew Carey, Wings, Mad About You, 3rd Rock, The Nanny, Coach — none of them shared. The winter prime variants swapped in `CLASSIC_SITCOMS_60s_70s`, which reaches into 21:00–23:00, so they now take `EIGHTIES_NINETIES_CLASSICS` instead; and the channel fallback moved off the classics for the same reason. Mornings, daytime and the 02:00–06:00 overnight are untouched.
 
-**Disney vs. Cartoon Network.** Gravity Falls and The Owl House left `animation.CARTOON_NETWORK_CLASSICS` when Disney was built and are Disney's outright — no shared hours, they simply moved. Three things did *not* move and are still double-booked until the CN restructure: `animation.DISNEY_MORNING` in CN's 06:00–08:00 weekday slot, `animation.DISNEY_AFTERNOON` as the base of `CN_AFTERNOON_BLOCK` (14:00–18:00), and CN's Star Wars Day marathon, which now runs against Disney's. Gravity Falls also survives inside `common.HALLOWEEN_TEEN_FRIGHTS`, which CN uses on Halloween. All four come out in the restructure.
+**Disney vs. Cartoon Network — settled.** Everything Cartoon Network was holding for Disney has gone back: `DISNEY_MORNING`, `DISNEY_AFTERNOON`, Gargoyles, and the Star Wars Day marathon that used to run against Disney's own. CN's Halloween schedule no longer reaches for `common.HALLOWEEN_TEEN_FRIGHTS` either — it has `animation.CN_HALLOWEEN`, built from Courage and Infinity Train. Other Worlds was also borrowing CN's Star Wars block at 06:00 and now uses Disney's `star_wars_animation_tv` key.
+
+**Nick vs. Cartoon Network — settled.** The Nicktoons Vault is retired, and Daria, Animaniacs and Pinky and the Brain are Nick's alone. Ed, Edd n Eddy went the other way: it is a Cartoon Cartoon and had been filed under Nicktoons.
+
+**Still crossed:** `common.HALLOWEEN_TEEN_FRIGHTS` is Gravity Falls (Disney), Infinity Train and Courage (both Cartoon Network), and **Nick** is the only channel still using it — so on Halloween Nick airs three shows it does not own. Nick's problem to fix, in Nick's session; it wants a `NICK_HALLOWEEN` the way Disney and CN now have their own.
 
 **Adult Swim vs. Corncob TV.** Tim and Eric, The Eric Andre Show, Check It Out! with Dr. Steve Brule. Adult Swim is **first-run** — chronological, appointment-scheduled, late. Corncob is **syndication** — shuffled, daytime, drop in anywhere. Same show, two presentations. This generalizes: it's the cross-channel form of the chronological-weekday / shuffle-weekend pattern.
 

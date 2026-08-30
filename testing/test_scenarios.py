@@ -375,17 +375,71 @@ class TestApiContract(unittest.TestCase):
         print("✅ exact variants cross month boundaries")
 
 
+# A stand-in channel for the marathon tests.
+#
+# These used to run against `channels.cartoon_network`, which meant a framework
+# test failed the moment a channel changed its programming -- and it did: the
+# Simpsons marathon left Cartoon Network in the restructure, since The Simpsons
+# is Fox and never aired there. What is under test here is the engine's
+# handling of random start points and marathon windows, so the fixture carries
+# the two marathons itself.
+#
+# `boss.roll` is a pure function of (date, key), so the trigger keys below fire
+# on exactly the dates they always did.
+
+def _marathon_fixture(day, build_id):
+    """Run a minimal channel holding just the marathons under test."""
+    from scripts.logic.models import Marathon
+    from scripts.logic import triggers
+    from scripts.scheduling import run_daily_schedule
+    from scripts.library.animation import COWBOY_BEBOP_COMPLETE
+
+    marathons = [
+        Marathon(
+            name="Simpsons Marathon",
+            trigger=triggers.chance(0.01, "simpsons_takeover"),
+            collection="simpsons_random_marathon",
+            hours=(16, 22),
+            priority=1,
+        ),
+        Marathon(
+            name="Cowboy Bebop",
+            trigger=triggers.chance(0.01, "bebop_marathon"),
+            collection=COWBOY_BEBOP_COMPLETE,
+            hours=(10, 24),
+            priority=2,
+        ),
+    ]
+
+    schedule = {slot: "animated_classic_tv" for slot in
+                ("overnight", "early", "morning", "midday", "noon",
+                 "afternoon", "evening", "prime", "night")}
+
+    config = ScheduleConfig(
+        schedules={"WEEKDAY": schedule},
+        marathons=marathons,
+        timeslot_preset="default",
+        fallback_content="animated_classic_tv",
+        logger=ChannelLogger(verbose=False),
+        enable_marathons=True,
+        enable_holiday_injection=True,
+        enable_seasonal_injection=True,
+        enable_thematic_injection=True,
+    )
+
+    ctx = MockContext(day)
+    api = MockAPI(ctx)
+    with contextlib.redirect_stdout(io.StringIO()):
+        run_daily_schedule(api, ctx, build_id, config)
+    return api
+
+
 class TestMarathonWindow(unittest.TestCase):
     """A marathon must stay inside the hours its channel gave it."""
 
     def test_unbounded_marathon_stays_in_window(self):
-        from scripts.channels import cartoon_network
-
         # 2026-04-30 is a Simpsons Marathon trigger date (16:00-22:00 window).
-        ctx = MockContext(datetime(2026, 4, 30))
-        api = MockAPI(ctx)
-        with contextlib.redirect_stdout(io.StringIO()):
-            cartoon_network.build_playout(api, ctx, "marathon-window")
+        api = _marathon_fixture(datetime(2026, 4, 30), "marathon-window")
 
         simpsons = [e for e in api.schedule
                     if e['type'] == 'content' and 'simpsons' in str(e['content']).lower()]
@@ -405,12 +459,7 @@ class TestMarathonStartPoint(unittest.TestCase):
 
     @staticmethod
     def _build(day):
-        from scripts.channels import cartoon_network
-        ctx = MockContext(day)
-        api = MockAPI(ctx)
-        with contextlib.redirect_stdout(io.StringIO()):
-            cartoon_network.build_playout(api, ctx, "start-point")
-        return api
+        return _marathon_fixture(day, "start-point")
 
     def _skips(self, api):
         out = []

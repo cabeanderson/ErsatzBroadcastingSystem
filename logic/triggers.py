@@ -27,6 +27,21 @@ def in_range(start_month, start_day, end_month, end_day):
     """
     return lambda boss: states.is_in_date_range(boss.now, start_month, start_day, end_month, end_day)
 
+def any_of(*conditions):
+    """
+    True if any of the given triggers fires.
+
+    Lets a date-anchored event keep a small random chance on top, so a
+    marathon is a tradition that can also happen out of the blue:
+        triggers.any_of(triggers.has_label("THANKSGIVING"),
+                        triggers.chance(0.01, "toonami_takeover"))
+    """
+    return lambda boss: any(c(boss) for c in conditions)
+
+def all_of(*conditions):
+    """True only if every given trigger fires."""
+    return lambda boss: all(c(boss) for c in conditions)
+
 def has_label(label):
     """
     True if the day has a specific label.
