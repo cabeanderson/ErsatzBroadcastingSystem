@@ -1,11 +1,17 @@
 """
-Detective Channel - Crime, Mystery, and Procedurals
+Mystery Theatre - Crime, Mystery, and Procedurals
 
-Features:
-- "PlayOnce" Lunch Special (Specific daily episodes)
-- British Crime Block (Evening)
-- USA Network "Blue Sky" Block (Morning/Afternoon)
-- Weekend Marathons (Columbo, Poirot)
+Weekdays run a strip: Monk/Psych mornings and afternoons, Retro P.I. at midday,
+the Lunch Special, British mystery in the evening, and a different named block
+each weeknight at eight. November hands the whole weeknight lineup to Noir
+November. Nights are films.
+
+Saturday is the film day, Sunday the parlour-mystery day into Sunday Prestige.
+
+Poirot and Miss Marple also air on the British channel. That is deliberate --
+both channels have a real claim and the hours do not overlap.
+
+True crime was dropped: `true_crime_tv` resolved to one show with six episodes.
 """
 
 from etv_client.models import ControlWaitUntil
@@ -31,83 +37,85 @@ MARATHONS = [
 ]
 
 # ==============================================================================
-# 2. SEASONAL BLOCKS
+# 2. BLOCK DEFINITIONS
 # ==============================================================================
 
-SEASONAL_BLOCKS = {}
-
-PRIME_SEASONAL = SeasonalBlock(
-    base=detective.DETECTIVE_TUESDAY_BLUESKY, # Default base if needed
-    seasonal={
-        "FALL": Swap(detective.NOIR_NOVEMBER_COLLECTION) # Noir November takeover
-    }
-)
-
-# ==============================================================================
-# 3. BLOCK DEFINITIONS
-# ==============================================================================
-
+# NOVEMBER is checked before the weekday names, and dict resolution takes the
+# first label that matches, so Noir November takes the whole weekday lineup for
+# one month. It previously lived on PRIME_BLOCK's "default" arm behind five
+# explicitly named weekdays -- unreachable, so the channel's signature seasonal
+# event had never once aired. Scoped to NOVEMBER rather than FALL on purpose: a
+# whole-season takeover would delete the Mon-Fri lineup for three months.
 PRIME_BLOCK = {
+    "NOVEMBER": detective.NOIR_NOVEMBER_COLLECTION,
     "MONDAY": detective.DETECTIVE_MONDAY_BRITISH,
     "TUESDAY": detective.DETECTIVE_TUESDAY_BLUESKY,
     "WEDNESDAY": detective.DETECTIVE_WEDNESDAY_HARDBOILED,
     "THURSDAY": detective.DETECTIVE_THURSDAY_WHODUNIT,
-    "FRIDAY": detective.DETECTIVE_FRIDAY_RETRO,
-    "default": PRIME_SEASONAL
+    "FRIDAY": detective.DETECTIVE_FRIDAY_RETRO
 }
 
+# Monk and Psych keep the morning and the afternoon -- five hours a weekday.
+# They had seven, plus an evening swap in two seasons, which put two shows at a
+# quarter of everything the channel aired.
+EVENING_BLOCK = SeasonalBlock(
+    base=detective.DETECTIVE_BRITISH_BLOCK,
+    seasonal={
+        "SUMMER": Swap("monk_chronological_tv")
+    }
+)
+
+LUNCH_SPECIAL = Block(
+    name="Lunch Special",
+    items=[{
+        "WEEKDAY_A": "elsbeth_tv",
+        "WEEKDAY_B": "moonlighting_tv",
+        "default": "modern_mystery_tv"
+    }],
+    fill_strategy="bridge",
+    strict_window=False
+)
+
 # ==============================================================================
-# 4. SCHEDULE DEFINITIONS
+# 3. SCHEDULE DEFINITIONS
 # ==============================================================================
 
 SCHEDULES = {
     "WEEKDAY": {
         "overnight": detective.DETECTIVE_LATE_NIGHT,
         "early": detective.DETECTIVE_LATE_NIGHT,
-        "morning": detective.DETECTIVE_USA_BLOCK, # Monk/Psych
-        "midday": detective.DETECTIVE_USA_BLOCK,
-        "noon": Block(
-            name="Lunch Special",
-            items=[{
-                "WEEKDAY_A": "elsbeth_tv",     # Explicit
-                "WEEKDAY_B": "moonlighting_tv",
-                "default": "procedural_tv"     # True fallback
-            }],
-            fill_strategy="bridge",
-            strict_window=False
-        ),
-        "afternoon": detective.DETECTIVE_USA_BLOCK, # Monk/Psych
-        "evening": SeasonalBlock(
-            base=detective.DETECTIVE_BRITISH_BLOCK,
-            seasonal={
-                "SUMMER": Swap("monk_chronological_tv"),
-                "FALL": Swap("monk_chronological_tv")
-            }
-        ),
+        "morning": detective.DETECTIVE_USA_BLOCK,      # Monk / Psych
+        "midday": detective.RETRO_PI_STRIP,            # was a third hour of Monk / Psych
+        "noon": LUNCH_SPECIAL,
+        "afternoon": detective.DETECTIVE_USA_BLOCK,    # Monk / Psych
+        "evening": EVENING_BLOCK,
         "prime": PRIME_BLOCK,
-        "night": detective.DETECTIVE_LATE_NIGHT
+        "night": detective.MYSTERY_MOVIE_WHEEL         # was late night again; now film
     },
+    # Saturday and Sunday used to be the same day printed twice -- identical from
+    # 02:00 to 17:00 and again from 23:00. Saturday is the film day; Sunday is
+    # the parlour-mystery day leading into Prestige.
     "SATURDAY": {
         "overnight": detective.DETECTIVE_LATE_NIGHT,
-        "early": "procedural_tv",
-        "morning": "procedural_tv",
+        "early": detective.CLASSIC_DETECTIVES,
+        "morning": detective.MODERN_CASEBOOK,          # House, Burn Notice, Veronica Mars
         "midday": "poirot_tv",
-        "noon": "poirot_tv",
+        "noon": detective.WHODUNIT_WHEEL,
         "afternoon": "miss_marple_tv",
-        "evening": detective.MYSTERY_MOVIE_WHEEL,
+        "evening": detective.MYSTERY_MOVIE_WHEEL,      # the wheel that shows films
         "prime": detective.MYSTERY_MOVIE_WHEEL,
-        "night": "poirot_tv"
+        "night": "columbo_tv"
     },
     "SUNDAY": {
         "overnight": detective.DETECTIVE_LATE_NIGHT,
-        "early": "procedural_tv",
-        "morning": "procedural_tv",
-        "midday": "poirot_tv",
-        "noon": "poirot_tv",
-        "afternoon": "miss_marple_tv",
-        "evening": "columbo_tv",
-        "prime": detective.SUNDAY_PRESTIGE_BLOCK, # Sequential Block
-        "night": "poirot_tv"
+        "early": detective.CLASSIC_DETECTIVES,
+        "morning": detective.WHODUNIT_WHEEL,
+        "midday": "miss_marple_tv",
+        "noon": detective.MODERN_CRIME,
+        "afternoon": "columbo_tv",
+        "evening": detective.WHODUNIT_WHEEL,
+        "prime": detective.SUNDAY_PRESTIGE_BLOCK,
+        "night": detective.MYSTERY_MOVIE_WHEEL
     }
 }
 
@@ -130,7 +138,8 @@ def build_playout(api, context, build_id):
         schedules=SCHEDULES,
         marathons=MARATHONS,
         logger=ChannelLogger(prefix="[DETECTIVE]"),
-        fallback_content="procedural_tv",
+        # Was `procedural_tv`, which is tag:procedural -- six shows.
+        fallback_content="modern_mystery_tv",
         enable_marathons=True,
         enable_holiday_injection=True,
         enable_seasonal_injection=True

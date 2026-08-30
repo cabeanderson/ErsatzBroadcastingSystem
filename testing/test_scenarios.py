@@ -681,7 +681,7 @@ class TestFallbackResolution(unittest.TestCase):
         session, last = self._session(movies.GOLDEN_AGE_CINEMA)
         key = resolve_fallback_key(session, last)
         self.assertIsInstance(key, str)
-        self.assertIn(key, ("30s_golden_age_movie", "classic_hollywood_movie"))
+        self.assertIn(key, tuple(movies.GOLDEN_AGE_CINEMA.items))
 
     def test_block_never_leaks_through_as_a_key(self):
         """The actual regression: a Block must yield None, not a stringified Block."""

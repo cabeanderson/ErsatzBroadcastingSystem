@@ -13,8 +13,9 @@ CLASSIC_DETECTIVES = Block(
     name="Classic Detectives",
     items=OrderedCollection([
         "classic_mystery_tv",
-        "detective_tv",
-        "classic_noir_movie"
+        "detective_tv"
+        # `classic_noir_movie` removed: 13 Golden Age films, and Classic Cinema
+        # builds its whole noir identity on them.
     ])
 )
 
@@ -22,31 +23,7 @@ MODERN_CRIME = Block(
     name="Modern Crime",
     items=OrderedCollection([
         "procedural_tv",
-        "modern_mystery_tv",
-        "legal_drama_tv"
-    ])
-)
-
-BRITISH_CRIME = Block(
-    name="British Crime",
-    items=OrderedCollection([
-        "british_mystery_tv",
-        "british_drama_tv"
-    ])
-)
-
-TRUE_CRIME_NIGHT = Block(
-    name="True Crime Night",
-    items=OrderedCollection([
-        "true_crime_tv",
-        "mystery_crime_movie"
-    ])
-)
-
-LEGAL_BLOCK = Block(
-    name="Legal Drama",
-    items=RandomCollection([
-        "legal_drama_tv"
+        "modern_mystery_tv"   # 62 shows; `legal_drama_tv` was 4 and is dropped
     ])
 )
 
@@ -74,18 +51,63 @@ DETECTIVE_LATE_NIGHT = Block(
         {"title": "poker face"},
         {"title": "bored to death"},
         {"title": "remington steele"},
-        "classic_mystery_tv",
-        "true_crime_tv"
+        # 268 episodes, previously on no channel. It replaces `true_crime_tv`,
+        # which was genre:documentary AND genre:crime -- one show, six episodes,
+        # carrying 47 hours a month across the three slots this block fills.
+        {"title": "Alfred Hitchcock Presents", "query": show_by_title("Alfred Hitchcock Presents"), "order": "Shuffle"},
+        "classic_mystery_tv"
     ])
 )
 
-MYSTERY_MOVIE_WHEEL = Block(
-    name="Mystery Movie Wheel",
+# Named for the NBC wheel, but every item was a television series, which is most
+# of why this channel ran at 2% film against a library of 365 mystery and crime
+# features. The television wheel keeps its rotation under an honest name; the
+# movie wheel below is the one that shows films.
+WHODUNIT_WHEEL = Block(
+    name="Whodunit Wheel",
     items=OrderedCollection([
         {"title": "Columbo", "query": show_by_title("Columbo"), "order": "Shuffle"},
         {"title": "Poirot", "query": show_by_title("Agatha Christie's Poirot"), "order": "Shuffle"},
         {"title": "Miss Marple", "query": show_by_title("Miss Marple"), "order": "Shuffle"},
         {"title": "Murder, She Wrote", "query": show_by_title("Murder, She Wrote"), "order": "Shuffle"},
+    ])
+)
+
+# Era-split from Classic Cinema rather than shared. Both channels want crime
+# film, and Classic Cinema runs NOIR_NIGHT overnight on the same two keys this
+# used to hold -- so raising this channel's film share from 2% to 21% put the
+# identical pool on both at 00:00. Classic Cinema keeps the pre-1970 titles and
+# the Golden Age noirs; this takes the 330 films from 1970 on.
+MYSTERY_MOVIE_WHEEL = Block(
+    name="Mystery Movie Wheel",
+    items=RandomCollection([
+        "modern_crime_movie"     # 330 films, 1970+
+    ])
+)
+
+# The comma matters: the folder is `Magnum, P.I.`, and Friday's block asked for
+# "Magnum P.I." for as long as it has existed.
+RETRO_PI_STRIP = Block(
+    name="Retro P.I.",
+    items=OrderedCollection([
+        {"title": "Magnum, P.I.", "query": show_by_title("Magnum, P.I."), "order": "Shuffle"},
+        {"title": "Miami Vice", "query": show_by_title("Miami Vice"), "order": "Shuffle"},
+    ])
+)
+
+# Episodic modern procedurals. Mr. Robot and The Americans are the other large
+# unused shows in this genre and are deliberately absent -- both are serialized
+# past the point where a shuffled strip makes sense.
+MODERN_CASEBOOK = Block(
+    name="Modern Casebook",
+    items=OrderedCollection([
+        # Bounded by year: a phrase match on "House" also returns House of the
+        # Dragon and House Of Cosbys.
+        {"title": "House",
+         "query": 'type:episode AND show_title:"House" AND release_date:[2004-01-01 TO 2004-12-31]',
+         "order": "Shuffle"},
+        {"title": "Burn Notice", "query": show_by_title("Burn Notice"), "order": "Shuffle"},
+        {"title": "Veronica Mars", "query": show_by_title("Veronica Mars"), "order": "Shuffle"},
     ])
 )
 
@@ -146,7 +168,7 @@ DETECTIVE_THURSDAY_WHODUNIT = Block(
 DETECTIVE_FRIDAY_RETRO = Block(
     name="Retro P.I. Night",
     items=OrderedCollection([
-        {"title": "Magnum P.I.", "query": show_by_title("Magnum P.I."), "order": "Shuffle"},
+        {"title": "Magnum, P.I.", "query": show_by_title("Magnum, P.I."), "order": "Shuffle"},
         {"title": "Moonlighting", "query": show_by_title("Moonlighting"), "order": "Shuffle"},
         {"title": "Remington Steele", "query": show_by_title("Remington Steele"), "order": "Shuffle"},
     ]),
@@ -159,7 +181,7 @@ TRUE_DETECTIVE_BLOCK = annual_show(
     premiere_year=2026,
     premiere_season=("FALL", "SUNDAY"),
     frequency=["SUNDAY"],
-    reruns="mystery_crime_movie", # Fallback if season ends early
+    reruns="modern_crime_movie",  # Fallback if season ends early
     loop=True
 )
 
@@ -169,7 +191,7 @@ FARGO_BLOCK = annual_show(
     premiere_year=2026,
     premiere_season=("WINTER", "SUNDAY"),
     frequency=["SUNDAY"],
-    reruns="mystery_crime_movie",
+    reruns="modern_crime_movie",
     loop=True
 )
 

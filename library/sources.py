@@ -21,7 +21,7 @@ from .filters import (
     FALL_TAGS, SPRING_TAGS, SILENT_ERA, GOLDEN_AGE, SEVENTIES, Y2K_ERA, TENS, TWENTIES,
     SHORT, NO_COMEDY, NO_HORROR,
     TV_CLASSIC, TV_GOLDEN_AGE, TV_HD, TV_VINTAGE,
-    NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI,
+    NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI, MODERN_FILM_ERA, PRE_EIGHTIES_ERA,
     SIXTIES, SITCOM_80S_VIBE, SITCOM_90S_VIBE
 )
 
@@ -34,6 +34,12 @@ MOVIE_REGISTRY = {
     "20s_silent_movie": movie_source(era=SILENT_ERA),
     "30s_golden_age_movie": movie_source(era=GOLDEN_AGE),
     "classic_hollywood_movie": movie_source(era=CLASSIC_ERA),
+    # Same era with science fiction removed: 119 films of the 137. Classic
+    # Cinema's morning block used the unfiltered key, which put Forbidden
+    # Planet, Day the Earth Stood Still, Godzilla and 15 others on it at the
+    # same hour Other Worlds airs `classic_scifi_movie` -- the same 1950-69
+    # shelf. Follows the `_pure_` convention: the genre minus its overlap.
+    "classic_hollywood_pure_movie": movie_source(era=CLASSIC_ERA, extra=NO_SCIFI),
     "film_history_all_movie": movie_source(era=CLASSIC_ERA),
     "70s_movie": movie_source(era=SEVENTIES),
     "80s_movie": movie_source(era=EIGHTIES),
@@ -88,7 +94,30 @@ MOVIE_REGISTRY = {
     "cyberpunk_movie": movie_source(tags="tag:cyberpunk"),
     "psych_thriller_movie": movie_source(genre="(thriller OR mystery)", extra="(title:*Psycho* OR title:*Silence*)"),
     "mystery_crime_movie": movie_source(genre="(mystery OR crime)", extra=NO_COMEDY),
+    # The crime/mystery shelf, split by era so Classic Cinema and Mystery
+    # Theatre never draw the same film. Together these are `mystery_crime_movie`,
+    # which neither channel should schedule directly.
+    "classic_crime_movie": movie_source(genre="(mystery OR crime)", era=PRE_EIGHTIES_ERA, extra=NO_COMEDY),  #  74
+    "modern_crime_movie": movie_source(genre="(mystery OR crime)", era=MODERN_FILM_ERA, extra=NO_COMEDY),    # 291
     "classic_noir_movie": movie_source(genre="crime", era=GOLDEN_AGE),
+
+    # --- FANTASY ---
+    # Counts are live-action titles on disk as of the 2026-08-30 census
+    # (media/ANALYSIS.md). movie_source() excludes animation by default, so the
+    # live-action figure is the one these keys actually return; the raw Fantasy
+    # tag covers 333 films, 95 of them animated.
+    "fantasy_movie": movie_source(genre="fantasy"),                                    # 238
+    "fantasy_pure_movie": movie_source(genre="fantasy", extra=NO_SCIFI),               # 185
+    "fantasy_adventure_movie": movie_source(genre="fantasy", extra="genre:adventure"), # 102
+    "fantasy_comedy_movie": movie_source(genre="fantasy", extra="genre:comedy"),       #  97
+    "epic_fantasy_movie": movie_source(genre="fantasy", tags="(tag:epic OR tag:sword)"),
+    "dark_fantasy_movie": movie_source(genre="fantasy", extra="genre:horror"),         #  54
+    "fairytale_movie": movie_source(genre="fantasy", extra="genre:family"),            #  46
+    "animated_fantasy_movie": movie_source(genre="fantasy", animated=True),            #  95
+    "classic_fantasy_movie": movie_source(genre="fantasy", era=CLASSIC_ERA),
+    "80s_fantasy_movie": movie_source(genre="fantasy", era=EIGHTIES),                  #  45
+    "90s_fantasy_movie": movie_source(genre="fantasy", era=NINETIES),                  #  59
+    "modern_fantasy_movie": movie_source(genre="fantasy", era=STREAMING_ERA),          #  63
 
     # --- SPECIALTY ---
     "videogame_movie": movie_source(extra="(title:*Mario* OR title:*Sonic* OR title:*Kombat*)"),
@@ -116,12 +145,26 @@ TV_REGISTRY = {
     "modern_scifi_tv": show_source(genre='"science fiction"', era=TV_HD, extra=f"{NO_FANTASY} AND {NO_SITCOM}"),
     "scifi_tv": show_source(genre='"science fiction"', extra=f"{NO_FANTASY} AND {NO_SITCOM}"),
     "scifi_fantasy_tv": show_source(genre='"science fiction"', extra=f"genre:fantasy AND {NO_SITCOM}"),
-    "space_opera_tv": show_source(genre='"science fiction"', extra=NO_SITCOM),
+    # The one sci-fi key with no NO_FANTASY clause, so it is the widest pool
+    # here -- everything scifi_tv returns plus the shows this library tags as
+    # both (Stargate SG-1, Quantum Leap, Xena). Named for what it is: it was
+    # `space_opera_tv`, which promised Babylon 5 and delivered Sabrina the
+    # Teenage Witch. Real space opera is a title-based collection now.
+    "scifi_all_tv": show_source(genre='"science fiction"', extra=NO_SITCOM),
+    "animated_scifi_tv": show_source(genre='"science fiction"', animated=True, extra=NO_SITCOM),
     
     # --- FANTASY ---
-    "fantasy_pure_tv": show_source(genre="fantasy", extra=f"{NO_SCIFI} AND {NO_SITCOM}"),
-    "fantasy_tv": show_source(genre="fantasy", extra=NO_SITCOM),
+    # Show/episode counts from the 2026-08-30 census (media/ANALYSIS.md).
+    # show_source() excludes animation by default: the Fantasy tag covers 80
+    # shows, half of them animated, so the animated pool needs its own key
+    # rather than being reachable only by accident.
+    "fantasy_pure_tv": show_source(genre="fantasy", extra=f"{NO_SCIFI} AND {NO_SITCOM}"),  # 23 shows / 1,128 eps
+    "fantasy_tv": show_source(genre="fantasy", extra=NO_SITCOM),                           # 40 shows / 2,158 eps
     "epic_fantasy_tv": show_source(genre="fantasy", tags="(tag:epic OR tag:sword)", extra=NO_SITCOM),
+    "dark_fantasy_tv": show_source(genre="fantasy", extra=f"genre:horror AND {NO_SITCOM}"),  #  8 shows /   219 eps
+    "classic_fantasy_tv": show_source(genre="fantasy", era=TV_VINTAGE, extra=NO_SITCOM),
+    "modern_fantasy_tv": show_source(genre="fantasy", era=TV_HD, extra=NO_SITCOM),          # 23 shows /   658 eps
+    "animated_fantasy_tv": show_source(genre="fantasy", animated=True, extra=NO_SITCOM),    # 40 shows / 3,366 eps
     
     # --- SITCOMS BY ERA ---
     "60s_sitcoms_tv": show_source(tags="tag:sitcom", era=SIXTIES, extra=NO_BBC),
@@ -167,7 +210,11 @@ TV_REGISTRY = {
     "classic_horror_tv": show_source(genre="horror", era=TV_CLASSIC),
     "modern_horror_tv": show_source(genre="horror", era=TV_HD),
     "thriller_tv": show_source(genre="thriller"),
-    "supernatural_tv": show_source(genre="(supernatural OR tag:paranormal)"),
+    # Was genre:"(supernatural OR tag:paranormal)". There is no Supernatural
+    # genre in this library and tag:paranormal is on 3 shows, so the key was
+    # near-empty while holding a third of a daily block. tag:supernatural is the
+    # tag that actually exists (12 shows).
+    "supernatural_tv": show_source(tags="(tag:supernatural OR tag:paranormal)"),
     
     # --- NETWORK SPECIFIC ---
     "hbo_drama_tv": show_source(genre="drama", studio="HBO", extra=NO_SITCOM),

@@ -116,29 +116,34 @@ class TestComprehensive(unittest.TestCase):
         """Test resolving a complex target through the full pipeline."""
         print("\n[Test] Resolution Pipeline")
         
-        # Test a SeasonalBlock from Detective channel
+        # Mystery Theatre's prime block: a label-keyed dict where NOVEMBER is
+        # listed before the weekday names and so wins the whole month.
         from scripts.channels import detective
-        target = detective.PRIME_SEASONAL
-        
-        # 1. Test Default (Winter)
-        self.mock_context.current_time = datetime(2026, 1, 15, 20, 0, 0) # Winter
-        boss = DayDirector(self.mock_context)
-        holiday_ctx = HolidayContext(boss)
+        target = detective.PRIME_BLOCK
         config = ScheduleConfig(schedules={})
-        
-        res = resolve_content(target, boss, holiday_ctx, config, self.resolver, self.logger)
-        print(f"  Winter Resolution: {res.resolved_content}")
-        self.assertTrue(res, "Failed to resolve Winter target")
 
-        # 2. Test Fall (Noir November)
-        self.mock_context.current_time = datetime(2026, 11, 15, 20, 0, 0) # Fall
-        boss = DayDirector(self.mock_context)
-        holiday_ctx = HolidayContext(boss)
-        
-        res = resolve_content(target, boss, holiday_ctx, config, self.resolver, self.logger)
-        print(f"  Fall Resolution: {res.resolved_content}")
-        self.assertTrue(res, "Failed to resolve Fall target")
-        
+        def resolve_on(when):
+            self.mock_context.current_time = when
+            boss = DayDirector(self.mock_context)
+            return resolve_content(target, boss, HolidayContext(boss), config,
+                                   self.resolver, self.logger)
+
+        # 1. An ordinary Thursday resolves to that weekday's own block.
+        res = resolve_on(datetime(2026, 1, 15, 20, 0, 0))   # Thursday, winter
+        print(f"  Thursday Resolution: {res.resolved_content}")
+        self.assertTrue(res, "Failed to resolve weekday target")
+        self.assertNotEqual(getattr(res.resolved_content, "name", None), "Noir November",
+                            "Noir November must not air outside November")
+
+        # 2. A Thursday in November resolves to Noir November instead. This
+        #    assertion is the point of the test: the takeover used to sit on a
+        #    "default" arm behind five named weekdays, so it never fired, and a
+        #    test that only checked "something resolved" passed throughout.
+        res = resolve_on(datetime(2026, 11, 12, 20, 0, 0))  # Thursday, November
+        print(f"  November Resolution: {res.resolved_content}")
+        self.assertEqual(getattr(res.resolved_content, "name", None), "Noir November",
+                         "Noir November did not take over the November lineup")
+
         print("✅ Resolution pipeline functioning.")
 
     def test_04_appointment_logic(self):

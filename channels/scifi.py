@@ -1,12 +1,25 @@
 """
-Sci-Fi Channel - Imagination Unleashed
+Other Worlds - Science Fiction
 
-Features:
-- Genre-based scheduling (Space Opera, Fantasy, Paranormal)
-- Weekend Creature Features
-- Modern vs Classic Sci-Fi blocks
-- Cross-pollination with Animation (Superhero Hour)
-- Appointment TV (Sequential playback for major series in Fall/Winter)
+Science fiction only. Fantasy moved to library/fantasy.py and horror to
+Nightmare Theatre; what used to be a three-genre channel kept colliding with
+everything around it and had no identity of its own.
+
+Strands:
+- The Vault      overnight and early -- Twilight Zone, TOS, Street Hawk
+- Retro Action   Knight Rider, Quantum Leap
+- Trek           mornings, Sunday, and Monday prime
+- Space Opera    Babylon 5, Stargate SG-1, Farscape
+- Investigation  The X-Files, Fringe
+- Modern Epic    Battlestar Galactica, The Expanse, For All Mankind
+- Gritty         Sarah Connor, Orphan Black, The Man in the High Castle
+- Cult           Firefly, Dollhouse, Dark Angel
+
+Named collections do the work rather than genre keys, because this library tags
+Stargate SG-1 and Quantum Leap as Fantasy -- every sci-fi genre key carries a
+NOT genre:fantasy clause and so cannot reach them.
+
+Appointment TV: Sunday night (Lost, Alias, Fringe) runs on annual seasons.
 """
 
 from etv_client.models import ControlWaitUntil
@@ -56,24 +69,34 @@ SCIFI_PRIME_SEASONAL = SeasonalBlock(
         "default": scifi.MODERN_SCIFI_BLOCK
     },
     seasonal={
+        # Both swaps are per-day. Spring's used to sit at the top level, where a
+        # bare Swap replaces every day at once -- so for three months a year the
+        # whole Mon-Fri lineup became one two-key random pool and X-Files,
+        # Babylon 5, BSG and Sarah Connor dropped to about 45 minutes a week
+        # each. Summer had it right; spring now matches.
         "SUMMER": {
-            "FRIDAY": Swap(movies.SCI_FI_SHOWCASE) # Blockbuster Summer on most days...
+            "FRIDAY": Swap(movies.SCI_FI_SHOWCASE)   # Blockbuster Friday
         },
-        "SPRING": Swap(scifi.MODERN_SCIFI_BLOCK)    # Discovery Season
+        "SPRING": {
+            "WEDNESDAY": Swap(scifi.MODERN_SCIFI_BLOCK)  # Discovery Season
+        }
     }
 )
 
+# Every block below is keyed on WEEKEND / WEEKDAY_A / WEEKDAY_B or the individual
+# days, which between them cover all seven. A "default" arm behind those is
+# unreachable -- five of the eight blocks had one, and EARLY_BLOCK's was the only
+# weekday fantasy on the channel, which meant it never aired at all. None of them
+# are defaults now; where two day-groups genuinely share content they say so.
+
+# Overnight (02:00 - 06:00)
+OVERNIGHT_BLOCK = scifi.SCIFI_VAULT
+
 # Early Block (06:00 - 08:00)
 EARLY_BLOCK = {
-    "WEEKEND": scifi.SCIFI_CLASSICS_TV,
-    "WEEKDAY_B": "classic_scifi_movie", # Tue/Thu
-    "WEEKDAY_A": {                      # Mon/Wed/Fri
-        "WEDNESDAY": RandomCollection(["orville_tv", "farscape_chronological_tv"]),
-        # Disney's key, not Cartoon Network's -- CN's Star Wars block went
-        # with the restructure. Disney airs these 19:00-24:00, this is 06:00.
-        "default": "star_wars_animation_tv"
-    },
-    "default": scifi.FANTASY_ADVENTURE
+    "WEEKEND": scifi.SCIFI_VAULT,
+    "WEEKDAY_B": "classic_scifi_movie",       # Tue/Thu
+    "WEEKDAY_A": scifi.SCIFI_RETRO_ACTION     # Mon/Wed/Fri -- Knight Rider, Quantum Leap
 }
 
 # Morning Block (08:00 - 10:00)
@@ -81,25 +104,27 @@ MORNING_BLOCK = {
     "SATURDAY": scifi.SCIFI_MYTHS,
     "SUNDAY": "star_trek_all_playlist",
     "WEEKDAY_A": "action_scifi_movie",
-    "WEEKDAY_B": scifi.HERCULES_XENA,
-    "default": scifi.SCIFI_CLASSICS_TV
+    "WEEKDAY_B": scifi.TREK_MORNING           # was HERCULES_XENA, which is fantasy
 }
 
 # Midday Block (10:00 - 12:00)
 MIDDAY_BLOCK = {
-    "SATURDAY": movies.CREATURE_FEATURE,
-    "SUNDAY": "space_opera_tv",
-    "WEEKDAY_A": scifi.MODERN_SCIFI_BLOCK, # Mon/Wed/Fri
-    "WEEKDAY_B": "star_trek_all_playlist",  # Tue/Thu
-    "default": "scifi_fantasy_tv"
+    "SATURDAY": "comedy_scifi_movie",         # was CREATURE_FEATURE (horror)
+    "SUNDAY": scifi.SCIFI_SPACE_OPERA,
+    "WEEKDAY_A": scifi.MODERN_SCIFI_BLOCK,
+    # The broad pool, deliberately: mid-morning is where an undifferentiated
+    # hour belongs, and this is the only key that reaches Stargate SG-1 and
+    # Quantum Leap past the NOT genre:fantasy clause the named strands avoid.
+    # Was the Trek playlist, which sat directly after TREK_MORNING.
+    "WEEKDAY_B": "scifi_all_tv"
 }
 
 # Noon Block (12:00 - 14:00)
 NOON_BLOCK = {
-    "SATURDAY": movies.CREATURE_FEATURE,
-    "SUNDAY": "space_opera_tv",
-    "WEEKDAY_A": OrderedCollection(["knight_rider_tv", "quantum_leap_chronological_tv"]),
-    "default": Block(
+    "SATURDAY": "action_scifi_movie",         # was CREATURE_FEATURE (horror)
+    "SUNDAY": scifi.SCIFI_SPACE_OPERA,
+    "WEEKDAY_A": scifi.SCIFI_SPACE_OPERA,
+    "WEEKDAY_B": Block(
         name="Sci-Fi Noon Movie",
         items=["comedy_scifi_movie"],
         fill_strategy="bridge",
@@ -107,35 +132,33 @@ NOON_BLOCK = {
     )
 }
 
-# Afternoon Block (14:00 - 18:00)
+# Afternoon Block (14:00 - 17:00)
 AFTERNOON_BLOCK = {
-    "SATURDAY": scifi.FANTASY_ADVENTURE,
-    "SUNDAY": scifi.MODERN_SCIFI_BLOCK,
-    "WEEKDAY_A": scifi.PARANORMAL_FILES,
-    "WEEKDAY_B": "scifi_fantasy_tv",
-    "default": scifi.PARANORMAL_FILES
+    "WEEKEND": scifi.MODERN_SCIFI_BLOCK,      # Sat was FANTASY_ADVENTURE
+    "WEEKDAY_A": scifi.SCIFI_INVESTIGATION,   # was PARANORMAL_FILES (horror TV)
+    "WEEKDAY_B": scifi.SCIFI_GRITTY           # was scifi_fantasy_tv
 }
 
-# Evening Block (18:00 - 20:00)
+# Evening Block (17:00 - 20:00)
 EVENING_BLOCK = {
-    "WEEKEND": scifi.PARANORMAL_FILES,
-    "WEEKDAY_A": "space_opera_tv",
-    "WEEKDAY_B": scifi.WHEDONVERSE_SAGA,
-    "default": "space_opera_tv"
+    "SATURDAY": scifi.SCIFI_INVESTIGATION,    # was PARANORMAL_FILES
+    "SUNDAY": scifi.SCIFI_MODERN_EPIC,        # was PARANORMAL_FILES
+    "WEEKDAY_A": scifi.SCIFI_MODERN_EPIC,     # was space_opera_tv, the un-narrowed pool
+    "WEEKDAY_B": scifi.SCIFI_CULT             # Firefly/Dollhouse/Dark Angel, was WHEDONVERSE
 }
 
 # Prime Block (20:00 - 23:00)
 PRIME_BLOCK = {
     "SATURDAY": movies.SCI_FI_SHOWCASE,
     "SUNDAY": scifi.SCIFI_SUNDAY_BLOCK,
-    "default": SCIFI_PRIME_SEASONAL
+    "WEEKDAY": SCIFI_PRIME_SEASONAL
 }
 
 # Night Block (23:00 - 02:00)
 NIGHT_BLOCK = {
-    "SATURDAY": movies.UNDEAD_CINEMA,
-    "SUNDAY": scifi.SCIFI_CLASSICS_TV,
-    "default": movies.SCI_FI_SHOWCASE
+    "SATURDAY": "modern_scifi_movie",         # was UNDEAD_CINEMA (horror)
+    "SUNDAY": scifi.SCIFI_VAULT,
+    "WEEKDAY": movies.SCI_FI_SHOWCASE
 }
 
 # ==============================================================================
@@ -143,7 +166,7 @@ NIGHT_BLOCK = {
 # ==============================================================================
 
 DAILY_SCHEDULE = {
-    "overnight": scifi.SCIFI_CLASSICS_TV,
+    "overnight": OVERNIGHT_BLOCK,
     "early": EARLY_BLOCK,
     "morning": MORNING_BLOCK,
     "midday": MIDDAY_BLOCK,
@@ -175,7 +198,7 @@ def build_playout(api, context, build_id):
         marathons=MARATHONS,
         timeslot_preset="default",
         logger=ChannelLogger(prefix="[SCIFI]"),
-        fallback_content="classic_scifi_tv",
+        fallback_content="scifi_tv",
         enable_marathons=True,
         enable_holiday_injection=True,
         enable_seasonal_injection=True

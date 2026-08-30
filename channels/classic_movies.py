@@ -8,7 +8,7 @@ Programming Philosophy:
 - Prime: Era-specific seasonal showcases
 
 Seasonal Strategy:
-- Summer: Modern blockbusters dominate prime time
+- Summer: New Hollywood, unswapped (modern blockbusters are not this channel's)
 - Fall: Noir and mystery take over
 - Winter: Return to Golden Age classics
 - Spring: Musicals and romantic comedies
@@ -78,7 +78,11 @@ SCHEDULES = {
         "overnight": movies.NOIR_NIGHT,
         "morning": movies.SILENT_CINEMA,
         "afternoon": movies.WESTERN_MATINEE,
-        "prime": movies.SCI_FI_SHOWCASE
+        # Was SCI_FI_SHOWCASE, which Other Worlds also hands its Saturday prime.
+        # Neither channel ever drew the same key -- they picked different arms
+        # of the same collection -- so both ran sci-fi features 20:00-24:00
+        # every Saturday without anything flagging it.
+        "prime": movies.WEEKEND_MARQUEE
     }
 }
 
