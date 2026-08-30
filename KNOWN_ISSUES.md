@@ -11,6 +11,49 @@ Found by the collision report and the library census, both added this session.
 Every one of these was silent: the schedule built, the simulation stayed green,
 and the channel aired something. What it aired was wrong.
 
+- ~~🟠 **Cartoon Network's guide never showed an episode title.** All 21
+  blocks in `library/animation.py` set `use_epg_group=True` — the only channel
+  in the repo with no ungrouped airtime (disney 8/15, nickelodeon 3/10, every
+  other library 0). `engines/blocks.py:99` wraps a whole block in an EPG group
+  on that flag, and ErsatzTV collapses the group into one guide entry named
+  after the block, so the grid read "The Vault" / "Cartoon Cartoons" /
+  "Toonami" / "Adult Swim" from 06:00 to 06:00 and could never surface what was
+  actually on. Nothing was wrong with the scheduling — the items played fine,
+  they were just invisible.~~ Fixed: all 21 flags are now `False`. Grouping is
+  kept **for marathons only**, which get it independently from
+  `logic/calendar/assembly.py:122` when the marathon Block is built — so
+  "DBZ Marathon" still reads as one entry, which is the case grouping is for.
+  Verified against the simulator: a normal Friday went 10 groups → 0, and
+  2026-07-04 / 2026-09-05 kept exactly their one marathon group each. Item
+  counts drop by 2 per removed group because the mock records the start/stop
+  as pseudo-items; no content was lost.
+
+  Extended the same day to the other two channels, on the operator's call:
+  disney (8 blocks) and nickelodeon (3) are now `False` as well, so **no static
+  block anywhere in the repo is EPG-grouped**. Weekly groups: Disney 29 → 0,
+  Nick 15 → 0, Cartoon Network 0; real item counts unchanged at 434 / 490 /
+  676. The Nick removal also un-hides the nine Nick at Nite classics shared
+  with Good Times, which were grouped 14x a week behind two block names.
+
+  **The reason grouping is not worth keeping as it stands:** `playout.py:299`
+  always passes `custom_title`, and on a live build that renders as one
+  name-only guide entry — no artwork, no episode title, no description.
+  Whether a group *without* `custom_title` would keep per-item metadata is
+  open question #5 in [ERSATZTV_API.md](ERSATZTV_API.md); it needs one real
+  build, and the mock explicitly does not model grouping effects. Until that is
+  answered, grouping stays only where the items really are noise — marathons,
+  via `logic/calendar/assembly.py:122`.
+
+- ~~🟡 **Two Programs were named `<built-in method title of str object at
+  0x...>`.** `animation._with_bumpers` did `getattr(item, "title", str(item))`,
+  but `str` *has* a `.title` method, so a bare content key returned the bound
+  method instead of ever reaching the fallback. It hit both string call sites
+  (`animation.py:466` and `:573`, the Attack on Titan rerun bed in the two
+  Midnight Run blocks), and the memory address meant the name was not even
+  stable between runs.~~ Fixed with an explicit `isinstance(item, ContentItem)`
+  check. Log-only while the blocks were grouped; found during the EPG fix
+  above, which is exactly what would have exposed it.
+
 - ~~🔴 **Noir November had never once aired.** Mystery Theatre's signature
   seasonal takeover lived on `PRIME_BLOCK["default"]`, behind five explicitly
   named weekdays. `PRIME_BLOCK` is only wired into `SCHEDULES["WEEKDAY"]`, and

@@ -256,3 +256,19 @@ Not answerable from source; needs one real build to confirm.
    `add_duration`.
 4. Whether `guids` (object) on `add_show` / `add_marathon` is keyed by provider
    (`imdb`, `tvdb`) — shape not documented in the spec.
+5. **Does `start_epg_group(advance=True)` *without* `custom_title` produce a
+   group that keeps per-item metadata and artwork?** Observed on a live build:
+   a group started with `custom_title` renders in the guide as a single
+   name-only entry with no artwork, no episode title and no description —
+   consistent with `custom_title` creating a synthetic entry backed by no media
+   item, but that is inference, not something the spec states. If dropping the
+   title preserves the underlying items' metadata, that is the only version of
+   block branding worth having, and re-enabling it is a small change to the two
+   `if name:` guards in `playout.py` (`epg_group` and `toggle_epg_group`), which
+   today make a group without a custom title unreachable. If it does not, EPG
+   grouping is only ever worth it where the individual items genuinely are
+   noise — i.e. marathons. **This is why all 32 static `use_epg_group=True`
+   flags were removed from animation/disney/nickelodeon (2026-08-30);** the
+   marathon grouping in `logic/calendar/assembly.py:122` was deliberately kept.
+   Note the mock cannot answer this — see the "EPG grouping effects" row in the
+   fidelity table above.

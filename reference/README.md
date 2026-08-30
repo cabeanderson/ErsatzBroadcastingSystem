@@ -1,7 +1,12 @@
 # Library Reference
 
-Snapshots of `/media`, for use when writing channel and
+Snapshots of the local media library, for use when writing channel and
 block definitions.
+
+> **Local only.** The seven `library-*` snapshots below are gitignored — they
+> inventory a personal collection, so they live on disk but are not published.
+> Regenerate them with the commands in the tables; the links here resolve only
+> in a local checkout.
 
 ## Generated — do not edit by hand
 

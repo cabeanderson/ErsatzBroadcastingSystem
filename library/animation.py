@@ -63,7 +63,10 @@ def _with_bumpers(item, bumper_key):
     if isinstance(item, dict):
         item = ContentItem(**item)
     return Program(
-        name=getattr(item, "title", str(item)),
+        # Not getattr(item, "title", ...): str has a .title *method*, so a bare
+        # content key resolved to the bound method rather than the fallback and
+        # named the Program "<built-in method title of str object at 0x...>".
+        name=item.title if isinstance(item, ContentItem) else str(item),
         content=item,
         bumpers=bumper_key
     )
@@ -88,7 +91,7 @@ THE_VAULT = Block(
         {"title": "Yogi Bear"},
         {"title": "Hong Kong Phooey"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 08:00-10:00 Saturday. The one block in the old grid that was already right.
@@ -107,7 +110,7 @@ SATURDAY_MORNING = Block(
         {"title": "Yogi Bear"},
         "superman_fleischer_tv",
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 08:00-10:00 Sunday. Three Scooby series, 104 episodes, which is enough to be
@@ -119,7 +122,7 @@ THE_SCOOBY_BLOCK = Block(
         {"title": "The Scooby-Doo Show"},
         {"title": "What's New Scooby-Doo"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -142,7 +145,7 @@ CARTOON_CARTOONS = Block(
         {"title": "Ed, Edd n Eddy"},
         {"title": "Courage the Cowardly Dog"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 10:00-12:00 weekdays, 14:00-17:00 Sunday. 564 episodes that had never aired.
@@ -161,7 +164,7 @@ CN_MODERN = Block(
         {"title": "Over the Garden Wall"},
         {"title": "Infinity Train"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 17:00-20:00 Friday, in place of Toonami. The Friday-night premiere block,
@@ -178,7 +181,7 @@ CARTOON_CARTOON_FRIDAY = Block(
         {"title": "Adventure Time"},
         {"title": "Steven Universe"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -202,7 +205,7 @@ SYNDICATION_HOUR = Block(
         {"title": "Street Sharks"},
         {"title": "Mister T"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 14:00-17:00 weekdays and Saturday, the ramp into Toonami. This is the old
@@ -226,7 +229,7 @@ ACTION_HOUR = Block(
          "query": 'type:episode AND show_title:"SWAT Kats*"',
          "order": "Chronological"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # The spring variant, kept from the old grid: the same slot leans Marvel and
@@ -245,7 +248,7 @@ MARVEL_HOUR = Block(
          "query": 'type:episode AND show_title:"SWAT Kats*"',
          "order": "Chronological"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -285,7 +288,7 @@ CARTOON_THEATRE = Block(
          "query": 'type:movie AND title:"Dragon Ball Z - Battle of Gods"',
          "media_type": "movie"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -385,7 +388,7 @@ TOONAMI_BLOCK = Block(
     intro=branding.BRANDING_TOONAMI.intro,
     outro=branding.BRANDING_TOONAMI.outro,
     bumpers=branding.BRANDING_TOONAMI.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # --- The Saturday appointment -----------------------------------------------
@@ -427,7 +430,7 @@ TOONAMI_SATURDAY = Block(
     intro=branding.BRANDING_TOONAMI.intro,
     outro=branding.BRANDING_TOONAMI.outro,
     bumpers=branding.BRANDING_TOONAMI.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 20:00-23:00 Saturday. The second half of Toonami Saturday, and a separate
@@ -448,7 +451,7 @@ TOONAMI_SATURDAY_VAULT = Block(
     ]),
     intro=branding.BRANDING_TOONAMI.intro,
     bumpers=branding.BRANDING_TOONAMI.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 02:00-06:00 Saturday, in place of Adult Swim's acquisitions. The overnight
@@ -475,7 +478,7 @@ TOONAMI_MIDNIGHT_RUN = Block(
     ]),
     intro=branding.BRANDING_TOONAMI.intro,
     bumpers=branding.BRANDING_TOONAMI.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -505,7 +508,7 @@ AS_ORIGINALS_A = Block(
     intro=branding.BRANDING_ADULT_SWIM.intro,
     outro=branding.BRANDING_ADULT_SWIM.outro,
     bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 20:00-23:00 Tue/Thu/Sat, and 23:00-02:00 Sunday. The 2005-onward originals.
@@ -533,7 +536,7 @@ AS_ORIGINALS_B = Block(
     intro=branding.BRANDING_ADULT_SWIM.intro,
     outro=branding.BRANDING_ADULT_SWIM.outro,
     bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # --- The Midnight Run (23:00 - 02:00) ---------------------------------------
@@ -575,7 +578,7 @@ MIDNIGHT_RUN = Block(
     ),
     intro=branding.BRANDING_ADULT_SWIM.intro,
     bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # Friday only. Same hour, with the premiere in the anchor slot instead of the
@@ -585,7 +588,7 @@ MIDNIGHT_RUN_PREMIERE = Block(
     items=DailyOrderedCollection([ATTACK_ON_TITAN_JUNIOR_HIGH] + _MIDNIGHT_RUN_TAIL),
     intro=branding.BRANDING_ADULT_SWIM.intro,
     bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 00:00-02:00. The rest of the run, and its own block rather than two more
@@ -609,7 +612,7 @@ MIDNIGHT_RUN_LATE = Block(
     ]),
     intro=branding.BRANDING_ADULT_SWIM.intro,
     bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 02:00-06:00, every night but Saturday. The acquisitions, which is where they
@@ -630,7 +633,7 @@ AS_LATE = Block(
     ]),
     intro=branding.BRANDING_ADULT_SWIM.intro,
     bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -650,7 +653,7 @@ FOX_PRIMETIME = Block(
         {"title": "Futurama"},
         {"title": "American Dad!"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================

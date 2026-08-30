@@ -54,7 +54,7 @@ THE_DISNEY_AFTERNOON = Block(
         {"title": "Goof Troop"},
         {"title": "Gargoyles"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 06:00-08:00. The ABC morning cartoons -- the studio's other syndication era,
@@ -70,7 +70,7 @@ DISNEY_MORNING = Block(
         {"title": "Mighty Ducks: The Animated Series"},
         {"title": "Buzz Lightyear of Star Command"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -166,7 +166,7 @@ DISNEY_CHANNEL_FIRST_RUN = Block(
         "owl_house_chronological_tv",
         "amphibia_chronological_tv",
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 DISNEY_CHANNEL_RERUNS = Block(
@@ -176,7 +176,7 @@ DISNEY_CHANNEL_RERUNS = Block(
         "owl_house_shuffle_tv",
         "amphibia_shuffle_tv",
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 DISNEY_CHANNEL_STRIP = {
@@ -209,7 +209,7 @@ STAR_WARS_FIRST_RUN = Block(
         "rebels_chronological_tv",
         "bad_batch_chronological_tv",
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 STAR_WARS_RERUNS = Block(
@@ -219,7 +219,7 @@ STAR_WARS_RERUNS = Block(
         "rebels_shuffle_tv",
         "bad_batch_shuffle_tv",
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 STAR_WARS_STRIP = {
@@ -304,7 +304,7 @@ STAR_WARS_EVENT_NIGHT = Block(
         TALES_OF_THE_UNDERWORLD,
         MAUL_SHADOW_LORD,
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # May 4th. The marathon collection, kept separate from the vault block so the
@@ -327,7 +327,7 @@ WONDERFUL_WORLD_OF_DISNEY = Block(
         "disney_movie",
         "pixar_movie",
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================

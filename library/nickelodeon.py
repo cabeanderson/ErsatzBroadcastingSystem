@@ -141,7 +141,7 @@ NICK_AT_NITE = Block(
         {"title": "The Addams Family"},
         {"title": "Gilligan's Island"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # 00:00-02:00 -- the 70s shift. Sharper, later, and the half of the lineup
@@ -161,7 +161,7 @@ NICK_AT_NITE_AFTER_HOURS = Block(
         {"title": "Mork & Mindy"},
         {"title": "The Smothers Brothers Comedy Hour"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
 
 # ==============================================================================
@@ -178,5 +178,5 @@ SNICK = Block(
         {"title": "Rocko's Modern Life"},
         {"title": "Daria"},
     ]),
-    use_epg_group=True
+    use_epg_group=False
 )
