@@ -48,7 +48,7 @@ scripts/
 │   ├── filters.py           # SEASONAL_TAG_QUERIES, INJECTION_RULES
 │   ├── branding.py          # Bumper/intro/outro definitions
 │   ├── marathons.py         # Marathon content definitions
-│   └── <genre>.py           # sitcoms, scifi, detective, animation, british, ...
+│   └── <genre>.py           # sitcoms, scifi, fantasy, detective, animation, british, ...
 │
 ├── engines/                 # THE STRATEGIES - Playback behaviors
 │   ├── blocks.py            # PlayoutSession, play_block, play_program (+ marathon blocks)
@@ -66,7 +66,10 @@ scripts/
 │
 └── testing/
     ├── simulator.py         # Mock API + ChannelSimulator (auto-installs etv_client mock)
-    ├── visualize_week.py    # CLI weekly schedule visualizer
+    ├── visualize_week.py    # CLI weekly schedule visualizer (one channel)
+    ├── collision_report.py  # CLI cross-channel lineup report (all channels)
+    ├── library_census.py    # CLI census of the media on disk -> reference/library-*
+    ├── media_inventory.py   # CLI registry inventory -> reference/registry-inventory.md
     ├── scan_library.py      # CLI media source scanner
     └── test_*.py            # Smoke / scenario / refactor tests
 ```
