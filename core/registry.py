@@ -100,6 +100,13 @@ DAYPARTS: Dict[Tuple[int, int], str] = {
     (23, 0):  "LATE_FRINGE"
 }
 
+# Month labels, indexed by datetime.month (1-12).
+MONTHS: Dict[int, str] = {
+    1: "JANUARY",  2: "FEBRUARY",  3: "MARCH",      4: "APRIL",
+    5: "MAY",      6: "JUNE",      7: "JULY",       8: "AUGUST",
+    9: "SEPTEMBER", 10: "OCTOBER", 11: "NOVEMBER", 12: "DECEMBER"
+}
+
 # WEEKDAY_GROUPS should only include weekdays (0–4), not Saturday/Sunday
 WEEKDAY_GROUPS: Dict[str, Set[int]] = {
     "WEEKDAY_A": {0, 2, 4},  # Mon/Wed/Fri

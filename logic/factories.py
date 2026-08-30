@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple, Union, Dict, Any
 from datetime import date, timedelta
 import re
 from .structures import Program, OrderedCollection
+from scripts.core import registry
 from .models import MarathonDefinition
 from scripts.library.queries import show_by_title
 
@@ -87,6 +88,33 @@ def annual_show(
             "generated_queries": generated_queries
         }
     )
+
+def monthly_rotation(items: List[Any], start_month: int = 1) -> Dict[str, Any]:
+    """
+    Builds a month-keyed variant dict that cycles through `items`.
+
+    Returns a plain dict of {MONTH_LABEL: item}, which the resolution pipeline
+    already understands -- no new resolution logic. Use it anywhere a block or
+    item is accepted, to keep a rotation on the air without repeating a short
+    show into the ground:
+
+        MIDDAY = monthly_rotation([BLOCK_A, BLOCK_B, BLOCK_C])
+        # Jan -> A, Feb -> B, Mar -> C, Apr -> A, ...
+
+    Args:
+        items: Content to cycle. Any length; 12 gives each month its own.
+        start_month: Month (1-12) that receives items[0]. Defaults to January.
+    """
+    if not items:
+        raise ValueError("monthly_rotation() needs at least one item")
+    if not 1 <= start_month <= 12:
+        raise ValueError(f"start_month must be 1-12, got {start_month}")
+
+    return {
+        registry.MONTHS[m]: items[(m - start_month) % len(items)]
+        for m in range(1, 13)
+    }
+
 
 def _get_content_key(show_title, content_pattern, season_num, generated_queries):
     """Helper to generate and register a content key for a season."""

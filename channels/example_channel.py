@@ -19,11 +19,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from scripts.scheduling import run_daily_schedule, ScheduleConfig
 from scripts.scheduling.pre_registration import pre_register_all_content
 from scripts.logic.calendar.seasonal import SeasonalBlock
-from scripts.logic.resolver import ContentResolver
+from scripts.logic.resolution.resolver import ContentResolver
 from scripts.library.sources import MASTER_SOURCES
 from scripts.logic.structures import Block
 from scripts.logic.calendar.holidays import with_holidays
-from scripts.logic.calendar.triggers import chance, has_label, on_date
+from scripts.logic.triggers import chance, has_label, on_date
 from scripts.logic.models import Marathon, BlockProfile, Feather, Swap
 from scripts.core.logger import ChannelLogger
 # In a real channel, you would import your collections:

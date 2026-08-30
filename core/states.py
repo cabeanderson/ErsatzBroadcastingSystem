@@ -171,6 +171,11 @@ def derive_labels(dt: datetime) -> Set[str]:
     occ_names = ["FIRST", "SECOND", "THIRD", "FOURTH", "FIFTH"]
     labels.add(f"{occ_names[nth - 1]}_{weekday_name}")
 
+    # 8. Month Label (e.g., JULY)
+    # Enables monthly rotation of blocks and items -- variants keyed by month
+    # resolve anywhere the label system reaches, same as SATURDAY or SUMMER.
+    labels.add(registry.MONTHS[m])
+
     return labels
 
 def resolve_season_date(value: Union[date, tuple, str], current_date: Optional[date] = None) -> Optional[date]:

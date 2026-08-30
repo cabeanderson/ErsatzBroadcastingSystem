@@ -386,15 +386,148 @@ SEASONAL_VARIANTS = {
 }
 
 # 5. FILLERS & BUMPERS
+#
+# ErsatzTV derives Other Video tags from the folder path: every path segment
+# below the library root's PARENT becomes its own flat tag
+# (ErsatzTV.Core/Metadata/FallbackMetadataProvider.cs::GetOtherVideoMetadata).
+# Tags carry no hierarchy, so two folders with the same name anywhere in the
+# tree produce the same tag and must be disambiguated by AND-ing a parent tag.
+#
+# Two indexed fields exist for the same tag value (LuceneSearchIndex.cs:1275):
+#   tag       TextField   -> whitespace-tokenized + lowercased. "eureka" also
+#                            matches the "eureka 7" folder.
+#   tag_full  StringField -> KeywordAnalyzer: whole value, case-sensitive.
+# Folder names on disk are lowercase, so tag_full queries are written lowercase.
+# Prefer tag_full for anything that must address exactly one folder.
+
+def filler_source(*folders):
+    """Exact other_video query from folder-derived tags (all must be present)."""
+    return 'type:"other_video" AND ' + " AND ".join(f'tag_full:"{f}"' for f in folders)
+
+
+# Toonami per-show bumper folders, one key each. These ~940 files were
+# previously reachable only by a broad tag query and referenced by nothing.
+# Folder names match the library title exactly wherever the show is owned, so
+# dispatcher.play_smart_bumper resolves them from the scheduled title with no
+# key at all. The keys below stay useful for explicit block-level branding.
+TOONAMI_SHOW_FOLDERS = [
+    "akira", "astro boy", "attack on titan", "beware the batman", "big o",
+    "black lagoon", "bleach", "blue exorcist", "cowboy bebop", "dragon ball z",
+    "eureka seven", "flcl", "fullmetal alchemist brotherhood",
+    "ghost in the shell", "igpx", "inuyasha", "kickheart", "korgoth", "naruto",
+    "naruto shippuden", "neon genesis evangelion", "one piece", "samurai 7",
+    "samurai jack", "soul eater", "space dandy", "star wars the clone wars",
+    "summer wars", "sword art online", "sym-bionic titan", "thundercats",
+    "yu yu hakusho",
+]
+
+# Adult Swim show folders cut out of bumps/ by filename match (>=5 files each).
+ADULT_SWIM_SHOW_FOLDERS = [
+    "aqua teen hunger force", "check it out with dr steve brule",
+    "childrens hospital", "china il", "cowboy bebop", "delocated", "eagleheart",
+    "family guy", "flcl", "futurama", "harvey birdman attorney at law",
+    "inuyasha", "king of the hill", "loiter squad", "lupin the third",
+    "metalocalypse", "moral orel", "rick and morty", "robot chicken",
+    "sealab 2021", "space ghost coast to coast", "squidbillies", "superjail",
+    "the boondocks", "the brak show", "the eric andre show",
+    "the heart she holler", "the room", "the venture bros",
+    "tim and eric awesome show great job", "trigun", "xavier renegade angel",
+]
+
+def _show_keys(prefix, folder, names):
+    return {
+        f"{prefix}_{n.replace(' ', '_').replace('-', '_')}_bumpers":
+            filler_source(folder, "shows", n)
+        for n in names
+    }
+
+TOONAMI_SHOW_BUMPERS = _show_keys("toonami", "toonami", TOONAMI_SHOW_FOLDERS)
+ADULT_SWIM_SHOW_BUMPERS = _show_keys("adult_swim", "adult swim", ADULT_SWIM_SHOW_FOLDERS)
+
 FILLERS = {
-    "commercials_spot": 'type:"other_video"',
-    "commercials_90s_spot": 'type:"other_video" AND tag:90s',
-    "adult_swim_intro": 'type:"other_video" AND tag:"adult swim" AND tag:intro',
-    "adult_swim_bumpers": 'type:"other_video" AND tag:"adult swim" AND tag:bumps',
-    "toonami_intro": 'type:"other_video" AND tag:toonami AND tag:intro',
-    "toonami_outro": 'type:"other_video" AND tag:toonami AND tag:outro',
-    "toonami_bumpers": 'type:"other_video" AND tag:toonami AND (tag:bumps OR tag:general)',
-    "cowboy_bebop_bumpers": 'type:"other_video" AND tag:"cowboy bebop"',
+    # --- COMMERCIALS ---
+    # Folder path is country / decade / audience-gate / product, so any
+    # combination of those is an AND of flat tags. The gate level is the one
+    # that matters for scheduling: "alcohol" must never reach a kids daypart.
+    "commercials_spot": 'type:"other_video" AND tag_full:"commercials"',
+    # Excludes alcohol. This is the key a kids or daytime channel should use.
+    "commercials_family_safe_spot":
+        'type:"other_video" AND tag_full:"commercials" AND NOT tag_full:"alcohol"',
+
+    # audience gate
+    "commercials_kids_spot": filler_source("commercials", "kids"),
+    "commercials_alcohol_spot": filler_source("commercials", "alcohol"),
+    "commercials_christmas_spot": filler_source("commercials", "christmas"),
+    "commercials_general_spot": filler_source("commercials", "general"),
+
+    # country
+    "commercials_uk_spot": filler_source("commercials", "uk"),
+    "commercials_us_spot": filler_source("commercials", "us"),
+    "commercials_au_spot": filler_source("commercials", "au"),
+
+    # decade. The bare decade keys predate the country split and still resolve,
+    # since every path segment is its own tag.
+    "commercials_80s_spot_folder": filler_source("commercials", "80s"),
+    "commercials_90s_spot": filler_source("commercials", "90s"),
+    "commercials_00s_spot": filler_source("commercials", "00s"),
+    "commercials_uk_80s_spot": filler_source("commercials", "uk", "80s"),
+    "commercials_uk_90s_spot": filler_source("commercials", "uk", "90s"),
+
+    # useful crosses
+    "commercials_uk_kids_spot": filler_source("commercials", "uk", "kids"),
+    "commercials_uk_90s_kids_spot": filler_source("commercials", "uk", "90s", "kids"),
+    "commercials_uk_90s_general_spot": filler_source("commercials", "uk", "90s", "general"),
+    "commercials_uk_90s_alcohol_spot": filler_source("commercials", "uk", "90s", "alcohol"),
+
+    # product, across every country and decade
+    **{f"commercials_{c.replace(' ', '_')}_spot": filler_source("commercials", c)
+       for c in ("cereal", "confectionery", "snacks", "drinks", "food", "toys",
+                 "retail", "household", "tech", "leisure", "psa", "beer", "spirits")},
+
+    # --- ADULT SWIM ---
+    "adult_swim_intro": filler_source("adult swim", "intro"),
+    "adult_swim_outro": filler_source("adult swim", "outro"),
+    "adult_swim_bumpers": filler_source("adult swim", "bumps"),
+    "adult_swim_bumpers_general": filler_source("adult swim", "bumps", "general"),
+    "adult_swim_april_fools": filler_source("adult swim", "april fools"),
+    # childrens hospital / the room are generated into ADULT_SWIM_SHOW_BUMPERS
+    "adult_swim_marathon": filler_source("adult swim", "marathon"),
+    "adult_swim_marathon_astro_boy": filler_source("adult swim", "marathon", "astro boy"),
+    "adult_swim_marathon_cowboy_bebop": filler_source("adult swim", "marathon", "cowboy bebop"),
+    "adult_swim_marathon_yu_yu_hakusho": filler_source("adult swim", "marathon", "yu yu hakusho"),
+
+    # Sub-pools of adult swim/bumps. Each is also inside adult_swim_bumpers.
+    "adult_swim_schedules": filler_source("adult swim", "bumps", "schedules"),
+    "adult_swim_tagged_videos": filler_source("adult swim", "bumps", "tagged videos"),
+    "adult_swim_pool": filler_source("adult swim", "bumps", "pool"),
+    "adult_swim_fan_service": filler_source("adult swim", "bumps", "fan service"),
+
+    # --- ADULT SWIM SEASONAL (233 files; inventory recorded this tree as empty) ---
+    "adult_swim_seasonal_christmas": filler_source("adult swim", "seasonal", "christmas"),
+    "adult_swim_seasonal_halloween": filler_source("adult swim", "seasonal", "halloween"),
+    "adult_swim_seasonal_thanksgiving": filler_source("adult swim", "seasonal", "thanksgiving"),
+    "adult_swim_seasonal_holidays": filler_source("adult swim", "seasonal", "holidays"),
+    "adult_swim_seasonal_winter": filler_source("adult swim", "seasonal", "winter"),
+    "adult_swim_seasonal_spring": filler_source("adult swim", "seasonal", "spring"),
+    "adult_swim_seasonal_summer": filler_source("adult swim", "seasonal", "summer"),
+    "adult_swim_seasonal_fall": filler_source("adult swim", "seasonal", "fall"),
+
+    # --- TOONAMI ---
+    "toonami_intro": filler_source("toonami", "intro"),
+    "toonami_outro": filler_source("toonami", "outro"),
+    # Generic (non-show) Toonami pool. Still only 21 files: 93 more sit loose at
+    # the toonami/ root and pick up no second tag until they move into general/.
+    "toonami_bumpers": 'type:"other_video" AND tag_full:"toonami" AND (tag_full:"bumps" OR tag_full:"general")',
+    # Everything under toonami/, per-show sets included (~940).
+    "toonami_all_bumpers": filler_source("toonami"),
+    "toonami_marathon_cowboy_bebop": filler_source("toonami", "marathon", "cowboy bebop"),
+    "toonami_dragon_ball_z_coolers_revenge": filler_source("toonami", "dragon ball z", "coolers revenge"),
+
+    **TOONAMI_SHOW_BUMPERS,
+    **ADULT_SWIM_SHOW_BUMPERS,
+
+    # Back-compat alias; prefer toonami_cowboy_bebop_bumpers.
+    "cowboy_bebop_bumpers": filler_source("toonami", "shows", "cowboy bebop"),
 }
 
 # 7. TEST KEYS
