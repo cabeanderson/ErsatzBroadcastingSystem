@@ -1,5 +1,26 @@
 # The Modern Movie Channel — build plan
 
+> **SUPERSEDED 2026-08-30 — the channel was built as _Be Kind Rewind_.**
+> `scripts/channels/be_kind_rewind.py` · `scripts/library/modern_movies.py`.
+> Grid and rationale in [channel-plan.md](channel-plan.md#be-kind-rewind--built).
+>
+> **The central recommendation below — the 2018 recency fence — was not built,
+> and should not be revived.** It existed only to preserve "zero shared film
+> pools", a constraint the operator retired before this file was acted on. The
+> stated rule is now: each channel should feel unique, varied and themed, and
+> the same title must not air on two channels at the same time. Overlap itself
+> is fine. Building the fence would have cost the genre channels 164 films and
+> required editing five keys across three channels to serve a rule nobody was
+> enforcing.
+>
+> What survived from this plan: the video-store framing, the week-not-a-genre
+> grid, the genre × era key gap, the `blockbuster_action_movie` era bug and the
+> `modern_thriller_movie` exclusion trap — all four were real and all four were
+> fixed. The channel took **1980+** rather than 1990+, because Cabes Classic
+> Cinema was restated as a pre-1980 channel in the same session.
+>
+> Kept for the analysis, which is still sound. Numbers below predate the build.
+
 > Step 4 of the film-policy work order. Steps 1–3 are done: the collision report
 > exists, Classic Cinema handed back modern film, and Other Worlds / Mystery
 > Theatre were settled by ownership. This is the channel those steps were

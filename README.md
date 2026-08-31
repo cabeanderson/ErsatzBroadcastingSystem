@@ -25,6 +25,7 @@ This framework separates **scheduling logic** from **channel configuration**. In
 *   [Import Reference](IMPORTS.md) - Cheat sheet for imports and classes.
 *   [ErsatzTV API Contract](ERSATZTV_API.md) - The scripted-schedule endpoints, their real semantics, and where the simulator's mock does and does not match them.
 *   [Known Issues & Tech Debt](KNOWN_ISSUES.md) - Tracked findings and fixes-for-later.
+*   [Channel Rules](reference/channel-rules.md) - How channels get founded, gridded, curated against each other, and verified. The law, with the channel that proved each rule.
 *   [Reference Library](reference/README.md) - Library manifests, the channel plan, and the coverage audit. Programming decisions and what is actually on disk, kept next to the code that schedules it.
 
 ## Project Structure

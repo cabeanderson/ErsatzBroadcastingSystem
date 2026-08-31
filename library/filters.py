@@ -36,6 +36,21 @@ MODERN_FILM_ERA = "release_date:[1980-01-01 TO *]"
 # High Noon used on 46 westerns.
 POST_EIGHTIES_ERA = "release_date:[1990-01-01 TO *]"
 
+# The lineup's main film boundary, and the one that matters most: Cabes Classic
+# Cinema is everything before it, Be Kind Rewind is everything after. It is the
+# same line `classic_crime_movie` / `modern_crime_movie` already split on, so
+# the crime keys did not have to be re-cut when the two film channels were
+# designed -- PRE_EIGHTIES_ERA and MODERN_FILM_ERA above are that line.
+#
+# Recency, for Be Kind Rewind's Friday appointment. This is a *programming*
+# axis, not an ownership one: no other channel is fenced out of these years.
+# An earlier plan proposed giving the movie channel exclusive rights to 2018+
+# so the lineup could keep "zero shared film pools"; that constraint has since
+# been retired, so the fence was never built and these two keys are all that
+# survives of it.
+RECENT_ERA = "release_date:[2018-01-01 TO *]"        # 219 films
+NEW_RELEASE_ERA = "release_date:[2022-01-01 TO *]"   # 112 films
+
 # --- TV ERAS ---
 TV_VINTAGE = "release_date:[* TO 1975-12-31]"
 TV_CLASSIC = "release_date:[1976-01-01 TO 1989-12-31]"

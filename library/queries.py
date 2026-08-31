@@ -108,6 +108,18 @@ def movie_by_title(title: str) -> str:
     safe_title = _escape_quotes(title)
     return f'type:movie AND title:"{safe_title}"'
 
+def movie_by_title_year(title: str, year: Union[str, int]) -> str:
+    """Title match bounded to a single release year.
+
+    `movie_by_title` builds a phrase match, so `title:"Psycho"` also returns
+    American Psycho and Seven Psychopaths, and `title:"Gladiator"` returns
+    Gladiator II. Any spotlight or marathon that names a film with a common
+    word in its title needs the year bound or it quietly becomes a different
+    collection -- the trap `library/horror.py` documents against the Halloween
+    and Friday the 13th runs, hit here again by the director spotlights.
+    """
+    return f'{movie_by_title(title)} AND release_date:[{year}-01-01 TO {year}-12-31]'
+
 def playlist_ref(name: str, group: str) -> Dict[str, str]:
     """Reference an existing ErsatzTV playlist."""
     return {"type": "playlist", "playlist": name, "group": group}

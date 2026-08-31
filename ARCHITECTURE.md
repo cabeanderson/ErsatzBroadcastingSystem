@@ -68,6 +68,9 @@ scripts/
     ├── simulator.py         # Mock API + ChannelSimulator (auto-installs etv_client mock)
     ├── visualize_week.py    # CLI weekly schedule visualizer (one channel)
     ├── collision_report.py  # CLI cross-channel lineup report (all channels)
+    ├── same_title_check.py   # CLI same-title-at-the-same-hour check (all channels)
+    ├── validate_titles.py    # CLI check that every scheduled title resolves
+    ├── key_census.py         # CLI check that every registry key resolves (offline)
     ├── library_census.py    # CLI census of the media on disk -> reference/library-*
     ├── media_inventory.py   # CLI registry inventory -> reference/registry-inventory.md
     ├── scan_library.py      # CLI media source scanner

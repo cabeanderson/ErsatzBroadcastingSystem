@@ -24,7 +24,7 @@ Appointment TV: Sunday night (Lost, Alias, Fringe) runs on annual seasons.
 
 from etv_client.models import ControlWaitUntil
 from scripts.scheduling import run_daily_schedule, ScheduleConfig
-from scripts.library import animation, scifi, movies
+from scripts.library import animation, scifi
 from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.logic.models import Swap, Marathon
 from scripts.logic import triggers
@@ -75,7 +75,7 @@ SCIFI_PRIME_SEASONAL = SeasonalBlock(
         # Babylon 5, BSG and Sarah Connor dropped to about 45 minutes a week
         # each. Summer had it right; spring now matches.
         "SUMMER": {
-            "FRIDAY": Swap(movies.SCI_FI_SHOWCASE)   # Blockbuster Friday
+            "FRIDAY": Swap(scifi.SCI_FI_SHOWCASE)   # Blockbuster Friday
         },
         "SPRING": {
             "WEDNESDAY": Swap(scifi.MODERN_SCIFI_BLOCK)  # Discovery Season
@@ -149,7 +149,7 @@ EVENING_BLOCK = {
 
 # Prime Block (20:00 - 23:00)
 PRIME_BLOCK = {
-    "SATURDAY": movies.SCI_FI_SHOWCASE,
+    "SATURDAY": scifi.SCI_FI_SHOWCASE,
     "SUNDAY": scifi.SCIFI_SUNDAY_BLOCK,
     "WEEKDAY": SCIFI_PRIME_SEASONAL
 }
@@ -158,7 +158,7 @@ PRIME_BLOCK = {
 NIGHT_BLOCK = {
     "SATURDAY": "modern_scifi_movie",         # was UNDEAD_CINEMA (horror)
     "SUNDAY": scifi.SCIFI_VAULT,
-    "WEEKDAY": movies.SCI_FI_SHOWCASE
+    "WEEKDAY": scifi.SCI_FI_SHOWCASE
 }
 
 # ==============================================================================

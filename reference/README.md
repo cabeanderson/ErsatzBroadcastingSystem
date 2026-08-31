@@ -34,7 +34,9 @@ different questions and a pool can be large in one and unreachable in the other.
 | [library-animation-movies.md](library-animation-movies.md) | 94 animated features, grouped by studio |
 | [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs |
 | [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel — **implemented**, see its status header |
+| [channel-rules.md](channel-rules.md) | **The rules for making and curating channels** — founding, grid, cross-channel curation, and the checks a channel passes before it counts as built |
 | [channel-plan.md](channel-plan.md) | The working plan — lineup, programming mechanics, sharing rules, gaps |
+| [acquisitions.md](acquisitions.md) | What the lineup is missing, per channel — the gap each acquisition fills |
 | [next-session.md](next-session.md) | Build order and carry-forward notes — framework bugs found in the CN restructure, then the collision report |
 | [channel-coverage.md](channel-coverage.md) | All 576 shows + 2,067 movies mapped to channels; orphans and conflicts |
 
@@ -54,4 +56,9 @@ genres come free from `movies/LIBRARY-INVENTORY.csv`, which was already probed.
 Genre data is cheap; the hand-built lists were solving a problem that no longer
 needs solving.
 
-The manifests are also consumed by `scripts/testing/validate_titles.py`, which checks that every scheduled title still resolves. Regenerate them when the library changes.
+The manifests are also consumed by two checkers, both offline:
+`scripts/testing/validate_titles.py`, which checks that every scheduled *title*
+resolves, and `scripts/testing/key_census.py`, which resolves every *key* in
+`MASTER_SOURCES` against them and fails on any key a collection lists that
+selects nothing. Regenerate the manifests when the library changes — a stale
+manifest makes both checkers wrong in the direction of false alarms.

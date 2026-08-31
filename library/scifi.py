@@ -153,3 +153,25 @@ SCIFI_SUNDAY_BLOCK = Block(
         )
     ]
 )
+
+# ==============================================================================
+# THE FILM SHOWCASE
+# ==============================================================================
+
+# Other Worlds' Saturday prime and its weekday 23:00 feature.
+#
+# This lived in `library/movies.py` -- Cabes Classic Cinema's module -- and was
+# scheduled only from here, a leftover from when that file was the lineup's
+# general film shelf rather than one channel's library. It moved when Classic
+# Cinema was restated as a pre-1980 channel: a science-fiction collection has
+# no business in a module whose every other key stops at 1979.
+#
+# Note that Classic Cinema used to hand its own Saturday prime to this same
+# object. Neither channel ever drew the same *key* -- each picked a different
+# arm -- so nothing flagged it while both ran sci-fi features 20:00-24:00 every
+# Saturday. That is the collision the report's SAME COLLECTION tier exists for.
+SCI_FI_SHOWCASE = RandomCollection([
+    "classic_scifi_movie",
+    "modern_scifi_movie",
+    "cyberpunk_movie",
+])

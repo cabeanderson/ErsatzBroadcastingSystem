@@ -267,6 +267,28 @@ def library_collections():
     return named
 
 
+def channel_collections():
+    """Map id(obj) -> 'channel.NAME' for every named block in a channel module.
+
+    The library half of this misses keys a channel names directly rather than
+    through a library collection -- Mystery Theatre's LUNCH_SPECIAL is three
+    bare keys written in the channel module, and Totally 80s' whole grid is
+    assembled there. Dicts are kept here where `library_collections` drops
+    them: in a channel module an uppercase dict is a schedule or a weekday
+    variant, not a registry of queries.
+    """
+    named = {}
+    for chan_name, module in discover_channels().items():
+        for var_name, value in vars(module).items():
+            if not var_name.isupper() or var_name.startswith("_"):
+                continue
+            if isinstance(value, (str, int, float, bool, type(None))):
+                continue
+            named[id(value)] = f"{chan_name}.{var_name}"
+            _OBJECTS_BY_ID[id(value)] = value
+    return named
+
+
 def collection_membership(named):
     """Map content key -> the named collections that list it.
 

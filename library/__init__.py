@@ -16,7 +16,8 @@ from . import fantasy
 from . import horror
 from . import sitcoms
 from . import movies
+from . import modern_movies
 from . import eighties
 from . import british
 
-__all__ = ['sources', 'branding', 'marathons', 'common', 'detective', 'disney', 'animation', 'nickelodeon', 'scifi', 'fantasy', 'horror', 'sitcoms', 'movies', 'eighties', 'british']
+__all__ = ['sources', 'branding', 'marathons', 'common', 'detective', 'disney', 'animation', 'nickelodeon', 'scifi', 'fantasy', 'horror', 'sitcoms', 'movies', 'modern_movies', 'eighties', 'british']
