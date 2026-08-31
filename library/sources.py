@@ -22,7 +22,7 @@ from .filters import (
     SHORT, NO_COMEDY, NO_HORROR,
     TV_CLASSIC, TV_GOLDEN_AGE, TV_HD, TV_VINTAGE,
     NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI, NO_WESTERN, MODERN_FILM_ERA, PRE_EIGHTIES_ERA,
-    POST_EIGHTIES_ERA,
+    POST_EIGHTIES_ERA, RECENT_ERA, NEW_RELEASE_ERA,
     SIXTIES, SITCOM_80S_VIBE, SITCOM_90S_VIBE
 )
 
@@ -44,7 +44,12 @@ MOVIE_REGISTRY = {
     # trilogy and Butch Cassidy -- eleven films that are the western channel's
     # centre, not Classic Cinema's afternoon. Follows the `_pure_` convention:
     # the era minus what another channel owns.
-    "classic_hollywood_pure_movie": movie_source(era=CLASSIC_ERA, extra=f"{NO_SCIFI} AND {NO_WESTERN}"),
+    # Horror joined the exclusion when Be Kind Rewind was built and Classic
+    # Cinema was restated as a pre-1980 channel: Nightmare Theatre's
+    # `horror_movie` draws every era, so the 1950-69 slice -- Psycho, The
+    # Birds, Village of the Damned -- was reachable from both channels.
+    # 108 -> 99.
+    "classic_hollywood_pure_movie": movie_source(era=CLASSIC_ERA, extra=f"{NO_SCIFI} AND {NO_WESTERN} AND {NO_HORROR}"),
     "film_history_all_movie": movie_source(era=CLASSIC_ERA),
     "70s_movie": movie_source(era=SEVENTIES),
     "80s_movie": movie_source(era=EIGHTIES),
@@ -56,11 +61,136 @@ MOVIE_REGISTRY = {
     # `eighties_daytime_movie` has carried NOT genre:horror all along.
     # 137 -> 117 and 296 -> 229.
     "70s_pure_movie": movie_source(era=SEVENTIES, extra=NO_HORROR),
-    "80s_pure_movie": movie_source(era=EIGHTIES, extra=NO_HORROR),
+    # Westerns joined the exclusion when Be Kind Rewind took this key over as
+    # its late shelf: High Noon draws `western_movie` across every era and runs
+    # film to midnight, so the two channels shared Silverado and Young Guns.
+    "80s_pure_movie": movie_source(era=EIGHTIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
     "90s_movie": movie_source(era=NINETIES),
     "00s_movie": movie_source(era=Y2K_ERA),
     "10s_movie": movie_source(era=TENS),
     "20s_movie": movie_source(era=TWENTIES),
+
+    # --- CABES CLASSIC CINEMA -- the pre-1980 shelf ---
+    #
+    # The channel is 1920-1979 outright: 328 live-action films, a 25-day cycle
+    # at 24 hours a day. It gave the 1980s to Totally 80s and Be Kind Rewind
+    # when the era line was drawn, which is what turned it from a residue into
+    # a channel -- see `library/movies.py`.
+    #
+    # These keys carry NO_HORROR / NO_SCIFI / NO_WESTERN not because sharing is
+    # forbidden -- it is not -- but because Nightmare Theatre, Other Worlds and
+    # High Noon all draw *every* era for those genres, so the same title really
+    # would land on two channels. The exclusions are an hours problem solved at
+    # the key, which is cheaper here than re-timing four channels.
+
+    # The wide pre-1980 shelf, and the channel's fallback bed. 241 films.
+    # Everything the channel can reach without stepping on a genre channel.
+    "classic_cinema_movie": movie_source(era=PRE_EIGHTIES_ERA, extra=f"{NO_HORROR} AND {NO_SCIFI} AND {NO_WESTERN}"),   # 241
+    # 1930-49 without the Universal monsters, which are Nightmare Theatre's
+    # 09:00 Vault. 41 -> 36.
+    "golden_age_pure_movie": movie_source(era=GOLDEN_AGE, extra=NO_HORROR),                                             #  36
+    # The 1970s as Classic Cinema's prime. `70s_pure_movie` above drops horror
+    # only; this also drops westerns, because High Noon runs film 20:00-24:00
+    # and that is exactly this block's hours. 137 -> 114.
+    "70s_prestige_movie": movie_source(era=SEVENTIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),                           # 114
+    # Era-bounded genre cuts. The unbounded `musical_movie` and `war_movie` were
+    # on Classic Cinema's weekend prime while reaching every era, which is how a
+    # pre-1980 channel was scheduling 2018 musicals. Note how thin the musical
+    # shelf actually is before 1980 -- six films, which is why MUSICAL_MARQUEE
+    # could never have carried a slot on its own.
+    "classic_musical_movie": movie_source(genre="musical", era=PRE_EIGHTIES_ERA),                                       #   6
+    "classic_war_movie": movie_source(genre="war", era=PRE_EIGHTIES_ERA),                                               #  29
+    "classic_comedy_movie": movie_source(genre="comedy", era=PRE_EIGHTIES_ERA),                                         #  90
+    "classic_drama_movie": movie_source(genre="drama", era=PRE_EIGHTIES_ERA, extra=f"NOT genre:crime AND {NO_WESTERN}"), # 129
+    # The big-canvas pictures -- Lawrence of Arabia, Ben-Hur, Bridge on the River
+    # Kwai, The Great Escape. Adventure and history minus the two genres that
+    # have their own channels.
+    "classic_epic_movie": movie_source(genre="(adventure OR history)", era=PRE_EIGHTIES_ERA, extra=f"{NO_WESTERN} AND {NO_SCIFI}"),  # 57
+
+    # --- BE KIND REWIND -- the 1980-and-after shelf ---
+    #
+    # 1,530 live-action films, a 122-day cycle at 24 hours a day: by a wide
+    # margin the largest pool on the lineup, and the reason this channel can
+    # afford to sub-sort by genre, decade and director where the others cannot.
+    #
+    # Nothing here is exclusive. Totally 80s, Other Worlds, Mystery Theatre and
+    # Nightmare Theatre all keep their full claims and Be Kind Rewind overlaps
+    # every one of them; the rule is that the same title must not air on two
+    # channels in the same hour, and that is enforced by the grid (see
+    # `channels/be_kind_rewind.py`) rather than by fencing pools off.
+
+    # Every `modern_*` key below is **1990 and after**, not 1980, and that is the
+    # hours rule made structural rather than left to the grid to remember.
+    #
+    # Be Kind Rewind's pool is 1980+, but Totally 80s runs film from 10:00 to
+    # 23:00 and the two channels would otherwise draw the same 1980s title in
+    # the same hour -- which the collision report caught on the first build, as
+    # `modern_drama_movie` against `eighties_drama_movie` on Sunday prime. The
+    # 1980s are reachable on this channel only through the explicitly-80s keys
+    # (`80s_pure_movie`, `eighties_cult_movie`, `80s_action_movie`,
+    # `80s_comedy_movie`), and those are scheduled only between 22:00 and 06:00,
+    # when Totally 80s is dark. A key that cannot reach the decade cannot
+    # collide on it by accident three refactors from now.
+    #
+    # `80s_pure_movie` was Cabes Classic Cinema's weekday prime until the era
+    # line moved; it is this channel's late shelf now, which is the same 229
+    # films finding a set of hours nobody else wants.
+
+    # The channel-wide shelf and its fallback bed. Horror and westerns are out
+    # at the key because Nightmare Theatre and High Noon draw every era of both
+    # and run film in this channel's prime; everything else is deconflicted by
+    # hours instead.
+    "modern_cinema_movie": movie_source(era=POST_EIGHTIES_ERA, extra=f"{NO_HORROR} AND {NO_WESTERN}"),                  # 1090
+    # Recency, the channel's one genuine promise. `recent_movie` is wide enough
+    # to carry a nightly presence; `new_release_movie` is the Friday appointment
+    # and cycles in a little over a year at two features a week.
+    "recent_movie": movie_source(era=RECENT_ERA, extra=NO_HORROR),                                                      #  ~205
+    "new_release_movie": movie_source(era=NEW_RELEASE_ERA, extra=NO_HORROR),                                            #  ~105
+    # Genre cuts across the whole modern era.
+    "modern_action_movie": movie_source(genre="action", era=POST_EIGHTIES_ERA, extra=f"{NO_HORROR} AND {NO_WESTERN}"),    #  475
+    "modern_comedy_movie": movie_source(genre="comedy", era=POST_EIGHTIES_ERA, extra=NO_HORROR),                          #  562
+    "modern_drama_movie": movie_source(genre="drama", era=POST_EIGHTIES_ERA, extra=f"{NO_HORROR} AND NOT genre:crime"),   #  480
+    "modern_adventure_movie": movie_source(genre="adventure", era=POST_EIGHTIES_ERA, extra=f"{NO_HORROR} AND {NO_WESTERN}"),  # 387
+    "modern_family_movie": movie_source(genre="family", era=POST_EIGHTIES_ERA),                                           #  113
+    "modern_romance_movie": movie_source(genre="romance", era=POST_EIGHTIES_ERA),                                         #  207
+    # The one key that needs every exclusion spelled out. Thriller is 470 films
+    # from 1980 on, but crime/mystery is Mystery Theatre's, science fiction is
+    # Other Worlds' and horror is Nightmare Theatre's -- and all three draw the
+    # modern era. Only 72 thrillers are genuinely nobody else's spine, and a
+    # bare `genre:thriller` key would quietly re-open three borders at once.
+    "modern_thriller_movie": movie_source(
+        genre="thriller", era=POST_EIGHTIES_ERA,
+        extra=f"NOT genre:crime AND NOT genre:mystery AND {NO_SCIFI} AND {NO_HORROR}"
+    ),                                                                                                                  #   72
+    # The decade shelves, horror and westerns removed -- the `_pure_` convention
+    # the rest of the registry already uses. Be Kind Rewind runs these in its
+    # afternoon, which is exactly when Nightmare Theatre draws `horror_movie`
+    # (every era) and High Noon draws `western_movie` (every era). Neither of
+    # those channels has an hour to hide in -- Nightmare runs seventeen hours
+    # of film a day -- so this border is kept at the key.
+    #
+    # Measured, not assumed: `scripts/testing/same_title_check.py` resolves both
+    # keys' queries against the library and intersects the title sets. The raw
+    # `90s_movie` shares 29 titles with `horror_movie` and aired opposite it
+    # nineteen times in a fortnight.
+    "90s_pure_movie": movie_source(era=NINETIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "00s_pure_movie": movie_source(era=Y2K_ERA, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "10s_pure_movie": movie_source(era=TENS, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "20s_pure_movie": movie_source(era=TWENTIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+
+    # Genre x decade. The registry had these for the 80s and 90s only, so every
+    # decade after 1999 could be reached as a whole or not at all. Same two
+    # exclusions, for the same reason: a bare `genre:drama` cut of the 2010s
+    # reaches Black Swan, Crimson Peak and Bone Tomahawk.
+    "00s_action_movie": movie_source(genre="action", era=Y2K_ERA, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "10s_action_movie": movie_source(genre="action", era=TENS, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "20s_action_movie": movie_source(genre="action", era=TWENTIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "00s_comedy_movie": movie_source(genre="comedy", era=Y2K_ERA, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "10s_comedy_movie": movie_source(genre="comedy", era=TENS, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "20s_comedy_movie": movie_source(genre="comedy", era=TWENTIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "90s_drama_movie": movie_source(genre="drama", era=NINETIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "00s_drama_movie": movie_source(genre="drama", era=Y2K_ERA, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    "10s_drama_movie": movie_source(genre="drama", era=TENS, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
 
     # --- ANIMATION (FILM) ---
     "animation_movie": movie_source(animated=True),
@@ -118,10 +248,18 @@ MOVIE_REGISTRY = {
 
     # --- GENRE BLOCKS ---
     "80s_action_movie": movie_source(genre="action", era=EIGHTIES),
-    "90s_action_movie": movie_source(genre="action", era=NINETIES),
-    "blockbuster_action_movie": movie_source(genre="action", tags="(studio:Marvel OR studio:DC OR tag:superhero)"),
+    # The 1990s pair carry the same two exclusions as their 2000s and 2010s
+    # equivalents below -- they are Be Kind Rewind's afternoon and had been in
+    # the registry, unclaimed, since before any of the genre channels existed.
+    "90s_action_movie": movie_source(genre="action", era=NINETIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
+    # Era-bounded when Be Kind Rewind took it up. It had no date filter at all,
+    # so a "blockbuster" key reached pre-1980 superhero film -- straight into
+    # Classic Cinema's decades. Nothing caught it because the key sat in
+    # `movies.MODERN_BLOCKBUSTERS`, which no channel had scheduled since
+    # Classic Cinema gave up its summer swap.
+    "blockbuster_action_movie": movie_source(genre="action", era=POST_EIGHTIES_ERA, tags="(studio:Marvel OR studio:DC OR tag:superhero)"),
     "80s_comedy_movie": movie_source(genre="comedy", era=EIGHTIES),
-    "90s_comedy_movie": movie_source(genre="comedy", era=NINETIES),
+    "90s_comedy_movie": movie_source(genre="comedy", era=NINETIES, extra=f"{NO_HORROR} AND {NO_WESTERN}"),
     # High Noon's shelf, all 46 films. Cabes Classic Cinema used to run the whole
     # of it across both weekend afternoons; it handed the pool back when the
     # western channel was built, the same way Other Worlds took science fiction.
@@ -179,6 +317,13 @@ MOVIE_REGISTRY = {
 PLAYLIST_REGISTRY = {
     "star_trek_all_playlist": playlist_ref(name="Star Trek Universe", group="ErsatzTV"),
 }
+
+# `studio:(bbc OR itv)` is BBC and ITV only, and that silently excluded the whole
+# Channel 4 canon -- Peep Show, Father Ted, The IT Crowd, Spaced, Derry Girls,
+# Toast of London, Garth Marenghi's Darkplace, Queer as Folk -- plus Sky and E4.
+# Twelve shows and 287 episodes, including Peep Show, which is the largest
+# British comedy on disk. Across the Pond found it; nothing had used the keys.
+BRITISH_BROADCASTERS = '(bbc OR itv OR "channel 4" OR "channel 5" OR sky OR e4)'
 
 # ============================================================================
 # 2. TV SHOWS (FILTERS & GENRES)
@@ -303,9 +448,13 @@ TV_REGISTRY = {
     "fox_sitcoms_tv": show_source(tags="tag:sitcom", studio="Fox"),
     
     # --- INTERNATIONAL & SPECIALTY ---
-    "british_comedy_tv": show_source(genre="comedy", studio="(bbc OR itv)", tags="(tag:sitcom OR genre:comedy)"),
+    # Comedy and drama take the full broadcaster list. `british_mystery_tv`
+    # deliberately does not: Mystery Theatre runs it as its 17:00-20:00 evening
+    # strip, and the only title widening would add is Black Mirror, which is
+    # tagged Mystery but is not one in any sense that block means (G11).
+    "british_comedy_tv": show_source(genre="comedy", studio=BRITISH_BROADCASTERS, tags="(tag:sitcom OR genre:comedy)"),
     "british_mystery_tv": show_source(genre="mystery", studio="(bbc OR itv)"),
-    "british_drama_tv": show_source(genre="drama", studio="(bbc OR itv)"),
+    "british_drama_tv": show_source(genre="drama", studio=BRITISH_BROADCASTERS),
     "bbc_classics_tv": show_source(studio="bbc", era=TV_CLASSIC),
     "family_tv": show_source(rating="(content_rating:TV-G OR content_rating:TV-PG)"),
     "mature_tv": show_source(rating="(content_rating:TV-MA OR content_rating:TV-14)"),
@@ -744,6 +893,11 @@ FILLERS = {
     "commercials_uk_90s_spot": filler_source("commercials", "uk", "90s"),
 
     # useful crosses
+    # Across the Pond runs the UK reel channel-wide, but its Saturday-morning
+    # block is Wallace & Gromit and Mr. Bean, so that one block overrides to the
+    # family-safe cut -- 11 of the 116 UK spots are beer and spirits.
+    "commercials_uk_family_safe_spot":
+        'type:"other_video" AND tag_full:"commercials" AND tag_full:"uk" AND NOT tag_full:"alcohol"',
     "commercials_uk_kids_spot": filler_source("commercials", "uk", "kids"),
     "commercials_uk_90s_kids_spot": filler_source("commercials", "uk", "90s", "kids"),
     "commercials_uk_90s_general_spot": filler_source("commercials", "uk", "90s", "general"),

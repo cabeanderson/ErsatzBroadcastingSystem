@@ -2,6 +2,11 @@
 
 Working plan for the scripted-schedules lineup. Companion to [channel-coverage.md](channel-coverage.md) (what exists and where it goes) and the library references in this directory.
 
+> **The rules are now in [channel-rules.md](channel-rules.md)** — founding a
+> channel, building the grid, curating across channels, and the checks that
+> gate "built". This file stays the working state: the lineup, the grids, and
+> the per-channel history each rule came out of.
+
 ---
 
 ## The organizing principle
@@ -24,10 +29,10 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 
 | # | Channel | Content | Scripted |
 |---|---|---|---|
-| 104 | Across the Pond | British comedy & panel | yes |
+| 104 | Across the Pond | British television — **a broadcast day**, not "comedy & panel" | yes — **designed**. The last channel still on the default preset |
 | 116 | Cartoon Network | CN originals + Toonami + Adult Swim | yes — **rebuilt** |
 | 120 | Lucy TV | I Love Lucy 24/7 | no |
-| 142 | Cabes Classic Cinema | classic film | yes — modern film **and westerns** handed back |
+| 142 | Cabes Classic Cinema | film, **1920–1979** | yes — **designed**. The 1980s handed back; identity finally stated |
 | 144 | Mystery Theatre | detective / procedural | yes — **refined** |
 | 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
 | 164 | Japanorama | anime | no |
@@ -41,12 +46,12 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
 | 244 | Nightmare Theatre | horror, TV + film | yes — **built**. The film is the spine: 242 features, 17 h/day |
 | 246 | The Beat | **music videos only** | no |
+| — | Be Kind Rewind | film, **1980–present** | yes — **built**. The video store: a week, not a genre. Channel number pending |
 
 ### To build
 
 | Channel | Pool | Shows | Notes |
 |---|---:|---:|---|
-| **Modern movies** | ~1,390 films | — | **Next.** 1990-present, 67% of the movie library. Classic Cinema's summer swap is gone, so the contention is resolved |
 | **Fantasy** | 238 films / 40 shows | 40 | Registry and `library/fantasy.py` built 2026-08-30; **channel deliberately deferred**. Content is there — 333 fantasy films, more than horror |
 | ~~Boomerang~~ | 1 show | 1 | **Closed — see below.** Disk problems fixed; the premise is what is gone |
 
@@ -227,18 +232,154 @@ So the pool is **one show**. Smurfs alone is not a channel, and everything else 
 
 Reviving it would mean re-founding it on a different principle than "pre-1990" — a second window on a shared library, the way Nick at Nite and Good Times share sixteen titles by splitting the clock. That is a sharing-rule design, and with three channels already sharing the animation library it needs the collision report to police it rather than another hand-maintained list. **Until then it is closed, not deferred.**
 
-### Modern movies — next to build
-~1,390 films from 1990 on, 67% of the movie library and the largest untapped pool. The framing is a **video store, not a cinema**: Friday-night new releases, weekend matinees, late-night cult. That gives the channel a *week*, which is what distinguishes it from Cabes Classic Cinema (an era) and Other Worlds (a genre).
+### Cabes Classic Cinema — designed
 
-It is not clean greenfield, and that is the thing to settle first:
+**1920–1979. 328 live-action films, a 25-day cycle at twenty-four hours a day.**
 
-- **Cabes Classic Cinema swaps its whole prime to `MODERN_BLOCKBUSTERS` every summer** (`movies.MOVIE_PRIMETIME_FEATURE`) — 90s/00s/10s films plus `blockbuster_action_movie`, three months a year on a classic-cinema channel. That swap only exists because there was nowhere else to put them, and it should hand them back.
-- **Other Worlds and Mystery Theatre take genre slices across all eras** — modern sci-fi, cyberpunk, four horror pools, mystery/crime. This is the lineup's first genuinely hard sharing question: unlike the CN restructure, where every collision had a clean owner and eviction was the answer, a modern movie channel and a sci-fi channel both have a real claim on the same film. Split by hours, not by library.
-- Disney (Sunday 19:00–21:00) and CN (Sunday Cartoon Theatre) are narrow and fixed — easy to work around.
+The channel had been edited five times and never designed — modern film, then
+science fiction, westerns, horror, and half the crime shelf all left it in
+turn, and none of those edits ever said what remained. It does now: *Hollywood
+before the blockbuster*.
 
-Key coverage is uneven. Era keys are complete (`90s_movie` … `20s_movie`), but **genre × era exists only for the 80s and 90s**, and `classic_horror_movie` is 1980s-only, so post-1990 horror has no key at all. Expect to add keys before writing blocks — the same order Disney and CN were built in.
+`scripts/channels/classic_movies.py` · `scripts/library/movies.py`
 
-Use the `"movies"` timeslot preset (four six-hour slots) or something close. A two-hour daypart map cuts features in half.
+    00-03  Noir Alley          pre-1980 crime
+    03-06  The Small Hours     the whole shelf, shuffled
+    06-09  First Reel          silents, weighted over early sound
+    09-12  The Golden Age      1930-69, the studio system
+    12-17  The Matinee         1950-69, seasonally tilted
+    17-20  The Big Picture     epics, war, musicals
+    20-24  New Hollywood       the 1970s — the appointment
+
+The day walks forward through film history and resets at midnight into noir.
+Sunday evening is a director spotlight on a monthly rotation — Hitchcock
+(twelve films, all pre-1980, so he is this channel's outright) and Kubrick.
+
+**What it cost, and why.** `80s_pure_movie` was the weekday prime and a
+byte-identical copy of Totally 80s' `eighties_daytime_movie` — 229 films drawn
+by two channels in the same 18:00–23:00 hours. That was the likeliest
+same-title collision on the lineup and the open question `movies.py` had been
+deferring to "the full grid pass". The decade went to Totally 80s, whose theme
+it is, and to Be Kind Rewind, whose oldest shelf it is.
+
+**It carries its own timeslot map now.** Running the generic four-slot
+`"movies"` preset was a real part of why the channel read as a residue: four
+six-hour blocks is enough structure to hold content and not enough to have an
+identity.
+
+Two findings that outlive it:
+
+- **`musical_movie` is six films before 1980.** `MUSICAL_MARQUEE` had been
+  handed a weekend slot on the unbounded key, which reaches every era — it
+  looked like a 24-film pool and it was six films and eighteen of Be Kind
+  Rewind's. Now `classic_musical_movie`, and weighted to a tenth of its block.
+- **Two blocks are only two blocks if they draw different things.** The first
+  cut of this grid gave First Reel and The Golden Age the same two keys in a
+  different order: six hours a day against a 49-film pool, a repeat inside a
+  fortnight. It was invisible until airings were counted per key rather than
+  per block, and it is why the silents went from 379 airings a year to 105.
+- **`WeightedCollection` had never been used.** It had been in
+  `logic/structures.py` since the beginning with no consumer. Thirteen silent
+  films against thirty-six Golden Age ones is exactly what it is for.
+
+### Be Kind Rewind — built
+
+**1980–present. 1,530 live-action films, a 122-day cycle** — by a wide margin
+the largest pool on the lineup, against Classic Cinema's 328 and High Noon's 46.
+
+`scripts/channels/be_kind_rewind.py` · `scripts/library/modern_movies.py`
+
+The framing survived contact with the library: **a video store, not a cinema.**
+The organizing axis is the **week**, because the pool is too big and too
+cross-genre for anything else — Nightmare Theatre organizes by the clock, High
+Noon around a television spine, and this one by the day:
+
+| Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+|---|---|---|---|---|---|---|
+| Comedy Night | **The Director's Chair** | Recent | **Star of the Month** | **NEW RELEASES** | Blockbuster Night | The Sunday Feature |
+
+    00-02  Cult Corner          02-06  The Overnight Bin (+ the 1980s)
+    06-09  The Morning Matinee  09-12  The Back Catalogue
+    12-15  Decade Afternoon     15-18  The Afternoon Double
+    18-22  PRIME                22-24  The Late Show
+
+**Prime starts at 18:00, and that is measured rather than chosen.** Simulating
+all twelve channels over a fortnight and bucketing film minutes by hour of day
+showed **18:00–20:00 is the emptiest film hour on the lineup** — Nightmare
+Theatre, High Noon and Other Worlds are all running television, and only
+Totally 80s has any film there at all. From 20:00, four channels start features
+at once. Opening prime two hours early puts this channel's viewer inside a film
+before the rest of the lineup begins.
+
+**The 2018 recency fence was not built.** The plan's centrepiece was to give
+this channel exclusive rights to everything from 2018 on so the lineup could
+keep "zero shared film pools" — a constraint that had already been retired. It
+would have cost the genre channels 164 films and required editing five keys
+across three channels, all to serve a rule nobody was enforcing any more. What
+survives of it is two keys, `recent_movie` and `new_release_movie`, used as
+*programming* — Friday's appointment — rather than as ownership.
+
+**Sub-sorting is what the pool size buys.** Genre × decade now exists for every
+decade rather than only the 80s and 90s, and Tuesday and Thursday are
+title-built spotlights: eight directors (Spielberg, the Coens, Tarantino,
+Scorsese, Ridley Scott, Nolan, Fincher, Carpenter) and four stars
+(Schwarzenegger, Bill Murray, Sigourney Weaver, Denzel Washington). These are
+**title lists, not `director:` queries** — nothing in the repo uses that field,
+`ERSATZTV_API.md` does not document it, and it cannot be verified from the
+workstation. Every title was checked against `library-movies.tsv` and
+year-bounded, because `movie_by_title` is a phrase match and a bare
+`title:"Gladiator"` also returns Gladiator II.
+
+### Across the Pond — designed
+`scripts/channels/british.py` · `scripts/library/british.py`
+
+**It was billed as "British comedy & panel" and there is not one panel show on disk.** QI, Taskmaster, Have I Got News for You, Would I Lie to You?, Never Mind the Buzzcocks, 8 Out of 10 Cats — all checked, none present. The identity was a promise the library could not keep, which fails F2 the same way a list of negatives does. The channel is now **a British broadcast day, from the morning repeat to the pub lock-in**, which is what the grid had been reaching for all along.
+
+**The axis is the schedule itself.** Every slot is named for what a British listings page calls that hour and keeps that hour's register. It is the last channel on the lineup to get a design pass, and it was still running the default timeslot preset — the only one left.
+
+**Television with a film shelf, and not close** (F5): roughly 1,600 episodes across 45 shows against sixty-odd named British films plus twenty Bond and eight Potter. Film gets Saturday night and the Sunday matinee, and that is all.
+
+| Slot | Mon–Fri | Saturday | Sunday |
+|---|---|---|---|
+| 00–03 after_hours | Pub Lock-In | ← | ← |
+| 03–06 overnight | Closedown | ← | ← |
+| 06–09 early | Breakfast *(Bake Off, Clarkson's Farm)* | ← | ← |
+| 09–12 morning | The Daytime Mystery | **Saturday Morning** *(Mr. Bean, W&G)* | **The Omnibus** |
+| 12–14 noon | The Lunch Break *(Doc Martin, Pilkington)* | ← | ← |
+| 14–17 afternoon | Britcom Afternoon | ← | **The Sunday Matinee** *(film)* |
+| 17–19 evening | Teatime — **Top Gear** | ← | ← |
+| 19–20 seven | **Doctor Who** | ← | ← |
+| 20–23 prime | a drama a night | **Saturday Night Cinema** | **Sunday Night on BBC One** *(Attenborough)* |
+| 23–24 night | Pub Lock-In | ← | ← |
+
+Simulated over 365 continuous days: **no gaps, no circuit breakers, no unresolved programs, no errors**, 25,208 programme plays (69/day). Day-gating and the special days re-checked over three simulated years: each drama night appears on its own weekday and nowhere else, Bond fired 5 times, Doctor Who Day fired all three years.
+
+*(Block-tail overrun — the last item of a block running past its slot — measures 308 instances over the year. High Noon and Nightmare Theatre show the same thing at the same rate on the same checker, so it is the framework's `yield` behaviour and not this grid.)*
+
+**Prime is seven different pools and the mystery shelf is not one of them.** Poirot, Marple and Morse own 09:00–12:00 on weekdays. Running them at eight as well would be one pool wearing two blocks (G4) *and* would collide with Mystery Theatre on four nights of seven. Instead: Monday gritty (Peaky, Gangs of London), Tuesday thriller (Killing Eve, The Terror, Years and Years), Wednesday after dark (Luther, Black Mirror, I May Destroy You), Thursday period (Sharpe, A Young Doctor's Notebook, Queer as Folk), Friday sketch (Python, Mitchell and Webb, Serafinowicz), Saturday film, Sunday Attenborough.
+
+**Luther is on Wednesday for a reason.** Mystery Theatre's Monday prime draws `british_mystery_tv`, and Luther is in it. That is C1, not taste.
+
+**`british_comedy_tv` could not see Channel 4.** The key was `studio:(bbc OR itv)`, which silently excluded Peep Show, Father Ted, The IT Crowd, Spaced, Derry Girls, Toast of London, Garth Marenghi's Darkplace and Queer as Folk — twelve shows, 287 episodes, including the largest British comedy on disk. Widened in `sources.py` to the full broadcaster list. `british_mystery_tv` was deliberately **not** widened: Mystery Theatre strips it 17:00–20:00 and the only title widening adds is Black Mirror, which is tagged Mystery and is not one (G11).
+
+**The film shelf is named titles, not `british_movie`.** That key is `tag:british OR studio:(BBC|Film4|Working Title|Ealing|Hammer|Warp|DNA)`, and `library-movies.tsv` has no studio column at all — the key census can only report it as 1,858 films "partial". Nobody can size it offline, it depends on index metadata that may be absent, and the Hammer clause reaches into Nightmare Theatre's shelf. Named titles are checkable by `validate_titles`; that key is not.
+
+**The Sunday matinee is at 14:00 because 20:00 was full.** Bond on a bank-holiday afternoon is the most British thing a schedule can do, and it dodges the hour where four channels start features at once (C7). Measured directly rather than asserted: across 28 simulated days, the 15 distinct films Across the Pond airs in its two film slots collide with **nothing** on the other eleven channels at those hours.
+
+**Three content bugs had been live for some time.** Luther was commented out with 20 episodes on disk. The Cornetto trilogy ran as a double bill, because *The World's End* is filed `World's End, The`. *Life of Brian* resolved to nothing, because it is filed `Monty Pythons Life of Brian` without the apostrophe. All three are filing mismatches that no checker caught, because `validate_titles` checks shows and the film titles were never wrong in a way it could see.
+
+**Both marathons were `RandomCollection`s**, which collapse to a single item (G9) — the window played one film and fell back to the grid. Bond is a `MarathonSequence` of twenty year-bounded titles now. **Doctor Who Day stopped being a marathon entirely**: 23 November falls inside Thanksgiving's fourteen-day ramp in most years, and marathons do not fire while `is_holiday_season` is true, so it had never once run. It is a holiday schedule, and the date is registered in `core/registry.py`.
+
+**110 UK commercials went from idle to scheduled.** Categorised country/decade/gate/product some sessions ago and never once used. The channel runs `commercials_uk_spot` channel-wide; the Saturday-morning block overrides to a new `commercials_uk_family_safe_spot`, because eleven of the 116 are beer and spirits and that block is Mr. Bean.
+
+**Shapes that failed:**
+
+- **Three Pub Lock-In variants.** Splitting 380 episodes three ways left the weekend block at 148 and cycling in nine weeks, while Python and Mitchell and Webb were being spent on it. Two variants — Mon/Wed/Fri/Sun against Tue/Thu/Sat — and the sketch shows promoted to Friday prime, where they read as an event.
+- **Britcom Afternoon A/B.** The split halved a pool that was already only four weeks deep and made two blocks out of one. Merged; six shows and 241 episodes is six weeks, the first time the slot has cleared F6.
+- **Sunday morning as a second Breakfast.** The first Sunday grid ran the Breakfast block twice, 06:00–12:00 — six unbroken hours of Bake Off and Clarkson's Farm, which is the weekday grid printed twice under another name. It is **The Omnibus** now: the week's drama repeated on a Sunday morning, which is the same title in a different presentation (C2, G8) rather than a second helping of the same pool.
+- **A crime hour at prime.** Wanted, and dropped: it would have drawn the morning's own pool and handed Mystery Theatre four collisions.
+
+**Still without:** any panel show, which remains the single most fixable identity gap on the lineup. See [acquisitions.md](acquisitions.md).
 
 ### Travelers Table
 Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.
@@ -309,6 +450,8 @@ Reads the manifests in `reference/`, so it runs offline with no ErsatzTV.
 
 ## Sharing rules
 
+> Stated as rules in [channel-rules.md §3](channel-rules.md#3-curating-across-channels) — C1 is the rule, C2 the escalation ladder. What follows is the per-pair history.
+
 No channel airs a title *while* another channel is airing it. Sharing itself is fine and often the point, because the two channels mean different things by it.
 
 **Nick at Nite vs. Good Times.** Nine shared titles (Bewitched, Bob Newhart, Dick Van Dyke, Gilligan's Island, I Love Lucy, Mary Tyler Moore, Taxi, Andy Griffith, MASH). Good Times keeps all of them and airs them mornings and daytime — just not during 21:00–02:00. I Love Lucy stays on Nick at Nite despite Lucy TV; it earns the exception.
@@ -361,6 +504,67 @@ often, which is fine.
 **Adult Swim vs. Corncob TV.** Tim and Eric, The Eric Andre Show, Check It Out! with Dr. Steve Brule. Adult Swim is **first-run** — chronological, appointment-scheduled, late. Corncob is **syndication** — shuffled, daytime, drop in anywhere. Same show, two presentations. This generalizes: it's the cross-channel form of the chronological-weekday / shuffle-weekend pattern.
 
 ---
+
+### The era line — the film lineup, settled (2026-08-30)
+
+The whole film library now splits three ways on two dates, and the dates were
+already in `filters.py` as `PRE_EIGHTIES_ERA` / `MODERN_FILM_ERA` — the same
+line Mystery Theatre and Classic Cinema had already cut the crime shelf along,
+so nothing had to be re-drawn to use it.
+
+| Channel | Era | Films |
+|---|---|---:|
+| Cabes Classic Cinema | 1920–1979 | 328 |
+| Totally 80s | 1980–1989 (as its *theme*) | 296 |
+| Be Kind Rewind | 1980–present | 1,530 |
+
+Classic Cinema and Be Kind Rewind are **disjoint by construction** — no title
+can appear on both, which is the cleanest relationship two channels on this
+lineup have. Totally 80s and Be Kind Rewind genuinely share the 1980s, and that
+is kept by hours rather than by eviction: Totally 80s runs film 10:00–23:00, so
+Be Kind Rewind's 1980s shelf is scheduled 02:00–06:00 and 22:00–24:00 only, and
+the decade is unreachable from its afternoon and prime keys **at the key level**
+rather than by the grid remembering to avoid it.
+
+### Measuring it: `same_title_check.py`
+
+The collision report answers "are two channels airing the same *kind* of thing
+at once". `scripts/testing/same_title_check.py` — new this session — answers the
+literal question the rule asks: **can the same title be on two channels in the
+same hour?** It resolves both keys' Lucene queries against
+`library-movies.tsv` and intersects the title sets, so a pair whose sets are
+disjoint is cleared no matter how similar the keys look.
+
+That distinction matters immediately. The report flags Classic Cinema's
+`classic_crime_movie` against Mystery Theatre's `modern_crime_movie` every
+night as SAME GENRE, and it is harmless — the two were split at 1980 precisely
+so neither can draw the other's film. Meanwhile it could not see that Be Kind
+Rewind's `90s_movie` shared **29 titles** with Nightmare Theatre's
+`horror_movie` and aired opposite it nineteen times a fortnight.
+
+**The uncomfortable finding: the lineup already had 28 confirmed same-title
+collisions before this session**, none of them visible to any existing tool.
+"Zero shared film pools" was never the same claim as "no simultaneous airings",
+and the largest are between channels built long before this one:
+
+| Pair | Airings / 14d | Shared titles |
+|---|---:|---:|
+| Mystery Theatre `modern_crime` vs High Noon `modern_western` | 36 | 6 |
+| Mystery Theatre `modern_crime` vs Other Worlds `modern_scifi` | 22 | 10 |
+| High Noon `modern_western` vs Nightmare `modern_horror` | 21 | 2 |
+| Mystery Theatre `modern_crime` vs Nightmare `eighties_horror` | 20 | 14 |
+| Totally 80s `eighties_suspense` vs Nightmare `horror_movie` | 17 | 36 |
+
+None of that was introduced here and none of it is fixed here — it is the next
+session's work, and it now has a tool that can measure whether a fix worked.
+
+The two channels built this session went from 25 colliding pairs to 18 (42
+airings a fortnight, against ~8,300 total) by adding `NO_HORROR` / `NO_WESTERN`
+to the decade keys and moving the 1980s shelf off Mystery Theatre's 23:00–02:00
+hours. What remains is genuine cross-genre sharing with Other Worlds and
+Mystery Theatre, and it is **deliberately left**: eliminating it would mean
+excluding science fiction and crime from a general movie channel, which is most
+of what a video store stocks.
 
 ## Known gaps
 

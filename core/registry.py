@@ -14,6 +14,11 @@ HOLIDAYS: Dict[Tuple[int, int], str] = {
     (7, 4):   "JULY_4",
     (10, 31): "HALLOWEEN",
     (11, 11): "VETERANS_DAY",
+    # The 1963 first broadcast. Across the Pond runs a holiday schedule on it
+    # rather than a marathon: `find_active_marathon` returns nothing while
+    # `is_holiday_season` is true, and Thanksgiving's 14-day ramp covers 23
+    # November in most years, so a marathon on this date could never fire.
+    (11, 23): "DOCTOR_WHO_DAY",
     (12, 24): "CHRISTMAS_EVE",
     (12, 25): "CHRISTMAS",
     (12, 31): "NEW_YEARS_EVE",

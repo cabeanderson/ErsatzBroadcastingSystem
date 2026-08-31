@@ -269,6 +269,29 @@ and the channel aired something. What it aired was wrong.
 
 ## Open
 
+- [ ] 🟠 **`ChannelLogger` binds `sys.stdout` at handler construction, which
+  silently breaks multi-day log capture.** `__init__` builds
+  `logging.StreamHandler(sys.stdout)` behind `if not self._log.handlers`, so the
+  handler is created once per channel name and keeps whatever `sys.stdout` was
+  bound to at that moment. Any validation loop shaped like
+  `for d in dates: with redirect_stdout(buf): sim.simulate_day(d)` therefore
+  captures **day one only** — day one constructs the logger while the redirect is
+  active, and days 2..N write into that same first buffer while the caller reads
+  an empty one. A 365-day error scan built this way is a one-day scan, and it
+  reports clean because it saw nothing. Found 2026-08-31 while validating Across
+  the Pond, where it produced a confident "0 errors over 365 days" from a single
+  day of log. **Workaround:** attach a `logging.Handler` to the channel's named
+  logger — the prefix lowercased with brackets stripped, so `[POND]` is `pond`,
+  `[CARTOONS]` is `cartoons`, `[HIGH NOON]` is `high noon` — after one throwaway
+  `simulate_day` has constructed it. **Fix:** resolve `sys.stdout` at emit time
+  rather than construction, or put a `capture()` context manager on the class so
+  callers stop reaching for `redirect_stdout`.
+- [ ] 🟡 **Every local simulation appends to the same log file a real build
+  writes to.** `ChannelLogger` also attaches a `FileHandler` on
+  `LOG_DIR/<name>.log`, so `logs/pond.log` mixes simulator output with anything
+  the server wrote. Check timestamps before reading `logs/` as evidence that a
+  deployment happened.
+
 - [ ] 🟠 **Must See Thursday replays each episode two or three times a night.**
   `sitcoms.MUST_SEE_THURSDAY` is a four-item `DailyOrderedCollection` in a
   three-hour prime slot (20:00–23:00), so the collection wraps and each
