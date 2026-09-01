@@ -562,6 +562,93 @@ TV_REGISTRY = {
     "30_rock_tv": show_by_title("30 rock"),
     "community_tv": show_by_title("community"),
 
+    # --- CORNCOB TV -- comedy after the laugh track (registered 2026-09-01) ---
+    #
+    # Single-camera network, cable, streaming, sketch and alt. The line against
+    # Good Times is the studio audience, not the year: Freaks and Geeks (1999),
+    # The Larry Sanders Show (1992) and Mr. Show (1995) are single-camera with
+    # no laugh track and belong here, while Frasier (1993) and Will & Grace
+    # (1998) are multi-camera and stay there.
+    #
+    # `scrubs_tv` and `frasier_tv` between them are 516 episodes that no channel
+    # could reach before this pass -- neither had a key.
+
+    # The daytime spine: single-camera network sitcom.
+    "scrubs_tv": show_by_title("scrubs"),
+    "malcolm_tv": show_by_title("malcolm in the middle"),
+    "my_name_is_earl_tv": show_by_title("my name is earl"),
+    "arrested_development_tv": show_by_title("arrested development"),
+    "superstore_tv": show_by_title("superstore"),
+    "good_place_tv": show_by_title("the good place"),
+    "abbott_elementary_tv": show_by_title("abbott elementary"),
+    "schitts_creek_tv": show_by_title("schitt's creek"),
+    "kimmy_schmidt_tv": show_by_title("unbreakable kimmy schmidt"),
+    "better_off_ted_tv": show_by_title("better off ted"),
+    "ghosted_tv": show_by_title("ghosted"),
+    "freaks_and_geeks_tv": show_by_title("freaks and geeks"),
+    "mythic_quest_tv": show_by_title("mythic quest"),
+
+    # Cable half-hours.
+    "always_sunny_tv": show_by_title("it's always sunny in philadelphia"),
+    "curb_tv": show_by_title("curb your enthusiasm"),
+    "veep_tv": show_by_title("veep"),
+    "workaholics_tv": show_by_title("workaholics"),
+    "portlandia_tv": show_by_title("portlandia"),
+    "silicon_valley_tv": show_by_title("silicon valley"),
+    "reno_911_tv": show_by_title("reno 911!"),
+    "trailer_park_boys_tv": show_by_title("trailer park boys"),
+    "wilfred_tv": show_by_title("wilfred (us)"),
+    "baskets_tv": show_by_title("baskets"),
+    "atlanta_tv": show_by_title("atlanta"),
+    "man_seeking_woman_tv": show_by_title("man seeking woman"),
+    "jim_gaffigan_tv": show_by_title("the jim gaffigan show"),
+    "red_green_tv": show_by_title("the red green show"),
+    "penn_teller_tv": show_by_title("penn & teller: bull!"),
+    "mr_inbetween_tv": show_by_title("mr inbetween"),
+    "reservation_dogs_tv": show_by_title("reservation dogs"),
+    "future_man_tv": show_by_title("future man"),
+
+    # Sketch and alt.
+    "mr_show_tv": show_by_title("mr. show"),
+    "the_state_tv": show_by_title("the state"),
+    "strangers_with_candy_tv": show_by_title("strangers with candy"),
+    "key_and_peele_tv": show_by_title("key & peele"),
+    "chappelles_show_tv": show_by_title("chappelle's show"),
+    "tim_and_eric_tv": show_by_title("tim and eric awesome show, great job!"),
+    "itysl_tv": show_by_title("i think you should leave with tim robinson"),
+    "nathan_for_you_tv": show_by_title("nathan for you"),
+    "detroiters_tv": show_by_title("detroiters"),
+    "insomniac_tv": show_by_title("insomniac with dave attell"),
+    "food_party_tv": show_by_title("food party"),
+    "the_guild_tv": show_by_title("the guild"),
+    "john_wilson_tv": show_by_title("how to with john wilson"),
+    "larry_sanders_tv": show_by_title("the larry sanders show"),
+    "conchords_tv": show_by_title("flight of the conchords"),
+
+    # The Limited Series bench -- short and often serialized, which is what the
+    # slot is for (G6). None of these can strip; each is a season of Sundays.
+    "party_down_tv": playback_order(show_by_title("party down"), force="Chronological"),
+    "enlightened_tv": playback_order(show_by_title("enlightened"), force="Chronological"),
+    "vice_principals_tv": playback_order(show_by_title("vice principals"), force="Chronological"),
+    "eastbound_tv": show_by_title("eastbound & down"),
+    "wet_hot_tv": playback_order(show_by_title("wet hot american summer"), force="Chronological"),
+    "the_rehearsal_tv": show_by_title("the rehearsal"),
+    "the_curse_tv": show_by_title("the curse"),
+    "jury_duty_tv": show_by_title("jury duty"),
+    "the_studio_tv": show_by_title("the studio"),
+    "chair_company_tv": show_by_title("the chair company"),
+    "north_of_north_tv": show_by_title("north of north"),
+    "bad_thoughts_tv": show_by_title("bad thoughts"),
+    "history_world_2_tv": show_by_title("history of the world: part ii"),
+    "other_space_tv": show_by_title("other space"),
+    "people_of_earth_tv": show_by_title("people of earth"),
+
+    # Shared with Cartoon Network's Adult Swim, which airs them 20:00-23:00
+    # Tue/Thu, 23:00-24:00 Sunday and 00:00-02:00 Monday. Corncob runs them as
+    # syndication in daylight, the split channel-coverage.md prescribes.
+    "eric_andre_tv": show_by_title("the eric andre show"),
+    "steve_brule_tv": show_by_title("check it out! with dr. steve brule"),
+
     # --- 80s CHANNEL SPECIFIC ---
     #
     # Three keys that used to live here were byte-identical to a general key

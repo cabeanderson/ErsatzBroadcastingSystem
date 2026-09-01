@@ -42,7 +42,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | — | Disney | Disney Afternoon, ABC mornings, Star Wars animation | yes — **built**, channel number pending |
 | 240 | Travelers Table | cooking — **+ nature docs** | no |
 | 241 | Makers Corner | DIY & craft | no |
-| 242 | Corncob TV | ~~absurd comedy~~ → **broad comedy + the modern sitcom** — single-camera, cable, streaming, sketch and alt, 2000+ | no — **next to build**, brief settled 2026-09-01 |
+| 242 | Corncob TV | **comedy after the laugh track** — single-camera, cable, streaming, sketch and alt | yes — **built** 2026-09-01 |
 | 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
 | 244 | Nightmare Theatre | horror, TV + film | yes — **built**. The film is the spine: 242 features, 17 h/day |
 | 246 | The Beat | **music videos only** | no |
@@ -52,7 +52,6 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 
 | Channel | Pool | Shows | Notes |
 |---|---:|---:|---|
-| **Corncob TV** (242) | 73 shows / ~4,600 eps | 73 | **Next.** Brief widened 2026-09-01 when Good Times was rebuilt on the laugh-track line: Corncob takes everything on the far side of it. ~70-day cycle at 24 h/day. **It has a dependency: The Office, Parks and Recreation, Community and 30 Rock left Good Times for Corncob's Thursday and are on no channel until it is built.** The alt shelf has nothing before 1982 and is two-thirds post-2000, so it splits from Good Times on era as cleanly as on tone |
 | **Fantasy** | 238 films / 40 shows | 40 | Registry and `library/fantasy.py` built 2026-08-30; **channel deliberately deferred**. Content is there — 333 fantasy films, more than horror |
 | ~~Boomerang~~ | 1 show | 1 | **Closed — see below.** Disk problems fixed; the premise is what is gone |
 
@@ -549,6 +548,110 @@ Saturday night is three of five: All in the Family and The Carol Burnett Show
 are both missing, and All in the Family is the single most valuable acquisition
 on the list, since Good Times is a Norman Lear spin-off airing without the show
 it came from.
+
+### Corncob TV — built (2026-09-01)
+
+**Identity: comedy after the laugh track.** Single-camera, cable, streaming,
+sketch and alt. The line against Good Times is the **studio audience, not the
+year** — Freaks and Geeks (1999), The Larry Sanders Show (1992) and Mr. Show
+(1995) are single-camera with no audience and are here; Frasier (1993) and Will
+& Grace (1998) are multi-camera and are not. Between them the two channels hold
+the whole comedy shelf and **neither is defined by what the other is not** (F4).
+The split was forced by arithmetic: one channel holding both is 128 shows and
+~4,700 hours, a 195-day cycle, six times slower than F6's floor.
+
+**Axis: the clock gets stranger.** Nightmare Theatre's shape in another
+register. Morning is the network single-camera sitcom, afternoon the office
+comedies, evening cable, and the small hours the far end of the channel. Era is
+not the axis here and does not need to be.
+
+| Slot | | |
+|---|---|---|
+| 00–02 | The Deep End | the newest and strangest — where a six-episode show is an asset |
+| 02–06 | The Vault | the alt back catalogue; Red Green (301) and Penn & Teller (89) carry it |
+| 06–08 | Sign-On | the gentlest half-hours on the channel |
+| 08–10 | The Morning Bench | three pools, a month at a time |
+| 10–12 | The Syndication Hour | the channel's own register, in daylight |
+| 12–14 | The Noon Hour | one show, one day (G3) |
+| 14–17 | The Workplace | the office comedies |
+| 17–20 | The Cable Hour | four pools, a month at a time, offset from the morning |
+| 20–23 | the named night | |
+| 23–24 | The Late Shift | sketch — and the Limited Series on Sunday |
+
+**The named nights.** Seven comedy traditions, one a night:
+
+| Mon | **The Gang** | It's Always Sunny · Workaholics · Trailer Park Boys |
+|---|---|---|
+| Tue | **Single Camera** | Malcolm · Scrubs · Arrested Development · My Name Is Earl |
+| Wed | **The Cringe** | Curb · Nathan For You · The Rehearsal · Jury Duty |
+| Thu | **Must See Thursday** | The Office · Parks and Rec · 30 Rock · Community |
+| Fri | **Corncob After Dark** | Tim and Eric · Detroiters · I Think You Should Leave · The Chair Company |
+| Sat | **Saturday Night Sketch** | Mr. Show · The State · Key & Peele · Chappelle's Show · Strangers with Candy |
+| Sun | **HBO Sunday** | Larry Sanders · Veep · Silicon Valley · Flight of the Conchords · Eastbound & Down |
+
+Friday is the Tim Robinson lineage read as a night, and it is the channel's own
+name — Corncob TV is a Tim and Eric segment.
+
+**Must See Thursday, and why it is not an appointment.** These four came off
+Good Times, where they were four stacked `annual_show` appointments in one slot
+and the standing example for G5. Here they are a plain ordered `Block` of
+content keys. That is the whole fix and it is worth stating as a rule: **an
+`annual_show` Program pins a season and episode, so a collection that wraps
+inside its slot replays it; a content key advances.** Four items in a
+three-hour slot wrap twice either way — with keys, that is simply the next
+episode. Use the appointment machinery when you want a *season a year*, not
+when you want a *named night*.
+
+**The Limited Series (Sunday, 23:00).** One short show a season, chronological,
+about two episodes a Sunday: Party Down in winter, Enlightened in spring, Wet
+Hot American Summer in summer, Vice Principals in autumn. This is G6 used
+deliberately — the shelf is full of 16-to-22-episode shows that cannot strip
+and are too serialized for a tune-in slot, and a season of Sundays is exactly
+their size. Measured over three years: 70–78 airings each, so every one gets a
+full season and a short repeat at the tail. Registered `Chronological` (G8),
+because a limited series shuffled is not a limited series.
+
+**Counts.** 65 shows, ~4,200 episodes, ~1,530 hours — a 64-day cycle at 24
+hours a day.
+
+**Simulation.** 365 continuous days, 17,520 programme plays, 48 slots every
+single day, no gaps, overlaps, circuit breakers or unresolved programs. Three
+years confirms each named night on its own weekday, all four Limited Series
+shows cycling, and zero violations of the one hours rule below.
+
+**The one sharing rule.** Cartoon Network's Adult Swim airs The Eric Andre Show
+and Check It Out! with Dr. Steve Brule inside `AS_ORIGINALS_B`: 20:00–23:00
+Tuesday and Thursday, 23:00–24:00 Sunday, 00:00–02:00 Monday.
+[channel-coverage.md](channel-coverage.md) already prescribed the C2 rung-1
+split for exactly these — Adult Swim first-run, Corncob syndication — and The
+Syndication Hour at 10:00–12:00 is it. Adult Swim is not on air at that hour on
+any day, so **the split holds by the clock rather than by the grid remembering
+it** (C3). Both channels carry the same ten-slot map, which is deliberate: it
+makes that fact readable off either file instead of needing a simulation.
+
+Everything else is unshared. The British comedies are Across the Pond's, the
+horror-comedies (What We Do in the Shadows, Santa Clarita Diet, Ash vs Evil
+Dead, Garth Marenghi's Darkplace) are Nightmare Theatre's, and Monk, Psych,
+Bored to Death and Elsbeth are Mystery Theatre's. The collision report shows
+**zero new pairings** at any tier after this channel went in.
+
+**No bumpers.** There are no Corncob assets on disk. Adult Swim bumpers exist
+and are Cartoon Network's; borrowing them would put its branding on a channel
+it does not own, which is the exact mistake G12 was written for. Ships silent.
+
+**What the build found.** The comedy shelf was far larger than any channel
+could see. **Scrubs (243 episodes) and Frasier (273) had no registry key at
+all** between them — `key_census` scores keys that exist, so a show with no key
+is invisible to it, and the only way to find them was diffing
+`library-tv.tsv` against every title named anywhere in `library/`. Sixty-four
+keys were registered for this channel; twelve more went to Good Times in the
+same pass.
+
+**What it went without.** The Larry Sanders Show opens HBO Sunday with **13 of
+its 89 episodes** on disk — the one demonstrably partial series in the roster.
+Saturday Night Sketch is the thinnest named night at five shows, and the
+channel has no variety register at all. See
+[acquisitions.md](acquisitions.md), which now opens with a ranked shortlist.
 
 ### Travelers Table
 Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.

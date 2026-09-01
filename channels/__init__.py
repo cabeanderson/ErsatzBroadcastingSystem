@@ -6,6 +6,7 @@ from . import be_kind_rewind
 from . import british
 from . import cartoon_network
 from . import classic_movies
+from . import corncob
 from . import detective
 from . import disney
 from . import eighties
@@ -20,6 +21,7 @@ __all__ = [
     'british',
     'cartoon_network',
     'classic_movies',
+    'corncob',
     'detective',
     'disney',
     'eighties',
