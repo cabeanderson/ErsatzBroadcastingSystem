@@ -36,7 +36,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 144 | Mystery Theatre | detective / procedural | yes — **refined** |
 | 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
 | 164 | Japanorama | anime | no |
-| 180 | Totally 80s | 80s TV — **stays 80s** | yes |
+| 180 | Totally 80s | 80s TV — **stays 80s** | yes — **designed** 2026-09-01 |
 | 190 | Good Times | sitcoms | yes |
 | — | Nick (+ Nick at Nite) | Nicktoons, WB animation, classic TV | yes — **built**, channel number pending |
 | — | Disney | Disney Afternoon, ABC mornings, Star Wars animation | yes — **built**, channel number pending |
@@ -381,6 +381,63 @@ Simulated over 365 continuous days: **no gaps, no circuit breakers, no unresolve
 
 **Still without:** any panel show, which remains the single most fixable identity gap on the lineup. See [acquisitions.md](acquisitions.md).
 
+### Totally 80s — designed
+
+The last channel on the default timeslot preset, and the last one never given a
+design pass. Redesigned 2026-09-01. Identity: **the 1980s as a broadcast day** —
+not a decade-tagged shuffle but a grid that reads like a station that only ever
+carried one decade.
+
+    00-02  Music video          02-06  Music video
+    06-08  Cartoons             08-10  Cartoons / sitcoms (school year)
+    10-12  The genre wheel      12-14  THE CULT MATINEE
+    14-17  The genre wheel      17-20  The syndication strip
+    20-23  PRIME                23-24  The Sketch Hour
+
+| Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+|---|---|---|---|---|---|---|
+| Action Night | Comedy Gold | P.I. Wednesday | **Must See TV** | Friday Night Movies | Sci-Fi Saturday | The Sunday Film |
+
+**What the pass actually found.** The six empty content keys were the known
+defect and the smallest of the four:
+
+- **Four hours a day were never programmed.** The schedule named no `early`
+  (06:00–08:00) and no `noon` (12:00–14:00), so both fell to
+  `fallback_content`. With `night` and `overnight` already on music video,
+  **eleven of twenty-four hours were `eighties_music_videos`.** Now six.
+- **`evening` and `prime` were handed the same Block object**, so every themed
+  night was a two- or three-item collection stretched across 17:00–23:00.
+  Monday read as Knight Rider on a loop before anyone noticed Airwolf was
+  missing. Prime is 20:00–23:00 now and 17:00–20:00 is its own strip.
+- **`night: (23, 2)` wrapped midnight** — the replay bug Cartoon Network, Nick,
+  Disney and High Noon each carry a custom map to avoid. Split into
+  `late: (23, 24)` and `night: (0, 2)`.
+- **Six content keys resolved to nothing.** See
+  [acquisitions.md](acquisitions.md); all six are gone and the blocks are
+  rebuilt on what the library holds.
+
+**The cult movie is at noon, and that is not a whim.** `eighties_cult_movie` is
+Be Kind Rewind's between 22:00 and 06:00 — Cult Corner and The Late Show both
+draw it — so a midnight cult slot here would be the same pool on two channels
+in the same hour. Be Kind Rewind holds the 12:00–18:00 afternoon open by
+keeping the 1980s out of `DECADE_AFTERNOON`, and this is the channel taking
+those hours up. The hours rule working in both directions for the first time.
+
+**Three duplicate registry keys were retired.** `eighties_sitcom_cheers`,
+`eighties_sitcom_full_house` and `eighties_action_knight_rider` were
+byte-identical to `cheers_tv`, `full_house_tv` and `knight_rider_tv`. That is
+not cosmetic: section 1 of the collision report groups by *key name*, so one
+pool under two names reads as two pools — Totally 80s and Good Times have been
+sharing Cheers and Full House for as long as both have existed and the report
+never said so. It says so now.
+
+**Weekend evening is a separate collection from the weekday strip**, because
+Good Times declares no `evening` in its `WEEKEND` schedule and those three
+hours fall through to `fallback_content` — `LATE_NIGHT_SYNDICATION`, which
+holds Cheers, The Wonder Years, Married... with Children and Coach. Four titles
+that are unreachable here on Saturday and Sunday no matter how clear the
+declared grid looks. Worth checking for on the other channels.
+
 ### Travelers Table
 Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.
 
@@ -521,10 +578,21 @@ so nothing had to be re-drawn to use it.
 Classic Cinema and Be Kind Rewind are **disjoint by construction** — no title
 can appear on both, which is the cleanest relationship two channels on this
 lineup have. Totally 80s and Be Kind Rewind genuinely share the 1980s, and that
-is kept by hours rather than by eviction: Totally 80s runs film 10:00–23:00, so
-Be Kind Rewind's 1980s shelf is scheduled 02:00–06:00 and 22:00–24:00 only, and
-the decade is unreachable from its afternoon and prime keys **at the key level**
-rather than by the grid remembering to avoid it.
+is kept by hours rather than by eviction. Be Kind Rewind's 1980s shelf is
+scheduled 00:00–06:00 and 22:00–24:00 only, and the decade is unreachable from
+its afternoon and prime keys **at the key level** rather than by the grid
+remembering to avoid it. Totally 80s runs film 10:00–17:00 and, on Friday and
+Sunday, 20:00–23:00.
+
+**Updated 2026-09-01.** Totally 80s used to run film to 23:00 seven nights;
+after its design pass it runs film across the middle of the day and on two
+prime nights, and the 17:00–20:00 hours it used to fill with film are now a
+television strip. **One hour is still shared:** Friday and Sunday prime run to
+23:00 against Be Kind Rewind's Late Show, which starts at 22:00 and draws
+`eighties_cult_movie` and `80s_pure_movie`. That hour predates the redesign and
+is unchanged by it. Closing it means moving The Late Show or splitting Totally
+80s' prime; it is recorded in [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) and was
+deliberately left alone rather than fixed from inside an 80s-channel pass.
 
 ### Measuring it: `same_title_check.py`
 

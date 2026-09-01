@@ -5,6 +5,65 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
 
 ## Resolved
 
+### 2026-09-01 — what the live server said that the offline tools could not
+
+Found by reading `iptv/xmltv.xml` off the running box rather than by simulating.
+**Not one of these is a query defect.** `key_census` scores all 485 keys and
+every key belonging to the affected channels passes; `validate_titles` is clean
+on all four. The offline tools ask "can the library satisfy this query", and the
+answer was yes in every case. The question they cannot ask is "is the right
+thing actually on the air".
+
+- ~~🔴 **Nightmare Theatre aired the Good Times sitcom lineup.** For a window on
+  2026-08-31 the horror channel carried 171 sitcom episodes — Bob Newhart, Mary
+  Tyler Moore, Fresh Prince, M\*A\*S\*H, Sanford and Son. Its 34 titles were a
+  **100% subset** of Good Times' 36. A frame pulled from the live HLS stream at
+  20:44 showed 30 Rock and matched the guide exactly, so stream and EPG agreed
+  with each other and both were wrong.~~ Fixed by a playout refresh; the channel
+  now carries 40 programmes over 35 titles, all horror. **The code was never at
+  fault** — the local simulation for the same build scheduled correct horror
+  (Tales from the Crypt, The Legacy, Hannibal, Twin Peaks, Ash vs Evil Dead).
+  The defect lived entirely in ErsatzTV's playout wiring, which is in the
+  root-owned SQLite DB and invisible to everything in `scripts/`.
+
+  **The lesson worth keeping:** a channel can be perfectly configured, pass every
+  offline check, and still broadcast another channel's content. Title *diversity*
+  is not a health signal — 34 distinct titles looked healthy and was the bug.
+  Only reading the actual titles catches this.
+
+- ~~🟠 **High Noon was defined but never on air.** Channel 243 existed in
+  `/api/channels` (id 20) yet appeared in no feed.~~ Fixed in two steps, which is
+  the useful part: enabling the channel put it in `channels.m3u` but **not** in
+  `xmltv.xml`, and it took a separate EPG enable plus a build before it
+  appeared. It now carries 84 programmes over 16 titles — Gunsmoke, Bonanza,
+  The Rifleman, Wanted: Dead or Alive, Rawhide. See the channel-visibility
+  ladder in [ERSATZTV_API.md](ERSATZTV_API.md); the three states are distinct and
+  a channel can sit in any of them.
+
+- ~~🟡 **Logs grew without bound, and it looked like an infinite loop when it was
+  not.** `logs/pond.log` reached 88MB with 983,457 lines and only 2,032 distinct
+  ones, repeating `Item: Unnamed Item (17:00-20:00)` / `Fill Strategy: 'yield'.
+  Stopping.` at a single timestamp.~~ There was no spin. Counting structure
+  rather than repetition: 3,749 day-headers over 36,887 blocks and 258,977
+  programmes is **~7 programmes per block and ~10 blocks per day, which is
+  normal**. The file held **eleven complete runs** stacked between 18:07 and
+  18:16, because `logging.FileHandler` opens in append mode and never rotates.
+  The identical lines were consecutive ordinary days sharing a wall-clock second.
+
+  Fixed in two places. `core/logger.py` now uses a `RotatingFileHandler` with
+  `maxBytes=0` and an explicit rollover at construction — nothing rotates *during*
+  a run, so one build is always one file, but each run starts clean and the last
+  `LOG_BACKUP_RUNS` (default 3) are kept as `.1`/`.2`/`.3`. And
+  `library/queries.py:196` now summarises the seasonal tag injection: the OR-chain
+  was 409 characters a line, 55,148 times, 20.5MB per file — the single largest
+  byte category, larger than the programme lines. A/B on the same one-day build
+  measured **31,083 → 24,990 bytes, 19% smaller**, with the full query still
+  available at DEBUG behind `LOG_FULL_TAG_QUERIES`.
+
+  **Diagnostic note:** repetition alone is not evidence of a loop. Divide by the
+  structural counts — days, blocks, programmes — before concluding anything.
+  This one cost a wrong call in the first pass of the audit.
+
 ### 2026-08-30 — content-key and schedule-shape bugs
 
 Found by the collision report and the library census, both added this session.
@@ -286,11 +345,74 @@ and the channel aired something. What it aired was wrong.
   `simulate_day` has constructed it. **Fix:** resolve `sys.stdout` at emit time
   rather than construction, or put a `capture()` context manager on the class so
   callers stop reaching for `redirect_stdout`.
-- [ ] 🟡 **Every local simulation appends to the same log file a real build
-  writes to.** `ChannelLogger` also attaches a `FileHandler` on
-  `LOG_DIR/<name>.log`, so `logs/pond.log` mixes simulator output with anything
-  the server wrote. Check timestamps before reading `logs/` as evidence that a
-  deployment happened.
+- [ ] 🟡 **A local simulation still writes to the same log file name a real
+  build would.** `ChannelLogger` attaches its file handler to
+  `LOG_DIR/<name>.log` regardless of who is running. The unbounded-growth half of
+  this was fixed 2026-09-01 (see Resolved) — each run now rotates, so a file
+  holds one run rather than eleven — but rotation makes the *provenance* problem
+  slightly worse, not better: a local sim run now pushes the previous file to
+  `.1`, so a build's log can be aged out by simulations. **Check timestamps
+  before reading `logs/` as evidence that a deployment happened**, and remember
+  that local logs were never proof of a real build. The durable evidence is
+  `iptv/xmltv.xml` on the server.
+
+- [ ] 🟡 **Casablanca (1943) airs on Be Kind Rewind, which is 1980-to-now.**
+  Found 2026-08-31 by cross-referencing the live EPG against
+  `reference/library-movies.tsv`. It is the only violation in the channel's
+  35-film lineup — every other title the manifest can date is 1980+ — and the
+  channel is otherwise clean (35 films, 35 distinct titles, zero repeats over a
+  68-hour span). The era line is Cabes Classic Cinema pre-1980, Be Kind Rewind
+  1980+, so this belongs on CCC.
+
+- [ ] 🟠 **`the_office_tv` matches two different shows, and Across the Pond is
+  airing one of them.** `key_census` flags it BROAD: two shows, 224 episodes,
+  both titled "The Office". The British channel currently schedules it, and
+  nothing in the key distinguishes the UK original from the US remake — this is
+  the phrase-match trap `library/horror.py` documents, and the fix is the same,
+  bound it by year. Until then Across the Pond can serve the American version.
+
+- [ ] 🟠 **Nothing checks for shows that are on disk and have no registry key.**
+  `key_census` resolves every key in the registry, so a show no key names is
+  invisible to it — it is not an empty key, it is an absent one. Diffing
+  `reference/library-tv.tsv` against every title mentioned anywhere in
+  `library/` found **five 1980s shows in this state**: Murphy Brown (244
+  episodes), Roseanne (221), In Living Color (126), The Kids in the Hall (101),
+  Pee-wee's Playhouse (46) and Police Squad! (6). All six are registered and on
+  Totally 80s as of 2026-09-01, but **the same diff has not been run for any
+  other era or channel**, and the 1980s were only checked because that channel
+  was being rebuilt. The one-liner is in the 2026-09-01 session notes; it wants
+  to be a tool next to `key_census`. Also note the four PBS/DIY shows the same
+  diff surfaced — The Joy of Painting (403), The Woodwright's Shop (479), This
+  Old House (234), The New Yankee Workshop (151) — 1,267 episodes with no key
+  and no channel, which is most of a daytime schedule for Travelers Table.
+
+- [ ] 🟡 **Good Times declares no `evening` in its `WEEKEND` schedule.**
+  `channels/sitcoms.py:53` covers overnight, early, morning, midday, noon,
+  afternoon, prime and night, and skips `evening` — so 17:00–20:00 on Saturday
+  and Sunday falls through to `fallback_content`, which is
+  `sitcoms.LATE_NIGHT_SYNDICATION`. The hours are not dead, but they are
+  unprogrammed, and the pool they land in is the late-night one: Cheers, The
+  Wonder Years, Married... with Children, Coach, Newsradio, Drew Carey, Wings,
+  Mad About You, 3rd Rock, The Nanny. **Found from the outside**, when Totally
+  80s' new weekend evening strip collided on Married... with Children and The
+  Wonder Years against a channel whose declared grid said those hours were
+  empty. Totally 80s works around it with a separate `WEEKEND_EVENING`
+  collection; the fix belongs on Good Times. Worth checking every channel for
+  the same shape — a named slot missing from one day-group reads as deliberate
+  and is usually an omission.
+
+- [ ] 🟡 **1980s film is on two channels between 22:00 and 23:00 on Friday and
+  Sunday.** Totally 80s' prime runs to 23:00 and both those nights are films
+  (`eighties_blockbuster_movie`, `eighties_drama_movie`); Be Kind Rewind's The
+  Late Show starts at 22:00 and draws `eighties_cult_movie` and
+  `80s_pure_movie`. The era line puts the decade on Totally 80s by day and Be
+  Kind Rewind from 22:00, and this is the one hour where that is not true.
+  Pre-existing — Totally 80s' prime ran 17:00–23:00 before the 2026-09-01
+  redesign, so the overlapping hour is the same one — and deliberately not
+  fixed there, because both candidate fixes (move The Late Show, or split
+  Totally 80s' prime so film nights end at 22:00) change a channel the pass was
+  not scoped to. `same_title_check` scores it POSSIBLE rather than CONFIRMED
+  only because `tag:cult` and `tag:blockbuster` are not columns in the TSV.
 
 - [ ] 🟠 **Must See Thursday replays each episode two or three times a night.**
   `sitcoms.MUST_SEE_THURSDAY` is a four-item `DailyOrderedCollection` in a
