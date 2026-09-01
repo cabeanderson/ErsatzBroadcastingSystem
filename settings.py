@@ -48,3 +48,14 @@ ENABLE_MARATHONS = False
 # Logging
 LOG_LEVEL = "INFO"
 VERBOSE_LOGGING = False
+
+# Each run starts a fresh log file; the previous LOG_BACKUP_RUNS runs are kept
+# alongside it as .1, .2, ... Without this the handler appends forever -- eleven
+# stacked runs is what turned pond.log into 88MB and made one build's output
+# impossible to read in isolation.
+LOG_BACKUP_RUNS = 3
+
+# The seasonal tag injector builds OR-chains a few hundred characters long, and
+# logs one per injection. At INFO the line is summarised; set this True to log
+# the full query (it costs about 20MB per channel per run).
+LOG_FULL_TAG_QUERIES = False

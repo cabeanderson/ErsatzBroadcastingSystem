@@ -7,7 +7,7 @@ Shared by sources and marathons to prevent circular dependencies.
 import re
 import hashlib
 from typing import Optional, Union, Dict, Tuple, Any
-from scripts.settings import DEFAULT_ORDER
+from scripts.settings import DEFAULT_ORDER, LOG_FULL_TAG_QUERIES
 
 # Per-run cache of injected tag queries: (base_key, tag_query, suffix) -> (key, query, order).
 # Reset at the start of each build via reset_injection_cache() so it never grows
@@ -193,7 +193,16 @@ def inject_tag(
         new_query = f"({base_query}) AND {tag_query}"
         resolver.register_dynamic_query(new_key, new_query, order)
         if logger:
-            logger.info(f"   💉 Injected tag '{tag_query}' into '{base_key}' -> '{new_key}'")
+            # The tag chain runs to a few hundred characters and repeats on
+            # every injection -- 20MB per channel per run, the single largest
+            # thing in the log. The suffix already names the season, so summarise
+            # at INFO and keep the full query for a debug run.
+            if LOG_FULL_TAG_QUERIES:
+                logger.info(f"   💉 Injected tag '{tag_query}' into '{base_key}' -> '{new_key}'")
+            else:
+                n_tags = tag_query.count(" OR ") + 1
+                logger.info(f"   💉 Injected {n_tags} tags into '{base_key}' -> '{new_key}'")
+                logger.debug(f"   💉 tag query: {tag_query}")
         _INJECTION_CACHE[cache_key] = (new_key, new_query, order)
         return new_key
     

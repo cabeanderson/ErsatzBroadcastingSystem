@@ -2,8 +2,9 @@
 Logging utility for the framework.
 """
 import logging
+import logging.handlers
 import sys
-from scripts.settings import VERBOSE_LOGGING, LOG_DIR, LOG_LEVEL
+from scripts.settings import VERBOSE_LOGGING, LOG_DIR, LOG_LEVEL, LOG_BACKUP_RUNS
 
 class ChannelLogger:
     """Standardized logger for channel events."""
@@ -36,10 +37,25 @@ class ChannelLogger:
             c_handler.setFormatter(c_format)
             self._log.addHandler(c_handler)
             
-            # File Handler - Detailed with timestamps
+            # File Handler - Detailed with timestamps.
+            #
+            # One file per run, not one file forever. `logging.FileHandler`
+            # opens in append mode and never rotates, so every simulation and
+            # every build stacked into the same file: pond.log held eleven runs
+            # and 88MB, and the repetition read like an infinite loop when it
+            # was really eleven ordinary builds end to end.
+            #
+            # maxBytes stays 0 so nothing rotates *during* a run -- a single
+            # build always lands in one file. The rollover is issued once, here,
+            # so `pond.log` is always the current run and `pond.log.1` the one
+            # before it.
             try:
                 log_file = LOG_DIR / f"{clean_name}.log"
-                f_handler = logging.FileHandler(log_file)
+                f_handler = logging.handlers.RotatingFileHandler(
+                    log_file, maxBytes=0, backupCount=LOG_BACKUP_RUNS
+                )
+                if LOG_BACKUP_RUNS > 0 and log_file.exists() and log_file.stat().st_size > 0:
+                    f_handler.doRollover()
                 f_format = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
                 f_handler.setFormatter(f_format)
                 self._log.addHandler(f_handler)

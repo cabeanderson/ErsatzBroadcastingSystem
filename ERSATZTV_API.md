@@ -197,6 +197,82 @@ return `PlayoutContext`. [`playout.py:46`](playout.py) discards it and issues a
 separate `get_context`, doubling HTTP round trips on the hottest path in the
 framework — against a 30-second build timeout.
 
+## Reading the live server, outside a build
+
+Everything above is scoped to `/api/scripted/playout/build/{buildId}/…` and only
+exists while a build is running. Separately, the server exposes a small set of
+**unauthenticated read endpoints** that need no build, and they are the only way
+to check what a channel actually aired. Verified 2026-09-01 against ErsatzTV
+`26.3.0-docker-amd64`, `apiVersion 3`, at `<ersatztv-host>:8409`.
+
+| Endpoint | Type | Use |
+|---|---|---|
+| `/api/channels` | JSON | Channel roster — id, number, name, ffmpeg profile, streaming mode |
+| `/api/version` | JSON | Build and API version |
+| `/iptv/channels.m3u` | M3U | The **enabled** lineup |
+| `/iptv/xmltv.xml` | XML | Every scheduled programme, with titles and start/stop. ~20MB |
+| `/iptv/channel/{number}.m3u8` | HLS | Live stream, frame-grabbable with ffmpeg |
+| `/iptv/logos/gen?text=…` | PNG | Generated channel logo |
+
+**A 200 proves nothing.** ErsatzTV serves the Blazor SPA shell for *any*
+unmatched path, so `/api/playouts`, `/api/health`, `/api/collections` and any
+invented name all return `200` with a ~39KB HTML body. There is no `/api/search`
+and no OpenAPI document served at runtime. The only reliable discriminator is
+`content-type`: `application/json` is real, `text/html` is the catch-all. Probe
+with `curl -o /dev/null -w '%{http_code} %{content_type}'`, never status alone.
+
+### The channel-visibility ladder
+
+A channel occupies one of three states, and the feeds distinguish them. This
+cost a wrong diagnosis on 2026-08-31 — m3u presence was read as proof of a
+playout, and it is not.
+
+| State | `/api/channels` | `channels.m3u` | `xmltv.xml` |
+|---|---|---|---|
+| Defined but disabled | yes | no | no |
+| Enabled, playout not built | yes | **yes** | no |
+| Enabled and built | yes | yes | **yes** |
+
+So: **m3u means tunable, xmltv means scheduled.** A channel in the m3u and
+absent from the xmltv has no playout items — it needs an EPG enable and a build,
+which is exactly what High Noon needed on 2026-09-01. A channel in
+`/api/channels` and in neither feed is disabled (Wild Horizons) or never
+attached.
+
+### What this is actually for
+
+`key_census` and `validate_titles` resolve against the on-disk manifests and
+**cannot see the ErsatzTV index** — both say so in their own docstrings. They
+answer "can the library satisfy this query". The EPG answers the stricter
+question, "is the right thing on the air", and the two came apart badly on
+2026-08-31 when Nightmare Theatre aired the Good Times lineup while every
+relevant key resolved perfectly.
+
+Useful checks, none of which need more than `curl`:
+
+- **Content correctness.** Pull `xmltv.xml`, read the real titles per channel,
+  compare against what the channel is *for*. Caught the sitcoms-on-a-horror-
+  channel defect and the Casablanca era slip.
+- **Playout existence.** Compare `/api/channels` against the m3u and the xmltv
+  using the ladder above.
+- **Differential snapshots.** Two pulls minutes apart show what a rebuild
+  changed — this is what proved the Nightmare regression rather than suggesting it.
+- **Span-normalised health.** Raw programme counts are not comparable across
+  channels, because playouts are built to very different horizons (4071h for
+  Cabes Classic Cinema against 67h for Across the Pond on the same pull). Use
+  programmes per hour of span, and unique titles, and read the titles themselves
+  before calling a channel healthy.
+- **Visual confirmation.** `ffmpeg -i http://…/iptv/channel/{n}.m3u8 -frames:v 1`
+  grabs a real frame. It opens a transcode session on the server, so use it
+  sparingly.
+
+**Still out of reach:** the playout-to-script wiring lives in the SQLite DB under
+`/srv/appdata/ersatztv`, which is `drwx------ root root`, and the SSH account has
+no passwordless sudo and no docker access. Mis-wiring can be *detected* from the
+EPG but only *fixed* in the UI. HTTP writes were deliberately not probed —
+`OPTIONS` returns no `Allow` header (catch-all again), and a malformed request
+against an undiscovered write endpoint could create or destroy a channel.
+
 ## Mock fidelity
 
 `scripts/testing/simulator.py` was aligned to the semantics above on
