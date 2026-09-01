@@ -513,6 +513,38 @@ TV_REGISTRY = {
     "married_children_tv": show_by_title("married... with children"),
     "dinosaurs_tv": show_by_title("dinosaurs"),
 
+    # Registered 2026-09-01 for the Good Times rebuild. Every one was on disk
+    # and reachable by no channel: the sitcom shelf the channel actually has is
+    # roughly twice the size of the roster it was scheduling. Frasier alone is
+    # 273 episodes, which is more than any single show the channel already ran.
+    #
+    # `golden_girls_tv` and `night_court_tv` are renames, not new keys -- they
+    # were `eighties_sitcom_golden_girls` and `eighties_sitcom_night_court`,
+    # Totally 80s-specific names for two shows that are now on two channels.
+    # Same cleanup `eighties_sitcom_cheers` -> `cheers_tv` got: a pool under a
+    # channel-specific name reads to the collision report as that channel's
+    # private pool, and stops reading as shared the moment it is shared.
+    "frasier_tv": show_by_title("frasier"),
+    "golden_girls_tv": show_by_title("the golden girls"),
+    "night_court_tv": show_by_title("night court"),
+    "spin_city_tv": show_by_title("spin city"),
+    "just_shoot_me_tv": show_by_title("just shoot me!"),
+    "will_and_grace_tv": show_by_title("will & grace"),
+    # G10 applied to a show rather than a film: `show_title:"martin"` is a
+    # phrase match that also returns Doc Martin -- 83 episodes of Across the
+    # Pond's lunch block, on this channel every time the key was drawn.
+    "martin_tv": show_by_title("martin") + ' AND NOT show_title:"Doc Martin"',
+    "sabrina_tv": show_by_title("sabrina, the teenage witch"),
+    "northern_exposure_tv": show_by_title("northern exposure"),
+    # "Addams Family The" is how the library stores it -- the folder is
+    # `Addams Family The (1964)` -- so `show_title:"the addams family"` phrase
+    # matches nothing. Caught by key_census on the day the key was added.
+    "addams_family_tv": show_by_title("addams family the"),
+    "smothers_brothers_tv": show_by_title("the smothers brothers comedy hour"),
+    "soap_tv": show_by_title("soap"),
+    "mork_mindy_tv": show_by_title("mork & mindy"),
+    "jeannie_tv": show_by_title("i dream of jeannie"),
+
     # Registered 2026-09-01. All five were on disk and in no channel's reach --
     # `key_census` only scores keys that exist, so a show with no key at all is
     # invisible to it. Found by diffing `reference/library-tv.tsv` against every
@@ -552,8 +584,6 @@ TV_REGISTRY = {
     "eighties_crime_tv": show_source(genre="crime", era=EIGHTIES),
     "eighties_suspense_movie": movie_source(genre="thriller", era=EIGHTIES),
     "eighties_action_a_team": show_by_title("The A-Team"),
-    "eighties_sitcom_golden_girls": show_by_title("The Golden Girls"),
-    "eighties_sitcom_night_court": show_by_title("Night Court"),
     "eighties_crime_miami_vice": show_by_title("Miami Vice"),
     "eighties_crime_magnum_pi": show_by_title("Magnum, P.I."),
     "eighties_scifi_quantum_leap": show_by_title("Quantum Leap"),

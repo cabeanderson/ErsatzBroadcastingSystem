@@ -88,15 +88,17 @@ EVENING_SYNDICATION = RandomCollection([
     "full_house_tv",
 ])
 
-# The weekend takes a different four, and the reason is a hole on the *other*
-# channel: Good Times declares no `evening` in its WEEKEND schedule, so its
-# 17:00-20:00 falls through to `fallback_content`, which is
-# `sitcoms.LATE_NIGHT_SYNDICATION` -- Cheers, The Wonder Years, Married... with
-# Children and Coach. Those four are unreachable here on Saturday and Sunday
-# however clear the declared grid looks, and the weekday strip above collided
-# with exactly two of them until this split. Murphy Brown and Roseanne are
-# claimed by no other channel at any hour; they are Tuesday's prime here, which
-# is a different day rather than a second airing.
+# The weekend takes a different four. It was written to work around a hole on
+# the *other* channel -- Good Times declared no `evening` at the weekend, so its
+# 17:00-20:00 fell through to a fallback holding Cheers, The Wonder Years,
+# Married... with Children and Coach. That hole was closed in the Good Times
+# rebuild (2026-09-01): all seven days now declare all ten slots.
+#
+# The split is kept, and is now load-bearing in the other direction. Good Times
+# reads these two arms as *different* rules -- Married... with Children is clear
+# at the weekend and takes its Sunday 17:00 strip, while Murphy Brown and
+# Roseanne are clear on a weekday and take its Monday and Wednesday primes.
+# Changing either arm moves a title on that channel.
 WEEKEND_EVENING = RandomCollection([
     "family_matters_tv",
     "full_house_tv",
@@ -121,7 +123,7 @@ ACTION_NIGHT_COLLECTION = OrderedCollection([
 COMEDY_GOLD_COLLECTION = OrderedCollection([
     "roseanne_tv",
     "murphy_brown_tv",
-    "eighties_sitcom_golden_girls",
+    "golden_girls_tv",
 ])
 
 PI_WEDNESDAY_COLLECTION = OrderedCollection([
@@ -135,7 +137,7 @@ PI_WEDNESDAY_COLLECTION = OrderedCollection([
 # channel has existed.
 MUST_SEE_TV_COLLECTION = OrderedCollection([
     "cheers_tv",
-    "eighties_sitcom_night_court",
+    "night_court_tv",
 ])
 
 # V was the second name here and is not on disk. Quantum Leap is the

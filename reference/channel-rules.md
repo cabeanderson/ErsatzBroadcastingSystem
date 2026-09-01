@@ -102,7 +102,8 @@ at 24 h/day; Be Kind Rewind's 1,530 are 122 days.
 is whether each one has its own night and its own bed — a slot that gates it and
 something to run there the other fifty weeks. High Noon carries six, one a
 night, with `modern_western_movie` under all of them. Nightmare Theatre carries
-nine. Good Times breaks on four, because they share one slot (see G5).
+nine. Good Times used to break on four, because they shared one slot (see
+G5); the four moved to Corncob TV in its 2026-09-01 rebuild.
 
 ---
 
@@ -161,7 +162,10 @@ own weekday and nowhere else.
 **Never stack appointments in one slot.** A `DailyOrderedCollection` that wraps
 replays the same episode twice a night. That is the live defect in Good Times'
 `MUST_SEE_THURSDAY` — four appointments in a three-hour slot — and it happens at
-two just as readily as at four. Nightmare Theatre's three Saturday limited
+two just as readily as at four. *Fixed 2026-09-01: those four are single-camera
+and went to Corncob TV. Good Times now gates each night with a weekday arm of
+`SCHEDULES`, verified over three simulated years — every named night airs on
+its own weekday and nowhere else.* Nightmare Theatre's three Saturday limited
 series share a slot safely because they are keyed by **season label**, a dict
 that resolves exactly one branch a night, not stacked in a collection.
 
@@ -270,9 +274,16 @@ varied and themed.**
    Corncob TV runs them as *syndication* — shuffled, daytime, drop in anywhere.
    Same show, two presentations, no collision. This is the cross-channel form of
    the chronological/shuffle split in G8.
-2. **An hours rule.** Nick at Nite and Good Times share nine titles; Good Times
-   keeps all of them and simply does not schedule them during 21:00–02:00.
-   Mornings, daytime and the overnight are untouched.
+2. **An hours rule.** Nick at Nite and Good Times share fifteen titles; Good
+   Times keeps all of them and simply does not schedule them while Nick is
+   airing them. **Write the rule at the resolution the other channel's grid
+   actually has.** "Not during 21:00–02:00" was the rule for years and it was
+   stricter than Nick: Nick's `nite` is 21:00–24:00 and holds the pre-1970
+   seven, its `after_hours` is 00:00–02:00 and holds the 70s shift. Splitting
+   the rule the way Nick splits its clock is what let Good Times put M\*A\*S\*H,
+   Mary Tyler Moore and Bob Newhart — the 1973 CBS Saturday lineup — into its
+   own Saturday prime. A rule coarser than the grid it protects costs airtime
+   for nothing.
 3. **An era split.** `mystery_crime_movie` (365 films) became
    `classic_crime_movie` (pre-1980, 74) for Classic Cinema and
    `modern_crime_movie` (1980+, 291) for Mystery Theatre. Neither can draw the
@@ -404,7 +415,7 @@ Rules the framework cannot check, and where they can bite:
 | Rule | Status |
 |---|---|
 | C1 same-title | Partially tooled — `same_title_check.py` covers **film keys only**; TV collisions are still convention |
-| G5 appointment gating | Only visible by simulating and reading the output; `MUST_SEE_THURSDAY` is live proof |
+| G5 appointment gating | Only visible by simulating and reading the output |
 | G4 blocks drawing the same keys | Requires counting airings per key, which no checker does automatically |
 | F6 airtime vs pool size | Hand arithmetic every time |
 | G12 filler assets | `bumper-inventory.md` is hand-maintained; missing assets are silent |

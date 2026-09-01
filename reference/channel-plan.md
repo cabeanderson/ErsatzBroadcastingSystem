@@ -37,7 +37,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
 | 164 | Japanorama | anime | no |
 | 180 | Totally 80s | 80s TV — **stays 80s** | yes — **designed** 2026-09-01 |
-| 190 | Good Times | sitcoms | yes |
+| 190 | Good Times | **the studio audience** — multi-camera network sitcom, 1951–1999 | yes — **rebuilt** 2026-09-01 |
 | — | Nick (+ Nick at Nite) | Nicktoons, WB animation, classic TV | yes — **built**, channel number pending |
 | — | Disney | Disney Afternoon, ABC mornings, Star Wars animation | yes — **built**, channel number pending |
 | 240 | Travelers Table | cooking — **+ nature docs** | no |
@@ -438,6 +438,117 @@ holds Cheers, The Wonder Years, Married... with Children and Coach. Four titles
 that are unreachable here on Saturday and Sunday no matter how clear the
 declared grid looks. Worth checking for on the other channels.
 
+### Good Times — rebuilt (2026-09-01)
+
+**Identity: the studio audience.** Multi-camera network sitcom, 1951–1999 — if
+it has a laugh track and it aired on CBS, NBC, ABC or FOX, it is here. That is a
+*form* and not a date range (F4): the multi-camera sitcom really does end around
+2000, when Malcolm in the Middle and The Office replaced it with single-camera.
+Everything past that break — single-camera network, cable, streaming, sketch and
+alt comedy — goes to Corncob TV.
+
+**Axis: the week is the networks; the day is that network's history.** Each
+weekday belongs to one network and walks its roster across the clock, placed by
+what fits the hour rather than by date. CBS Monday opens with The Nanny (1993)
+at eight in the morning and signs on at six with Dick Van Dyke (1961).
+
+| Day | Network | Named night |
+|---|---|---|
+| Mon | CBS | CBS Monday, 1993 — Murphy Brown · Northern Exposure · The Nanny |
+| Tue | NBC | NBC Tuesday, 1997 — Mad About You · NewsRadio · Frasier · Just Shoot Me! |
+| Wed | ABC | ABC Wednesday, 1995 — The Drew Carey Show · Roseanne · Coach |
+| Thu | NBC | **Must See TV** — Seinfeld · Mad About You · Frasier · Will & Grace |
+| Fri | ABC | **TGIF** — Full House · Family Matters · Perfect Strangers · Mr. Cooper · Sister, Sister · Dinosaurs |
+| Sat | CBS | **The Greatest Night** (CBS Saturday, 1973) — M\*A\*S\*H · Mary Tyler Moore · Bob Newhart |
+| Sun | FOX + the fourth networks | Fox Sunday — Married… with Children · In Living Color · Martin |
+
+Ten slots, none wrapping midnight: `after_hours` 00–02, `overnight` 02–06,
+`early` 06–08, `morning` 08–10, `midday` 10–12, `noon` 12–14, `afternoon` 14–17,
+`evening` 17–20, `prime` 20–23, `late` 23–24. Morning, midday and afternoon
+carry a season-keyed **book**, so the daytime reshuffles four times a year while
+prime, evening and the overnight stay the spine. The noon hour is one show per
+day (G3) drawn from that day's network — M\*A\*S\*H Monday, Wings Tuesday, Taxi
+Wednesday, Cheers Thursday.
+
+**Counts.** 51 shows, 8,139 episodes, ~2,984 hours — a 124-day cycle at 24
+hours a day. By network: ABC 18 shows, NBC 15, CBS 11, FOX/UPN/WB 5. Two days
+each for the big three and one for FOX puts every network on a 16–20 week cycle,
+comfortably past F6's three-week floor.
+
+**Simulation.** 365 continuous days, 18,010 programme plays, no gaps, overlaps,
+circuit breakers or unresolved programs. Re-run over **three years (1,095 days)**
+for two things no existing checker covers: every named night aired on its own
+weekday and nowhere else, and **zero hours-rule violations** — including the
+16,751 airings carrying a seasonal or thematic injection suffix, which an
+exact-key match silently misses. That last point is the reusable one: the
+injection system rewrites `bob_newhart_tv` as `bob_newhart_tv_auto_fall`, so any
+hand-rolled cross-channel check has to normalise the key first or it will report
+clean while the collision is live.
+
+**What the rebuild found.**
+
+- **Era was nailed to the clock**, which is what the channel was rebuilt to fix.
+  Every morning was the 60s or 70s, every daytime the 90s, every prime
+  `MUST_SEE_TV` — seven identical days with a Thursday and a Friday variant. The
+  channel walked through history once and then stood still.
+- **`night: (23, 2)` wrapped midnight** (G1), the last channel on the lineup
+  still doing it.
+- **`MUST_SEE_THURSDAY` stacked four appointments in one slot** — the defect
+  channel-rules.md cited for G5. Those four are single-camera and left for
+  Corncob.
+- **The weekend declared no `evening`**, so 17:00–20:00 on Saturday and Sunday
+  fell to `fallback_content`.
+- **Half the shelf was unreachable.** Frasier (273 episodes), Will & Grace, Spin
+  City, Just Shoot Me!, Martin, Sabrina, Northern Exposure, Soap, Mork & Mindy,
+  I Dream of Jeannie, The Addams Family and the Smothers Brothers were all on
+  disk with **no registry key at all** — invisible to `key_census`, which only
+  scores keys that exist.
+- **Two keys were wrong the day they were written**, and `key_census` caught
+  both. `show_title:"the addams family"` matches nothing — the library stores it
+  as *Addams Family The* — and `show_title:"martin"` is a phrase match that also
+  returns **Doc Martin**, 83 episodes of Across the Pond's lunch block. G10
+  applies to shows, not only to films. Nick at Nite carried the same Addams
+  Family bug in its marquee block and has been running six shows, not seven;
+  fixed in the same pass.
+
+**The rule that changed, and the airtime it bought.** The written sharing rule
+was "Good Times keeps the shared classics out of 21:00–02:00". Nick's *grid* is
+finer than that: `nite` 21:00–24:00 holds the pre-1970 seven and `after_hours`
+00:00–02:00 holds the 70s shift. Blocking each title only for the hours Nick
+actually airs it is what C1 literally asks — and it frees M\*A\*S\*H, Mary Tyler
+Moore and Bob Newhart for 20:00–23:00, which is how the 1973 CBS Saturday
+lineup, the most famous lineup in sitcom history, became Saturday prime. See
+C2 rung 2, restated.
+
+**Shapes that failed.** Three rotation designs were drawn and rejected before
+the network wheel:
+
+- **The sliding ladder** — the day walks the decades and the weekday sets which
+  rung it starts on, so the era-to-daypart mapping precesses. Mechanically it
+  works; it reads as arithmetic rather than as television, and it forces 2015
+  single-camera comedy into a 6am slot and black-and-white into 7pm.
+- **The day owns a year** — Monday is a 1968 broadcast day top to bottom,
+  Tuesday 1976. Highest fidelity to "what would have aired", but tune in on
+  Monday and you never see past 1970, and every pre-1980 day's prime is
+  unschedulable under the Nick at Nite rule.
+- **Independent wheels per slot** — each daypart spins its own weekday wheel at
+  a different offset, Nick's monthly-bench trick keyed by day. Maximum variety,
+  but the day stops reading as a walk and starts reading as a shuffle.
+
+The network wheel beat all three because it makes the era question disappear
+rather than answering it: a network's own roster spans 1951–1998, so walking it
+across a day *is* the trip through history, and placement can be by fit. The
+laugh-track line is what makes that safe — once single-camera comedy is on
+another channel, every show left works at any hour, so nothing has to be fenced
+into a daypart.
+
+**What it went without.** Sunday is five shows, and the fourth-network shelf is
+the channel's thinnest — see [acquisitions.md](acquisitions.md). The 1973 CBS
+Saturday night is three of five: All in the Family and The Carol Burnett Show
+are both missing, and All in the Family is the single most valuable acquisition
+on the list, since Good Times is a Norman Lear spin-off airing without the show
+it came from.
+
 ### Travelers Table
 Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.
 
@@ -511,7 +622,21 @@ Reads the manifests in `reference/`, so it runs offline with no ErsatzTV.
 
 No channel airs a title *while* another channel is airing it. Sharing itself is fine and often the point, because the two channels mean different things by it.
 
-**Nick at Nite vs. Good Times.** Nine shared titles (Bewitched, Bob Newhart, Dick Van Dyke, Gilligan's Island, I Love Lucy, Mary Tyler Moore, Taxi, Andy Griffith, MASH). Good Times keeps all of them and airs them mornings and daytime — just not during 21:00–02:00. I Love Lucy stays on Nick at Nite despite Lucy TV; it earns the exception.
+**Nick at Nite vs. Good Times — restated 2026-09-01.** Fifteen shared titles,
+and the rule is now split the way Nick's own clock is split rather than as one
+blanket window. Nick's `nite` is 21:00–24:00 and holds the pre-1970 seven (I Love
+Lucy, Dick Van Dyke, Andy Griffith, Bewitched, I Dream of Jeannie, The Addams
+Family, Gilligan's Island); its `after_hours` is 00:00–02:00 and holds the 70s
+shift (Mary Tyler Moore, Bob Newhart, Taxi, M\*A\*S\*H, Sanford and Son, Good
+Times, Soap, Mork & Mindy, Smothers Brothers). Good Times keeps all fifteen and
+stays out of each title's *own* hours — which freed M\*A\*S\*H, Mary Tyler Moore
+and Bob Newhart for 20:00–23:00 and made the 1973 CBS Saturday lineup its
+Saturday prime. Verified over three simulated years: zero violations.
+
+I Love Lucy, The Lucy Show and The Lucy-Desi Comedy Hour are now off Good Times
+entirely. Lucy TV runs them 24/7 and Nick at Nite's I Love Lucy is the lineup's
+one named exemption to C1 (C5); a third airing on Good Times was never one, and
+had been live for as long as the channel existed.
 
 *Done in code when Nick was built.* Good Times used to run a collection literally named `NICK_AT_NITE` in its 23:00–02:00 slot. That is now `LATE_NIGHT_SYNDICATION` — Cheers, Wonder Years, Married… with Children, Newsradio, Drew Carey, Wings, Mad About You, 3rd Rock, The Nanny, Coach — none of them shared. The winter prime variants swapped in `CLASSIC_SITCOMS_60s_70s`, which reaches into 21:00–23:00, so they now take `EIGHTIES_NINETIES_CLASSICS` instead; and the channel fallback moved off the classics for the same reason. Mornings, daytime and the 02:00–06:00 overnight are untouched.
 

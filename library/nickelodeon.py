@@ -138,7 +138,8 @@ NICK_AT_NITE = Block(
         {"title": "The Andy Griffith Show"},
         {"title": "Bewitched"},
         {"title": "I Dream of Jeannie"},
-        {"title": "The Addams Family"},
+        # Stored as "Addams Family The"; the natural form matches nothing.
+        "addams_family_tv",
         {"title": "Gilligan's Island"},
     ]),
     use_epg_group=False

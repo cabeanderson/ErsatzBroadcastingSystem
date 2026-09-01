@@ -386,7 +386,10 @@ and the channel aired something. What it aired was wrong.
   Old House (234), The New Yankee Workshop (151) — 1,267 episodes with no key
   and no channel, which is most of a daytime schedule for Travelers Table.
 
-- [ ] 🟡 **Good Times declares no `evening` in its `WEEKEND` schedule.**
+- [x] ✅ **FIXED 2026-09-01 (Good Times rebuild). Good Times declares no
+  `evening` in its `WEEKEND` schedule.** All seven days now declare all ten
+  slots, and the weekend arms are gone entirely -- the channel is keyed by
+  weekday name, one arm per network. Original report:
   `channels/sitcoms.py:53` covers overnight, early, morning, midday, noon,
   afternoon, prime and night, and skips `evening` — so 17:00–20:00 on Saturday
   and Sunday falls through to `fallback_content`, which is
@@ -414,7 +417,13 @@ and the channel aired something. What it aired was wrong.
   not scoped to. `same_title_check` scores it POSSIBLE rather than CONFIRMED
   only because `tag:cult` and `tag:blockbuster` are not columns in the TSV.
 
-- [ ] 🟠 **Must See Thursday replays each episode two or three times a night.**
+- [x] ✅ **FIXED 2026-09-01 (Good Times rebuild). Must See Thursday replays
+  each episode two or three times a night.** The Office, Parks and Recreation,
+  Community and 30 Rock are single-camera and moved to Corncob TV with the
+  Thursday they anchor, so the stacked `DailyOrderedCollection` is gone. Good
+  Times' prime is now one named night per weekday, gated by a weekday arm of
+  `SCHEDULES` -- verified over three simulated years, each night on its own
+  day and nowhere else. Original report:
   `sitcoms.MUST_SEE_THURSDAY` is a four-item `DailyOrderedCollection` in a
   three-hour prime slot (20:00–23:00), so the collection wraps and each
   appointment resolves to the same episode again: The Office S1E1 airs at 20:00,
