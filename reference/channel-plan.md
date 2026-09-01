@@ -42,7 +42,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | — | Disney | Disney Afternoon, ABC mornings, Star Wars animation | yes — **built**, channel number pending |
 | 240 | Travelers Table | cooking — **+ nature docs** | no |
 | 241 | Makers Corner | DIY & craft | no |
-| 242 | Corncob TV | absurd comedy | no |
+| 242 | Corncob TV | ~~absurd comedy~~ → **broad comedy + the modern sitcom** — single-camera, cable, streaming, sketch and alt, 2000+ | no — **next to build**, brief settled 2026-09-01 |
 | 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
 | 244 | Nightmare Theatre | horror, TV + film | yes — **built**. The film is the spine: 242 features, 17 h/day |
 | 246 | The Beat | **music videos only** | no |
@@ -52,6 +52,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 
 | Channel | Pool | Shows | Notes |
 |---|---:|---:|---|
+| **Corncob TV** (242) | 73 shows / ~4,600 eps | 73 | **Next.** Brief widened 2026-09-01 when Good Times was rebuilt on the laugh-track line: Corncob takes everything on the far side of it. ~70-day cycle at 24 h/day. **It has a dependency: The Office, Parks and Recreation, Community and 30 Rock left Good Times for Corncob's Thursday and are on no channel until it is built.** The alt shelf has nothing before 1982 and is two-thirds post-2000, so it splits from Good Times on era as cleanly as on tone |
 | **Fantasy** | 238 films / 40 shows | 40 | Registry and `library/fantasy.py` built 2026-08-30; **channel deliberately deferred**. Content is there — 333 fantasy films, more than horror |
 | ~~Boomerang~~ | 1 show | 1 | **Closed — see below.** Disk problems fixed; the premise is what is gone |
 
