@@ -162,7 +162,28 @@ SKETCH_HOUR = RandomCollection([
     "police_squad_tv",
 ])
 
+# 04:00-06:00. The videos, and only two hours of them.
+#
+# This key held 00:00-06:00 until 2026-09-02 and matched *nothing*: it was
+# `type:"music_video" AND year:[1980 TO 1989]` against a music video library
+# with no year metadata on any of its 303 files, so the channel simply went dark
+# from midnight to six. The library was reorganised that day -- every file now
+# carries a Kodi .nfo with a real <year>, and the folder above each one is the
+# artist rather than a genre bucket -- and the honest size of the pool is 35
+# videos over 1975-1989, about 152 minutes. Two hours is what that fills without
+# repeating; six was never available.
 LATE_NIGHT_MUSIC = "eighties_music_videos"
+
+# 00:00-04:00. The four hours the video block gave back.
+#
+# Action and drama reruns are what an 80s independent actually ran overnight,
+# and both keys belong to this channel alone -- `eighties_crime_tv` is
+# deliberately absent because Mystery Theatre draws it too (KNOWN_ISSUES), and
+# `in_living_color_tv` because Good Times holds it.
+LATE_NIGHT_TV = RandomCollection([
+    "eighties_action_tv",
+    "eighties_drama_tv",
+])
 
 
 # ==============================================================================
@@ -211,7 +232,14 @@ FRIDAY_NIGHT_MOVIES_BLOCK = Block(
     name="Friday Night Movies",
     items=["eighties_blockbuster_movie"],
     intro="movie_intro_bumper",
-    fill_strategy="gap" # Leave dead air if movie ends early
+    # `gap` here was the last deliberate dead air in the lineup, and the only
+    # `fill_strategy="gap"` anywhere in it: prime is 20:00-23:00 and a
+    # blockbuster is under two hours, so every Friday ended with roughly an hour
+    # of unscheduled time. It survived the 2026-09-02 playout reset because it
+    # was never stale config -- it was the design. Bridging hands the tail to
+    # The Sketch Hour, which is the 23:00 slot anyway, so Friday simply gets to
+    # its sketch comedy early.
+    fill_strategy="bridge"
 )
 
 SCIFI_SATURDAY_BLOCK = Block(
@@ -263,4 +291,21 @@ SEASONAL_DAYTIME_BLOCK = SeasonalBlock(
 # --- DEFAULT ASSIGNMENTS ---
 MORNING_BLOCK = SEASONAL_MORNING_BLOCK
 DAYTIME_BLOCK = SEASONAL_DAYTIME_BLOCK
-LATE_NIGHT_BLOCK = LATE_NIGHT_MUSIC
+
+# 04:00-06:00. `yield`, not `bridge`, and the difference is measurable: bridging
+# leaves two minutes of dead air at 05:58 every single day. A music video is
+# three to five minutes, `pad_until_exact` places only whole items, and the
+# bridge's trailing fill falls through to a bare wait when nothing fits -- so
+# the tail the bridge is meant to close is exactly the tail it cannot. Yielding
+# hands 05:58 to the Runner, which starts the cartoons early instead.
+VIDEO_JUKEBOX_BLOCK = Block(
+    name="The Video Jukebox",
+    items=[LATE_NIGHT_MUSIC],
+)
+
+LATE_NIGHT_TV_BLOCK = Block(
+    name="After Hours",
+    items=LATE_NIGHT_TV,
+    fill_strategy="bridge",
+)
+

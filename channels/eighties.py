@@ -2,8 +2,9 @@
 Totally 80s -- the decade as a broadcast day
 
 Cartoons at breakfast, a genre wheel and a cult matinee through the daytime, the
-after-school syndication strip at five, a named night at eight, and sketch
-comedy at eleven before the videos take the channel to dawn.
+after-school syndication strip at five, a named night at eight, sketch comedy at
+eleven, and action and drama reruns overnight until the videos take the last two
+hours before the cartoons.
 
 The channel owns the 1980s as a *theme*, which is not the same as owning 1980s
 film: `library/modern_movies.py` and this channel split the decade's film shelf
@@ -40,10 +41,17 @@ from scripts.library import eighties
 #
 # Film runs 10:00-22:00 and stops there: 22:00-06:00 is Be Kind Rewind's half of
 # the 1980s film shelf.
+#
+# `night` and `overnight` were 00:00-02:00 and 02:00-06:00 and *both* held
+# `eighties_music_videos`, which matched nothing on the server -- six hours of
+# dead air a day, and the largest single defect the 2026-09-02 guide showed.
+# The music video library is dated now, but honestly dated: 35 videos fall in
+# 1975-1989, which is 152 minutes. So the video block is two hours, not six, and
+# the four hours it gives up go to late-night television.
 
 EIGHTIES_TIMESLOTS = {
-    "night":     (0, 2),     # music video
-    "overnight": (2, 6),     # music video
+    "night":     (0, 4),     # 80s late-night television
+    "overnight": (4, 6),     # The Video Jukebox
     "early":     (6, 8),     # cartoons, every day of the year
     "morning":   (8, 10),    # cartoons, or sitcoms once school is back
     "midday":    (10, 12),   # the genre wheel
@@ -60,8 +68,8 @@ EIGHTIES_TIMESLOTS = {
 
 SCHEDULES = {
     "WEEKDAY": {
-        "night":     eighties.LATE_NIGHT_BLOCK,
-        "overnight": eighties.LATE_NIGHT_BLOCK,
+        "night":     eighties.LATE_NIGHT_TV_BLOCK,
+        "overnight": eighties.VIDEO_JUKEBOX_BLOCK,
         "early":     eighties.MORNING_CARTOONS,
         "morning":   eighties.SEASONAL_MORNING_BLOCK,
         "midday":    eighties.SEASONAL_DAYTIME_BLOCK,
@@ -72,8 +80,8 @@ SCHEDULES = {
         "late":      eighties.SKETCH_HOUR_BLOCK,
     },
     "WEEKEND": {
-        "night":     eighties.LATE_NIGHT_BLOCK,
-        "overnight": eighties.LATE_NIGHT_BLOCK,
+        "night":     eighties.LATE_NIGHT_TV_BLOCK,
+        "overnight": eighties.VIDEO_JUKEBOX_BLOCK,
         "early":     eighties.MORNING_CARTOONS,
         "morning":   eighties.SEASONAL_MORNING_BLOCK,
         "midday":    eighties.SEASONAL_DAYTIME_BLOCK,
@@ -102,6 +110,13 @@ def build_playout(api, context, build_id):
         # all twenty-four hours, so this is reached on a stall rather than for
         # eleven hours a day.
         fallback_content="eighties_music_videos",
+        # `enable_filler=True` with no `filler_content` is an inert flag: the
+        # "fill" strategy falls through to a bare wait when the filler will not
+        # resolve, so the intent gets recorded and the effect is dead air. Music
+        # videos are the right filler and are finally usable -- three to five
+        # minutes each, so they fit the tails a film leaves, and filling the
+        # seams with videos is what the channel is imitating.
+        filler_content="eighties_music_videos",
         enable_commercials=True,
         enable_filler=True
     )

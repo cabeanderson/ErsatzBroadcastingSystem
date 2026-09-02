@@ -5,6 +5,43 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
 
 ## Resolved
 
+### 2026-09-02 — the Totally 80s gaps that survived the reset
+
+The 2026-09-02 playout reset cleared the 26 hours of stale-epoch gaps, and gaps
+kept appearing. Three separate causes, none of them stale playout, found by
+simulating with realistic film durations rather than the mock's uniform 20
+minutes — at 20 minutes every film divides the slot exactly and all three are
+invisible.
+
+- ~~🔴 **Totally 80s left roughly an hour of dead air every Friday.**
+  `FRIDAY_NIGHT_MOVIES_BLOCK` was declared `fill_strategy="gap"`, commented
+  "Leave dead air if movie ends early". `gap` maps to `wait_until_time` in
+  `engines/dispatcher.py`, which is literally unscheduled time. Prime is
+  20:00–23:00 and a blockbuster is under two hours, so the tail was a hole. It
+  was the only `fill_strategy="gap"` in the lineup and the only channel with any
+  gaps at all across a 30-day, 13-channel sweep.~~ Now `bridge`, which starts
+  The Sketch Hour — already the 23:00 slot — early.
+
+- ~~🟠 **`_bridge_to_next_slot` silently dropped every next-slot entry that was
+  not a `Block` or `Program`.** It read `day_schedule` and handed the *raw*
+  entry to `play_block`, which accepts only those two types and warns
+  `play_block received an unsupported type` for anything else. `runner.py`
+  resolves each entry through `resolve_content` before dispatching; the bridge
+  skipped that step, so a `SeasonalBlock`, a Collection or a bare key made the
+  bridge a no-op. Totally 80s' `afternoon` is a `SeasonalBlock`, so The Cult
+  Matinee's bridge had never once worked — 62 warnings in a single build log.~~
+  The bridge now resolves first: a resolved Block or Program hands off as
+  before, and a resolved content key is played to the current slot's boundary,
+  so the next slot still begins on time.
+
+
+**The method that found all three.** Simulate, then walk the schedule summing
+each item's duration and flag wherever the next item starts after the previous
+one ends. The existing tools do not do this — `visualize_week` prints structure
+and `collision_report` compares channels, but nothing measured continuity. Over
+13 channels × 30 days it is a few seconds and it localises a gap to the block
+that opened it. It wants to be a tool in `scripts/testing/`.
+
 ### 2026-09-01 — what the live server said that the offline tools could not
 
 Found by reading `iptv/xmltv.xml` off the running box rather than by simulating.
@@ -326,7 +363,394 @@ and the channel aired something. What it aired was wrong.
   old wire; only Home Movies was scheduled anywhere. Covered by
   `TestSimulatorDurationGuess`.
 
+### 2026-09-02 (later) — the music video collection, reorganised
+
+- ~~🔴 **`eighties_music_videos` matched nothing, and it was six hours a day of
+  Totally 80s.** Found in the live `xmltv.xml` *after* the playout reset, which
+  is what made it conclusive: the channel carried a 2026-09-02 epoch, was running
+  the current design, and still showed **12.1 hours of gaps over a three-day
+  guide** — 6 hours from 00:00 on Thu 03 Sep and again on Fri 04 Sep, exactly the
+  `night` and `overnight` slots, both of which held this key. The query was
+  `type:"music_video" AND year:[1980 TO 1989]` against a library where **no music
+  video had any year metadata at all** — all 751 airings in the guide carried no
+  `<date>`.~~ Fixed by reorganising the collection; see below.
+
+  **Why nothing caught it.** `key_census` reads the two TSV manifests, which hold
+  shows and films only — its own docstring says `music_video` keys "are not in the
+  manifests at all". The census passed at 560 keys with the channel's largest key
+  dead. Simulation cannot see it either: the mock returns content for any key.
+
+**What the reorganisation did.** ErsatzTV derives a music video's *artist* from
+the top-level folder, not the `.nfo` — proven on the server, where
+`90's/Foo Fighters/… - Learn to Fly.avi` has `<artist>Foo Fighters</artist>` in
+its sidecar and still aired as `<title>90's</title>`. 244 of 303 files sat under
+genre buckets, so the guide listed "hip_hop" as an artist 242 times. The layout
+is now `<Artist>/<Artist> - <Title>.<ext>` with a Kodi `.nfo` beside each file
+carrying title, artist, genre and year; genre moved off the directory tree and
+into the sidecar. 176 artist folders, 303 videos, 303 sidecars, no empty
+directories. The move manifest and the scripts are in `_tools/` next to the
+collection, so the whole thing is reversible.
+
+**Years came from the filenames plus curation, not from the files.** ffprobe
+found zero artist and zero date tags across the collection — the pre-existing
+`music_meta.sh` read `format_tags=date`, which is why every `<year>` it wrote
+came out empty. MusicBrainz was tried and rejected: it dates "Material Girl" to
+1993 on a reissue, and for a channel whose whole premise is the decade a wrong
+year is worse than none. 298 of 303 are dated; the remaining five (MF DOOM,
+three Bouncing Souls tracks) are **left blank rather than guessed**.
+
+**The pool is smaller than the schedule assumed, and that is the real finding.**
+The collection skews hard to the 90s and 2000s — 111 videos from the 1990s, 125
+from the 2000s, and **31 from the 1980s**. Opening the window to the late 1970s
+brings it to 35 videos and 152 measured minutes. So `eighties_music_videos` is
+now `year:[1975 TO 1989]`, and Totally 80s' video block is **two hours
+(04:00-06:00), not six** — the four hours it gives back go to `After Hours`,
+action and drama reruns, which is what an 80s independent actually ran overnight.
+Organising the collection made the key *work*; it could never have made it *fill*.
+
+- ~~🟠 **`enable_filler=True` with `filler_content=None` is an inert flag.**~~
+  Totally 80s now fills with `eighties_music_videos`, which finally resolves —
+  three-to-five-minute items that fit the tails a film leaves. **Worth auditing
+  the other channels for the same pairing.**
+
 ## Open
+
+- [ ] 🟡 **`fill_strategy="bridge"` cannot close a tail shorter than one item,
+  and will open one.** `pad_until_exact` places only whole items and the bridge's
+  trailing fill falls through to a bare `wait_until_time` when nothing fits, so
+  bridging The Video Jukebox left **two minutes of dead air at 05:58 every day**
+  — the exact tail the bridge exists to close. `yield` there is clean, because
+  the Runner starts the next slot early instead. Bridge is right for a block
+  whose neighbour is another Block; it is wrong for one whose items are shorter
+  than the remainder it leaves.
+
+**The method that found all three.** Simulate, then walk the schedule summing
+each item's duration and flag wherever the next item starts after the previous
+one ends. The existing tools do not do this — `visualize_week` prints structure
+and `collision_report` compares channels, but nothing measured continuity. Over
+13 channels × 30 days it is a few seconds and it localises a gap to the block
+that opened it. It wants to be a tool in `scripts/testing/`.
+
+### 2026-09-01 — what the live server said that the offline tools could not
+
+Found by reading `iptv/xmltv.xml` off the running box rather than by simulating.
+**Not one of these is a query defect.** `key_census` scores all 485 keys and
+every key belonging to the affected channels passes; `validate_titles` is clean
+on all four. The offline tools ask "can the library satisfy this query", and the
+answer was yes in every case. The question they cannot ask is "is the right
+thing actually on the air".
+
+- ~~🔴 **Nightmare Theatre aired the Good Times sitcom lineup.** For a window on
+  2026-08-31 the horror channel carried 171 sitcom episodes — Bob Newhart, Mary
+  Tyler Moore, Fresh Prince, M\*A\*S\*H, Sanford and Son. Its 34 titles were a
+  **100% subset** of Good Times' 36. A frame pulled from the live HLS stream at
+  20:44 showed 30 Rock and matched the guide exactly, so stream and EPG agreed
+  with each other and both were wrong.~~ Fixed by a playout refresh; the channel
+  now carries 40 programmes over 35 titles, all horror. **The code was never at
+  fault** — the local simulation for the same build scheduled correct horror
+  (Tales from the Crypt, The Legacy, Hannibal, Twin Peaks, Ash vs Evil Dead).
+  The defect lived entirely in ErsatzTV's playout wiring, which is in the
+  root-owned SQLite DB and invisible to everything in `scripts/`.
+
+  **The lesson worth keeping:** a channel can be perfectly configured, pass every
+  offline check, and still broadcast another channel's content. Title *diversity*
+  is not a health signal — 34 distinct titles looked healthy and was the bug.
+  Only reading the actual titles catches this.
+
+- ~~🟠 **High Noon was defined but never on air.** Channel 243 existed in
+  `/api/channels` (id 20) yet appeared in no feed.~~ Fixed in two steps, which is
+  the useful part: enabling the channel put it in `channels.m3u` but **not** in
+  `xmltv.xml`, and it took a separate EPG enable plus a build before it
+  appeared. It now carries 84 programmes over 16 titles — Gunsmoke, Bonanza,
+  The Rifleman, Wanted: Dead or Alive, Rawhide. See the channel-visibility
+  ladder in [ERSATZTV_API.md](ERSATZTV_API.md); the three states are distinct and
+  a channel can sit in any of them.
+
+- ~~🟡 **Logs grew without bound, and it looked like an infinite loop when it was
+  not.** `logs/pond.log` reached 88MB with 983,457 lines and only 2,032 distinct
+  ones, repeating `Item: Unnamed Item (17:00-20:00)` / `Fill Strategy: 'yield'.
+  Stopping.` at a single timestamp.~~ There was no spin. Counting structure
+  rather than repetition: 3,749 day-headers over 36,887 blocks and 258,977
+  programmes is **~7 programmes per block and ~10 blocks per day, which is
+  normal**. The file held **eleven complete runs** stacked between 18:07 and
+  18:16, because `logging.FileHandler` opens in append mode and never rotates.
+  The identical lines were consecutive ordinary days sharing a wall-clock second.
+
+  Fixed in two places. `core/logger.py` now uses a `RotatingFileHandler` with
+  `maxBytes=0` and an explicit rollover at construction — nothing rotates *during*
+  a run, so one build is always one file, but each run starts clean and the last
+  `LOG_BACKUP_RUNS` (default 3) are kept as `.1`/`.2`/`.3`. And
+  `library/queries.py:196` now summarises the seasonal tag injection: the OR-chain
+  was 409 characters a line, 55,148 times, 20.5MB per file — the single largest
+  byte category, larger than the programme lines. A/B on the same one-day build
+  measured **31,083 → 24,990 bytes, 19% smaller**, with the full query still
+  available at DEBUG behind `LOG_FULL_TAG_QUERIES`.
+
+  **Diagnostic note:** repetition alone is not evidence of a loop. Divide by the
+  structural counts — days, blocks, programmes — before concluding anything.
+  This one cost a wrong call in the first pass of the audit.
+
+### 2026-08-30 — content-key and schedule-shape bugs
+
+Found by the collision report and the library census, both added this session.
+Every one of these was silent: the schedule built, the simulation stayed green,
+and the channel aired something. What it aired was wrong.
+
+- ~~🟠 **Cartoon Network's guide never showed an episode title.** All 21
+  blocks in `library/animation.py` set `use_epg_group=True` — the only channel
+  in the repo with no ungrouped airtime (disney 8/15, nickelodeon 3/10, every
+  other library 0). `engines/blocks.py:99` wraps a whole block in an EPG group
+  on that flag, and ErsatzTV collapses the group into one guide entry named
+  after the block, so the grid read "The Vault" / "Cartoon Cartoons" /
+  "Toonami" / "Adult Swim" from 06:00 to 06:00 and could never surface what was
+  actually on. Nothing was wrong with the scheduling — the items played fine,
+  they were just invisible.~~ Fixed: all 21 flags are now `False`. Grouping is
+  kept **for marathons only**, which get it independently from
+  `logic/calendar/assembly.py:122` when the marathon Block is built — so
+  "DBZ Marathon" still reads as one entry, which is the case grouping is for.
+  Verified against the simulator: a normal Friday went 10 groups → 0, and
+  2026-07-04 / 2026-09-05 kept exactly their one marathon group each. Item
+  counts drop by 2 per removed group because the mock records the start/stop
+  as pseudo-items; no content was lost.
+
+  Extended the same day to the other two channels, on the operator's call:
+  disney (8 blocks) and nickelodeon (3) are now `False` as well, so **no static
+  block anywhere in the repo is EPG-grouped**. Weekly groups: Disney 29 → 0,
+  Nick 15 → 0, Cartoon Network 0; real item counts unchanged at 434 / 490 /
+  676. The Nick removal also un-hides the nine Nick at Nite classics shared
+  with Good Times, which were grouped 14x a week behind two block names.
+
+  **The reason grouping is not worth keeping as it stands:** `playout.py:299`
+  always passes `custom_title`, and on a live build that renders as one
+  name-only guide entry — no artwork, no episode title, no description.
+  Whether a group *without* `custom_title` would keep per-item metadata is
+  open question #5 in [ERSATZTV_API.md](ERSATZTV_API.md); it needs one real
+  build, and the mock explicitly does not model grouping effects. Until that is
+  answered, grouping stays only where the items really are noise — marathons,
+  via `logic/calendar/assembly.py:122`.
+
+- ~~🟡 **Two Programs were named `<built-in method title of str object at
+  0x...>`.** `animation._with_bumpers` did `getattr(item, "title", str(item))`,
+  but `str` *has* a `.title` method, so a bare content key returned the bound
+  method instead of ever reaching the fallback. It hit both string call sites
+  (`animation.py:466` and `:573`, the Attack on Titan rerun bed in the two
+  Midnight Run blocks), and the memory address meant the name was not even
+  stable between runs.~~ Fixed with an explicit `isinstance(item, ContentItem)`
+  check. Log-only while the blocks were grouped; found during the EPG fix
+  above, which is exactly what would have exposed it.
+
+- ~~🔴 **Noir November had never once aired.** Mystery Theatre's signature
+  seasonal takeover lived on `PRIME_BLOCK["default"]`, behind five explicitly
+  named weekdays. `PRIME_BLOCK` is only wired into `SCHEDULES["WEEKDAY"]`, and
+  Saturday/Sunday have their own prime, so nothing could ever reach the default
+  arm.~~ Fixed: `"NOVEMBER"` is now the first key in the dict and dict resolution
+  takes the first matching label. Scoped to November rather than FALL on purpose
+  — a season-level swap would delete the Mon–Fri lineup for three months.
+  Verified with Dark Winds, the one title unique to the block: 0 airings in
+  October, 30 in November, 0 in December. `test_03_resolution_pipeline` now
+  asserts the takeover instead of asserting that *something* resolved.
+
+- ~~🔴 **Unreachable `default` arms across two channels.** When a block's guards
+  are `WEEKEND` + `WEEKDAY_A` + `WEEKDAY_B`, or all seven day names, they cover
+  the week and any `default` behind them is dead.~~ Five of Other Worlds' eight
+  blocks had one. `EARLY_BLOCK`'s was the only weekday fantasy on the channel, so
+  it never aired at all. Fixed: no block on either channel has an unreachable
+  arm now.
+
+- ~~🔴 **`supernatural_tv` queried a genre that does not exist.** It was
+  `genre:"(supernatural OR tag:paranormal)"`. There is no Supernatural genre in
+  the library and `tag:paranormal` is on three shows, so a near-empty key held a
+  third of a daily block.~~ Fixed: `tag:supernatural OR tag:paranormal`, which is
+  12 shows. `tag:supernatural` is the tag that actually exists.
+
+- ~~🔴 **`true_crime_tv` resolved to one show with six episodes.**
+  `genre:documentary AND genre:crime`. It was in `DETECTIVE_LATE_NIGHT`, which
+  covers overnight, early *and* night — six episodes carrying 47 hours a
+  month.~~ Fixed: true crime dropped from Mystery Theatre; the slot went to
+  Alfred Hitchcock Presents (268 episodes, previously on no channel).
+
+- ~~🟠 **A whole-season `Swap` deleted Other Worlds' weekday prime for three
+  months.** `"SPRING": Swap(MODERN_SCIFI_BLOCK)` sat at the top level of the
+  seasonal dict rather than inside a day map, so it replaced all five days.
+  X-Files, Babylon 5, BSG and Sarah Connor each dropped to about 45 minutes a
+  week.~~ Fixed: spring is per-day, matching how summer was already written.
+  **General trap:** at the top level of a `SeasonalBlock`, `Swap` replaces every
+  day. Nest it in a day map unless a total takeover is the intent.
+
+- ~~🟠 **`space_opera_tv` was the widest pool in the registry.**
+  `genre:"science fiction" AND NOT tag:sitcom` — the only sci-fi key without a
+  `NOT genre:fantasy` clause, so it returned everything `scifi_tv` did plus
+  Stargate SG-1, Quantum Leap, Xena and Sabrina the Teenage Witch. It was
+  scheduled 52 hours a week as though it were a themed block.~~ Renamed
+  `scifi_all_tv` and used deliberately for one broad slot. **Do not simply add
+  `NO_FANTASY` to it:** this library tags Stargate SG-1 and Quantum Leap as
+  Fantasy, and that clause is exactly why the named title collections exist.
+
+- ~~🟠 **`MYSTERY_MOVIE_WHEEL` contained no movies.** Named for the NBC wheel;
+  held Columbo, Poirot, Miss Marple and Murder She Wrote, all television. It was
+  Saturday evening *and* prime.~~ Fixed: the TV rotation is `WHODUNIT_WHEEL` and
+  the movie wheel shows film. Mystery Theatre went from 2% film to 18%, against
+  a library of 365 crime and mystery features.
+
+- ~~🟠 **Title queries that matched the wrong thing, or nothing.**~~
+  `show_by_title("Magnum P.I.")` against a folder named `Magnum, P.I.`;
+  `show_title:"Star Trek"` is a phrase match and returned every Trek series,
+  making Other Worlds' vault a second Trek playlist; a bare `"House"` also
+  returns House of the Dragon and House Of Cosbys. Fixed by correcting the comma
+  and year-bounding the other two. **Verify title queries against
+  `reference/library-tv.tsv` — the simulator cannot catch these, because it
+  generates a key from whatever title it is given.**
+
+- ~~🟠 **`collision_report.base_key()` collapsed every appointment show to
+  `_`.**~~ `factories.annual_show` mints `__auto_<title>_s<n>`, which matched the
+  tag-injection suffix pattern the normalizer strips. Lost, Alias and Fringe all
+  became the same key, which would have invented collisions between them. Fixed
+  with a prefix guard.
+
+- ~~🟡 **`golden_scifi_tv` duplicates `syndicated_scifi_tv`** byte for byte.~~
+  Still both present; `golden_scifi_tv` is on no channel. Left in place rather
+  than deleted, but it is a trap.
+
+- ~~🔴 **`id()`-seeded RNG broke determinism.** Collections/list picks seeded RNG
+  with memory addresses, so output changed every process run.~~ Fixed: seeds now
+  use `core/identity.stable_hash()`; `OrderedCollection` is date-anchored;
+  `RandomCollection` resets per day. Verified reproducible across processes.
+- ~~🟠 **No `requirements.txt` / undocumented `etv_client`.**~~ Fixed: added
+  `requirements.txt` (stdlib-only) and README notes (container vs. local).
+- ~~🟠 **`install_mocks()` ordering footgun.**~~ Fixed: auto-installed on
+  `scripts.testing` import; production-safe (real client always wins).
+- ~~🟠 **Stray non-Python prototype in `channels/`** (`main.go`, `schema.sql`,
+  `simple_backend.py`).~~ Removed by author.
+- ~~🟡 Stale module-path header comments / `schedule.py` reference.~~ Fixed in
+  `library/queries.py`, `logic/resolution/resolver.py`, `logic/resolution/pipeline.py`.
+- ~~🟠 **Broken test: `test_smoke_simple_channel_run`.**~~ Fixed: it now unpacks
+  the 3-tuple from `assemble_day_schedule(...)`. `test_scenarios` is 9/9.
+- ~~🟠 **Module-level caches leaked across channel builds**
+  (`BUMPER_FAILURE_CACHE`, `_INJECTION_CACHE`).~~ Fixed: `reset_bumper_failure_cache()`
+  / `reset_injection_cache()` are called at the start of `ScheduleRunner.run()`,
+  scoping both caches to a single build. Verified entries don't survive a run.
+
+- ~~🔴 **Run-aborting crash when a content-less Program hit a Block fallback.**~~
+  An off-season Appointment Program (`content=None`, no active schedule) fell
+  through to static resolution, which substituted `config.fallback_content`. When
+  that fallback is a `Block`/Collection (e.g. Cartoon Network's
+  `fallback_content=CLASSIC_CARTOONS`), the Block was handed downstream and
+  `get_query_data` did `Block in dict` → `TypeError: unhashable type`, aborting the
+  entire `run()` — i.e. "the channel just stops having content." Fixed: such
+  programs skip cleanly (`engines/blocks.py`), and `get_query_data` is
+  type-guarded (`logic/resolution/resolver.py`). Verified: 14 continuous days of
+  Cartoon Network now schedule content with no crash.
+
+- ~~🔴 **Marathons overran their window by days.** A marathon whose content is
+  unbounded (a whole show, no episode range — e.g. `simpsons_random_marathon`)
+  resolved to `play_count = None`, which `_convert_marathon_to_block` replaced
+  with `DEFAULT_MARATHON_LIMIT = 1000` "to ensure continuous play". That became
+  a single `add_count(count=1000)`, and ErsatzTV's `AddCountInternal` applies no
+  time bound at all — it commits every item in one call. `strict_window` could
+  not help: it is checked *between* block items, and the marathon block held
+  exactly one. A 6-hour Simpsons slot became ~14 days of playout.~~ Fixed:
+  `Program.fill_window` marks unbounded marathon content, and the engine asks
+  for exactly the remaining window via `add_duration` (`playout.play_for_duration`).
+  Verified: the 2026-04-30 Simpsons marathon now runs 16 items inside 16:00–22:00,
+  down from 1000 items spanning 13d 21h. Regression test:
+  `TestMarathonWindow.test_unbounded_marathon_stays_in_window`.
+- ~~🟠 **`pad_until` / `wait_until` silently did nothing across month
+  boundaries.**~~ The HH:MM endpoints carry the date in a separate `tomorrow`
+  flag, and ErsatzTV schedules *nothing* (no error) when the target time of day
+  has passed and `tomorrow` is false. All three call sites computed it as
+  `target.day > now.day`, which is False on Aug 31 → Sep 1 (`1 > 31`). That is
+  the "pad under-filled" failure the safety net in `fill_to_boundary` was
+  papering over. Fixed: `fill_until_time` / `wait_until_time` take a `datetime`
+  and call `pad_until_exact` / `wait_until_exact`, which also avoid ErsatzTV's
+  own acknowledged DST bug in the time-of-day variants.
+- ~~🟠 **The simulator could not reproduce API-contract bugs.** `MockAPI.add_count`
+  ignored `count`, there was no per-key enumerator, and `pad_until`/`wait_until`
+  always jumped to their target.~~ Fixed: the mock now follows
+  `SchedulingEngine.cs`, the build window defaults to 2 days (matching
+  `PlayoutDaysToBuild`), and API round trips are counted. Pinned by
+  `TestApiContract` (8 tests). See [ERSATZTV_API.md](ERSATZTV_API.md).
+
+- ~~🟠 **Marathon random start never fired.** `simpsons_random_marathon` declares
+  `start_mode="random"` with `start_season=[3, 9]`, but the guard in
+  `_convert_marathon_to_block` read `play_count and play_count > 1`.
+  `play_count` is `None` for unbounded content — which is exactly the content
+  that declares a random start — so the branch was dead and every Simpsons
+  marathon opened on the same episode. It was also the only marathon in the
+  library using `start_mode="random"`.~~ Fixed: the guard is now
+  `play_count != 1` (None and >1 both have room to start somewhere), and season
+  selection uses `boss.pick()` instead of `random.randint()`, which reseeded per
+  process and would have broken same-date reproducibility once the branch went
+  live. Verified: S9/S5/S9 on three trigger dates, identical across processes.
+- ~~🟠 **`skip_to_item` was orphaned by injections.** The skip was issued inside
+  `_resolve_and_prepare_program_content`, before `apply_injections` could
+  rewrite the content key. Seasonal injection turned
+  `auto_gen_cowboy_bebop_eps_23_26_d1e246` into `..._auto_spring`, so the skip
+  positioned an enumerator that was never played from and the marathon silently
+  started at episode 1. The Appointment TV branch had the same shape, skipping
+  the registry key while playing `resolver.resolve(key)`.~~ Fixed: both branches
+  now *report* a start point and `play_program` issues the skip once the final
+  key is known. Verified: orphaned skips across two years of Cartoon Network
+  went 30 → 0, with all 3001 correct skips preserved.
+- ~~🟠 **Redundant `get_context` on the hottest path.** Every scheduling endpoint
+  already returns a `PlayoutContext`, but `playout.play_item` discarded it and
+  issued a separate `get_context`, doubling round trips against ErsatzTV's 30s
+  build timeout.~~ Fixed: `play_item` uses the returned context and only falls
+  back to `get_context` on failure. A Cartoon Network day went 295 → 152 calls.
+
+- ~~🔴 **`premiere_season=("SEASON", "DAY")` scheduled nothing, silently.**
+  `annual_show()` passes `(year, premiere_season)` to `states.resolve_season_date`,
+  which only understood `(int, str)`. Given a tuple season it returned `None`,
+  `_build_season_windows` skipped every season, and `_resolve_appointment_schedule`
+  bailed on the empty window list — so the Program played its `reruns` forever and
+  never premiered. No warning: an appointment that never fires is indistinguishable
+  from one between seasons. `loop_restart_season` had the same problem from the
+  other end — it defaults to `premiere_season`, and a tuple there failed the
+  `isinstance(str)` check and silently selected the immediate-loop branch instead
+  of the annual restart. Six appointments were dead: The Office, Parks and Rec,
+  Community and 30 Rock (`library/sitcoms.py`), True Detective and Fargo
+  (`library/detective.py`).~~ Fixed at the root: `resolve_season_date` now accepts
+  a `(season, weekday)` pair and moves the resolved date forward to the first
+  matching weekday, so a `("FALL", "THURSDAY")` premiere lands on a Thursday
+  (2026-09-17) rather than on whatever day the season's peak starts (2026-09-15);
+  `states.season_label()` normalises the season half in `annual_show` and
+  `_apply_schedule_looping`. All six now premiere and advance weekly. Covered by
+  `TestSeasonSpecResolution` (9 tests) in `test_scenarios.py`.
+
+- ~~🔴 **`fallback_content` was silently dead on five channels.** It reaches
+  `circuit_breaker`, which hands it straight to `play_item` — and `play_item`
+  stringifies anything that is not already a key. A Block fallback arrived at
+  ErsatzTV as the literal text `Block(name='The Disney Afternoon', items=<...
+  object at 0x7f...>)`: matching nothing, carrying a memory address so it was
+  not even stable between runs, and still logging "✅ Fallback succeeded". The
+  two call sites disagreed — `engines/dispatcher.py` resolved first,
+  `engines/blocks.py:141` passed it raw — so the same config behaved differently
+  depending on which one fired.~~ Fixed: both now go through
+  `dispatcher.resolve_fallback_key()`, which resolves, returns a key or None,
+  and warns when a fallback resolves to something unusable. That makes
+  Collections work at both sites (british, classic_movies, sitcoms were already
+  passing Collections); Blocks remain invalid per `pipeline.py:109`, so Disney
+  and Nick moved to new `disney_vault_tv` / `nicktoons_vault_tv` keys —
+  genre-qualified OR queries over each channel's own shows, following the
+  `toonami_vault_tv` pattern. Nick's deliberately excludes the Nick at Nite
+  titles, which are shared with Good Times. Covered by `TestFallbackResolution`,
+  including a repo-wide test that every channel's fallback resolves to a key.
+
+- ~~🟠 **The simulator sized content by substring, inventing a failure.**
+  `MockAPI._guess_duration` matched `'movie' in key`, so the *show* Home Movies
+  — key `auto_gen_home_movies_<hash>` — was treated as a two-hour film. That one
+  item ate the rest of its Adult Swim block and all of the hour after it, which
+  made Cartoon Network appear to drop its Friday 23:00 slot every single week
+  and never air Attack on Titan Junior High. `validate_schedule` reported no
+  gaps throughout, so it read as a real scheduling bug rather than an artifact.
+  `intro`/`outro` were also absent from the shorts list while `bumper`/`filler`
+  were present, so branding stings were sized at 20 minutes — 40 minutes of
+  ident either side of a block boundary, enough to squeeze a real item out of a
+  one-hour slot.~~ Fixed: a registered `type:movie` query is now authoritative,
+  name matching is on whole words rather than substrings, and `intro`/`outro`/
+  `ident`/`promo` are shorts. `validate_schedule` uses the duration the build
+  actually recorded instead of re-deriving it. Three library titles tripped the
+  old wire; only Home Movies was scheduled anywhere. Covered by
+  `TestSimulatorDurationGuess`.
 
 - [ ] 🟠 **`ChannelLogger` binds `sys.stdout` at handler construction, which
   silently breaks multi-day log capture.** `__init__` builds
@@ -406,14 +830,28 @@ and the channel aired something. What it aired was wrong.
   picked up the `addams_family_tv` query fix and its Nick at Nite block is
   still playing six shows where seven are declared.
 
-- [ ] 🟠 **Mystery Theatre and Totally 80s both air Magnum, P.I. and Miami Vice
-  at midday.** Found 2026-09-02 by diffing the **live** `xmltv.xml` off the
-  server rather than by simulating, and it is on air now: two overlapping
-  Miami Vice airings in the current guide. `detective.RETRO_PI_STRIP` is
-  Mystery Theatre's midday block and names both shows by title;
-  `eighties.FALL_WINTER_DAYTIME_WHEEL` draws `eighties_crime_tv` at 10:00-12:00
-  and 14:00-17:00, which returns both, and `eighties.PI_WEDNESDAY_COLLECTION`
-  names them by key at prime.
+- [ ] 🟠 **Mystery Theatre and Totally 80s both air Magnum, P.I. at midday.**
+  Found 2026-09-02 by diffing the **live** `xmltv.xml` off the server rather than
+  by simulating. `detective.RETRO_PI_STRIP` is Mystery Theatre's midday block
+  (10:00-12:00 weekdays) and names Magnum by title;
+  `eighties.FALL_WINTER_DAYTIME_WHEEL` draws `eighties_crime_tv` over the same
+  two hours and again at 14:00-17:00, which returns him, and
+  `eighties.PI_WEDNESDAY_COLLECTION` names him by key at prime.
+
+  **The Miami Vice half is fixed** (2026-09-02): it is off `RETRO_PI_STRIP`,
+  replaced by Remington Steele. The channel's own identity settled it before the
+  collision did — every other title in that hour is a case show and
+  `reference/library-tv.tsv` tags Magnum, Moonlighting and Remington Steele
+  `Mystery` while Miami Vice is `Crime; Drama` and nothing else. Totally 80s
+  keeps it, and has the stronger claim: it names the show by key as a Wednesday
+  prime appointment.
+
+  **Magnum is the harder half and is still live.** He is a P.I. case show tagged
+  `Mystery`, so Mystery Theatre's claim is real; he is also 1980 and central to
+  Totally 80s' P.I. Wednesday. The hours only truly collide through the genre
+  pool — Wednesday prime (20:00-23:00) and Retro P.I. (10:00-12:00) do not
+  overlap — so the narrow fix is excluding him from `eighties_crime_tv`'s
+  *daytime* draw while P.I. Wednesday keeps him by name.
 
   **Why no offline tool caught it.** `collision_report` section 1 groups by
   *key name*. Mystery Theatre names Miami Vice in an inline `{"title": ...}`

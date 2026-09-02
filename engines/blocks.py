@@ -189,18 +189,46 @@ def _bridge_to_next_slot(
                     break
 
     if next_slot_item and next_slot_tuple:
-        session.logger.info(f"  Bridging to next block. Handing off to playout engine. Hard stop at {end}:00")
-        # Recursively call the main block player with the next item.
-        # Pass our current slot's end time as a "force_end_hour" to ensure it stops on the boundary.
-        # Also, tell it to ignore its own start time window, since we are starting it early.
-        session.context = play_block(
-            session, next_slot_item,
-            start_hour=next_slot_tuple[0],
-            end_hour=next_slot_tuple[1],
-            day_schedule=day_schedule,
-            ignore_start_window=True,
-            bridge_depth=bridge_depth + 1
-        )
+        # Resolved, not raw. `day_schedule` holds schedule entries exactly as the
+        # channel wrote them, and only a Block or a Program can go straight to
+        # play_block -- a SeasonalBlock, a Collection or a plain key is dropped
+        # with an "unsupported type" warning and the bridge silently does
+        # nothing. The Runner resolves every entry before dispatching it
+        # (runner.py); the bridge has to do the same.
+        res = resolve_content(next_slot_item, session.boss, session.holiday_ctx,
+                              session.config, session.resolver, session.logger)
+        wrapper = res.wrapper
+
+        if isinstance(wrapper, (Block, Program)):
+            session.logger.info(f"  Bridging to next block. Handing off to playout engine. Hard stop at {end}:00")
+            # Recursively call the main block player with the next item.
+            # Tell it to ignore its own start time window, since we are starting
+            # it early.
+            session.context = play_block(
+                session, wrapper,
+                start_hour=next_slot_tuple[0],
+                end_hour=next_slot_tuple[1],
+                day_schedule=day_schedule,
+                ignore_start_window=True,
+                bridge_depth=bridge_depth + 1
+            )
+        elif isinstance(res.resolved_content, str):
+            # The next slot is a content key -- a Collection arm, a seasonal
+            # swap, or a bare string. There is no block to hand off to, so bridge
+            # by starting that content early and stopping on our own boundary.
+            # The next slot then begins on time with the Runner none the wiser.
+            session.logger.info(
+                f"  Bridging to next slot's content '{res.resolved_content}' until {boundary_dt.strftime('%H:%M')}."
+            )
+            session.context = fill_until_time(
+                session.api, session.build_id, session.context, session.logger,
+                boundary_dt, filler_key=res.resolved_content
+            )
+        else:
+            session.logger.warn(
+                f"  Bridge target for slot {next_slot_tuple} resolved to "
+                f"{type(res.resolved_content).__name__}, which cannot be played. Filling instead."
+            )
     
     # After the bridge attempt (recursive call or not), we must ensure we are at the boundary.
     # This handles cases where there was no next block, or the bridged block finished early.

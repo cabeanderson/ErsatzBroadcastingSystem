@@ -678,7 +678,14 @@ TV_REGISTRY = {
     "movie_intro_bumper": 'type:"other_video" AND tag:intro AND tag:movie',
     "eighties_scifi_star_trek": show_by_title("Star Trek: The Next Generation"),
     "eighties_drama_movie": movie_source(genre="drama", era=EIGHTIES),
-    "eighties_music_videos": 'type:"music_video" AND year:[1980 TO 1989]',
+    # 1975, not 1980. The music video library was reorganised 2026-09-02 and is
+    # now dated -- every file carries a Kodi .nfo with a real <year> -- but the
+    # decade alone yields 31 videos, about two hours. Opening the window to the
+    # late 1970s adds Boston, the Carpenters, Pink Floyd and "Don't Stop 'Til
+    # You Get Enough" for 35 videos and 152 minutes, which is what lets the
+    # block run a full pass without repeating. See KNOWN_ISSUES for why the old
+    # `year:[1980 TO 1989]` form matched nothing at all.
+    "eighties_music_videos": 'type:"music_video" AND year:[1975 TO 1989]',
     # NO_HORROR, matching `eighties_daytime_movie` above, which has carried the
     # exclusion since before there was a horror channel to justify it. Without
     # it this key is the whole 1980s and contains `eighties_horror_movie`

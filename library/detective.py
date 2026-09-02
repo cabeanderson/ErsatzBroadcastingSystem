@@ -87,11 +87,29 @@ MYSTERY_MOVIE_WHEEL = Block(
 
 # The comma matters: the folder is `Magnum, P.I.`, and Friday's block asked for
 # "Magnum P.I." for as long as it has existed.
+#
+# Miami Vice was the second item and is gone as of 2026-09-02. Two reasons, and
+# the first is the channel's own identity: every other title in this hour is a
+# case show, and `reference/library-tv.tsv` agrees -- Magnum, Moonlighting and
+# Remington Steele all carry a Mystery genre tag, Miami Vice is `Crime; Drama`
+# and nothing else. It is a vice-squad mood piece, not a whodunit.
+#
+# The second is a live collision, logged in KNOWN_ISSUES.md: this block is
+# `midday`, which is 10:00-12:00, and Totally 80s' fall/winter daytime wheel
+# draws `eighties_crime_tv` over the same two hours -- a genre pool that returns
+# Miami Vice. `collision_report` could not see it because that channel reaches
+# the show through a pool and this one named it by title. Totally 80s has the
+# stronger claim either way: it names Miami Vice by key as a Wednesday prime
+# appointment, and the decade is that channel's whole subject.
+#
+# Remington Steele takes the slot: 96 episodes, 1982, tagged Mystery, and on no
+# other channel. It already airs here at overnight/early and Friday prime, so
+# 10:00-12:00 is its own hour and clashes with nothing.
 RETRO_PI_STRIP = Block(
     name="Retro P.I.",
     items=OrderedCollection([
         {"title": "Magnum, P.I.", "query": show_by_title("Magnum, P.I."), "order": "Shuffle"},
-        {"title": "Miami Vice", "query": show_by_title("Miami Vice"), "order": "Shuffle"},
+        {"title": "Remington Steele", "query": show_by_title("Remington Steele"), "order": "Shuffle"},
     ])
 )
 
