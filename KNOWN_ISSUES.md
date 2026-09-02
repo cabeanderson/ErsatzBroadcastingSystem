@@ -415,6 +415,38 @@ Organising the collection made the key *work*; it could never have made it *fill
 
 ## Open
 
+- [ ] 🔴 **ErsatzTV has not re-indexed the reorganised music video collection,
+  and The Beat is scheduled against paths that no longer exist.** Confirmed in
+  the live guide 2026-09-02 after the reorg: The Beat still airs 751 videos whose
+  `<title>` is `hip_hop` (244), `rock` (128), `pop` (120), `oldies` (64) and
+  `dance` (37) — the old genre-bucket folders, **none of which exist on disk any
+  more** — and 0 of the 751 carry a `<date>`. Totally 80s shows the same thing
+  from the other side: its remaining gaps are exactly 04:00-06:00 on each of
+  three days, precisely The Video Jukebox slot, because `eighties_music_videos`
+  still resolves to nothing.
+
+  **Two actions, in this order.** A library rescan in ErsatzTV, then a rebuild
+  or reset of the affected playouts — Totally 80s *and* The Beat. A reset before
+  the rescan rebuilds against the stale index and changes nothing. Until the
+  rescan, The Beat's scheduled items point at dead paths and will fail to play.
+
+  **What the guide cannot tell us** is whether a rescan has simply not run, or
+  has run and ErsatzTV does not index `<year>` from a music video `.nfo` into the
+  `year:` search field. Guide entries snapshot metadata at playout build time, so
+  a stale playout and a stale index look identical from outside. If the gaps
+  survive a rescan *and* a rebuild, it is the second case, and the fix is to key
+  the block off `<tag>80s</tag>` instead of the year range.
+
+- [ ] 🟡 **A `Fallback` secondary must be a bare content key, never a wrapper.**
+  `play_with_fallback` hands the secondary straight to `play_item`, which does not
+  resolve wrappers — a `RandomCollection` there is stringified into
+  `"<RandomCollection object at 0x...>"`, matches nothing, and still reports
+  success. Caught 2026-09-02 while making The Video Jukebox degrade gracefully:
+  the first version named a Collection and filled 04:00-06:00 with a repeated
+  object repr. Same trap `dispatcher.resolve_fallback_key` documents for
+  `fallback_content`, and nothing type-checks it at definition time. `Fallback`
+  had no users in the lineup before this, which is why it was never hit.
+
 - [ ] 🟡 **`fill_strategy="bridge"` cannot close a tail shorter than one item,
   and will open one.** `pad_until_exact` places only whole items and the bridge's
   trailing fill falls through to a bare `wait_until_time` when nothing fits, so

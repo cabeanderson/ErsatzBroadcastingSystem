@@ -32,7 +32,7 @@ gives to its 1990s lineup.
 
 from scripts.logic.structures import RandomCollection, OrderedCollection, Block
 from scripts.logic.calendar.seasonal import SeasonalBlock
-from scripts.logic.models import Swap
+from scripts.logic.models import Swap, Fallback
 
 # ==============================================================================
 # 1. COLLECTIONS
@@ -298,9 +298,23 @@ DAYTIME_BLOCK = SEASONAL_DAYTIME_BLOCK
 # bridge's trailing fill falls through to a bare wait when nothing fits -- so
 # the tail the bridge is meant to close is exactly the tail it cannot. Yielding
 # hands 05:58 to the Runner, which starts the cartoons early instead.
+#
+# `Fallback`, because a two-hour slot whose only content is a single query is
+# exactly as reliable as that query -- and this one was empty for months without
+# anything noticing. `play_with_fallback` switches on *time not advancing*, which
+# is precisely what an ErsatzTV search matching nothing produces, so the block
+# degrades to late-night television instead of going dark. Verified by
+# simulating the key as missing: 120 minutes of dead air a day becomes none.
+#
+# The secondary is a bare key and must stay one. `play_with_fallback` hands it
+# straight to `play_item`, which does not resolve wrappers -- a Collection here
+# is stringified into "<RandomCollection object at 0x...>", matches nothing, and
+# still reports success. That is the same trap `dispatcher.resolve_fallback_key`
+# documents for `fallback_content`, and it is silent in exactly the way this
+# whole defect was.
 VIDEO_JUKEBOX_BLOCK = Block(
     name="The Video Jukebox",
-    items=[LATE_NIGHT_MUSIC],
+    items=[Fallback(primary=LATE_NIGHT_MUSIC, secondary="eighties_action_tv")],
 )
 
 LATE_NIGHT_TV_BLOCK = Block(
