@@ -71,9 +71,18 @@ weekday. Sunday's 17:00 strip and Monday's prime both depend on that.
   Thursday 20:00-23:00      Cheers · Night Court
   23:00-24:00               In Living Color
 
-Lucy TV: I Love Lucy, The Lucy Show and The Lucy-Desi Comedy Hour run there
-24/7 and are off this channel entirely. Nick at Nite's I Love Lucy is the
-lineup's one named exemption to C1 (C5); a third airing here was never one.
+Lucy TV runs I Love Lucy 24/7, so *any* airing anywhere collides with it. The
+lineup's answer is C5 -- name the exemption and earn it -- and it now covers
+three channels rather than two: Lucy TV, Nick at Nite, and this one. Stated by
+the operator 2026-09-02: I Love Lucy belongs on Good Times.
+
+It is not a grudging exception. This is the multi-camera studio-audience
+channel and I Love Lucy is the show that invented the form, so it signs the
+channel on at 06:00 on both CBS days. The only constraint that binds is Nick at
+Nite's, above: out of 21:00-24:00, which prime and late respect.
+
+The Lucy Show and The Lucy-Desi Comedy Hour stay with Lucy TV. They are not
+covered by the exemption and are off this channel.
 
 Thursday is the one to notice. Totally 80s runs Cheers and Night Court as *its*
 Must See Thursday; Good Times runs the 1990s Must See Thursday on the same
@@ -96,6 +105,7 @@ from . import branding
 # every pair of shows on one network report as SAME COLLECTION.
 
 _CBS_ROSTER = [
+    "i_love_lucy_tv",
     "andy_griffith_tv", "dick_van_dyke_tv", "gilligans_island_tv",
     "smothers_brothers_tv", "mary_tyler_moore_tv", "mash_tv", "bob_newhart_tv",
     "good_times_tv", "murphy_brown_tv", "northern_exposure_tv", "nanny_tv",
@@ -141,9 +151,12 @@ CHANNEL_FALLBACK = RandomCollection([
 
 MON_AFTER_HOURS = OrderedCollection(["nanny_tv", "murphy_brown_tv"])
 MON_OVERNIGHT = RandomCollection([
-    "gilligans_island_tv", "andy_griffith_tv", "dick_van_dyke_tv",
+    "i_love_lucy_tv", "gilligans_island_tv", "andy_griffith_tv",
+    "dick_van_dyke_tv",
 ])
-MON_EARLY = OrderedCollection(["dick_van_dyke_tv", "andy_griffith_tv"])
+# The channel signs on with the show that invented it. See the exemption in
+# the module docstring; 06:00 is nowhere near Nick at Nite.
+MON_EARLY = OrderedCollection(["i_love_lucy_tv", "dick_van_dyke_tv", "andy_griffith_tv"])
 
 MON_MORNING = {
     "FALL":   OrderedCollection(["nanny_tv", "murphy_brown_tv"]),
@@ -367,7 +380,7 @@ FRI_LATE = OrderedCollection(["soap_tv", "taxi_tv"])
 
 SAT_AFTER_HOURS = OrderedCollection(["nanny_tv", "northern_exposure_tv"])
 SAT_OVERNIGHT = OrderedCollection(["gilligans_island_tv", "andy_griffith_tv"])
-SAT_EARLY = OrderedCollection(["dick_van_dyke_tv", "gilligans_island_tv"])
+SAT_EARLY = OrderedCollection(["i_love_lucy_tv", "dick_van_dyke_tv", "gilligans_island_tv"])
 
 SAT_MORNING = {
     "FALL":   OrderedCollection(["nanny_tv", "northern_exposure_tv"]),
@@ -378,7 +391,7 @@ SAT_MORNING = {
 SAT_MIDDAY = {
     "FALL":   OrderedCollection(["good_times_tv", "murphy_brown_tv"]),
     "WINTER": OrderedCollection(["bob_newhart_tv", "mary_tyler_moore_tv"]),
-    "SPRING": OrderedCollection(["andy_griffith_tv", "dick_van_dyke_tv"]),
+    "SPRING": OrderedCollection(["i_love_lucy_tv", "andy_griffith_tv"]),
     "SUMMER": OrderedCollection(["good_times_tv", "nanny_tv"]),
 }
 SAT_AFTERNOON = {

@@ -738,10 +738,17 @@ stays out of each title's *own* hours — which freed M\*A\*S\*H, Mary Tyler Moo
 and Bob Newhart for 20:00–23:00 and made the 1973 CBS Saturday lineup its
 Saturday prime. Verified over three simulated years: zero violations.
 
-I Love Lucy, The Lucy Show and The Lucy-Desi Comedy Hour are now off Good Times
-entirely. Lucy TV runs them 24/7 and Nick at Nite's I Love Lucy is the lineup's
-one named exemption to C1 (C5); a third airing on Good Times was never one, and
-had been live for as long as the channel existed.
+**I Love Lucy — the exemption, restated 2026-09-02.** Lucy TV runs it 24/7, so
+*any* airing anywhere collides with it and no hours rule can fix that. C5 is the
+answer — name the exemption and earn it — and it covers **three** channels, not
+two: Lucy TV, Nick at Nite (21:00–24:00), and **Good Times**, where it signs the
+channel on at 06:00 on both CBS days. Stated by the operator: Good Times is the
+studio-audience channel and I Love Lucy is the show that invented the form, so
+it belongs there. The one binding constraint is Nick at Nite's window, which
+Good Times' prime and late slots respect.
+
+The Lucy Show and The Lucy-Desi Comedy Hour are **not** covered and stay with
+Lucy TV alone.
 
 *Done in code when Nick was built.* Good Times used to run a collection literally named `NICK_AT_NITE` in its 23:00–02:00 slot. That is now `LATE_NIGHT_SYNDICATION` — Cheers, Wonder Years, Married… with Children, Newsradio, Drew Carey, Wings, Mad About You, 3rd Rock, The Nanny, Coach — none of them shared. The winter prime variants swapped in `CLASSIC_SITCOMS_60s_70s`, which reaches into 21:00–23:00, so they now take `EIGHTIES_NINETIES_CLASSICS` instead; and the channel fallback moved off the classics for the same reason. Mornings, daytime and the 02:00–06:00 overnight are untouched.
 

@@ -321,9 +321,19 @@ for a new channel; slice within it.
 
 ### C5 · Exceptions get named and earned
 
-I Love Lucy stays on Nick at Nite despite Lucy TV running it 24/7. That is the
-lineup's one standing exemption to C1 and it is written down. An exception that
-is not written down is a collision.
+I Love Lucy runs on Lucy TV 24 hours a day, so *every* airing of it anywhere is
+a C1 collision and no hours rule can make it otherwise. It is the lineup's one
+standing exemption, and as of 2026-09-02 it is a **three-channel** exemption:
+Lucy TV, Nick at Nite (21:00–24:00) and Good Times (06:00 sign-on, both CBS
+days). All three are written down here, in channel-plan.md and in the docstring
+of `library/sitcoms.py`.
+
+**The failure mode this rule exists to prevent runs in both directions.** An
+undocumented exception is a collision. But an exception that is documented
+loosely also invites the opposite error: the Good Times rebuild read "Nick at
+Nite's I Love Lucy is the lineup's one named exemption" as excluding Good Times
+and dropped the show off the channel, which was not what anyone had decided.
+**Name the channels the exemption covers, not just the title.**
 
 ### C6 · Measure the fix, don't assert it
 
