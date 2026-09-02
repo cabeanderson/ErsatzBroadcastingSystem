@@ -386,6 +386,26 @@ and the channel aired something. What it aired was wrong.
   Old House (234), The New Yankee Workshop (151) — 1,267 episodes with no key
   and no channel, which is most of a daytime schedule for Travelers Table.
 
+- [ ] 🔴 **Totally 80s and Cabes Classic Cinema are running 2026-03-17
+  playouts and have never been reset.** Found 2026-09-02 by reading the live
+  `xmltv.xml` after Good Times and Corncob were deployed: every other channel
+  carries an August or September epoch, those two carry March. Consequences are
+  live now — Totally 80s has **26 hours of future gaps** (10.5 h from Thu 03
+  Sep 10:04, 9 h from Fri 04 Sep 08:13) and is broadcasting its *pre-redesign*
+  grid, airing Full House at 09:11 in a slot the 2026-09-01 redesign
+  deliberately cleared because Good Times holds that title. Cabes Classic
+  Cinema has 5 gaps totalling 497 minutes.
+
+  **Not a config defect.** The current code simulates 60 days of Totally 80s
+  with 2,596 programme plays and no gaps, overlaps or circuit breakers. This is
+  the rule from the deployment notes biting: *a plain rebuild only extends the
+  playout forward; already-built items keep their old guide entries.* Fix is a
+  reset, not an edit.
+
+  **Nickelodeon (247) is the mild version** — a 2026-08-30 epoch, so it has not
+  picked up the `addams_family_tv` query fix and its Nick at Nite block is
+  still playing six shows where seven are declared.
+
 - [ ] 🟠 **Mystery Theatre and Totally 80s both air Magnum, P.I. and Miami Vice
   at midday.** Found 2026-09-02 by diffing the **live** `xmltv.xml` off the
   server rather than by simulating, and it is on air now: two overlapping

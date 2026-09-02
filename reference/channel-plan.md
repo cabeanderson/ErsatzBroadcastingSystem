@@ -521,6 +521,18 @@ Moore and Bob Newhart for 20:00–23:00, which is how the 1973 CBS Saturday
 lineup, the most famous lineup in sitcom history, became Saturday prime. See
 C2 rung 2, restated.
 
+**Verified on the live server, 2026-09-02 (V5).** Playout reset and read back
+out of `xmltv.xml`: 170 programmes, **zero gaps and zero overlaps**, and the
+network wheel on air as designed — Wednesday and Friday ABC, Thursday NBC, with
+Taxi at noon on Wednesday, Cheers at noon on Thursday, ABC Wednesday at 20:00
+and Must See TV at 20:00 Thursday. The sharing rule was checked against the
+guide rather than asserted: **zero simultaneous airings** of the sixteen titles
+shared with Nick at Nite, with Good Times holding Bewitched, The Addams Family
+and I Dream of Jeannie in the 02:00–05:00 vault while Nickelodeon runs I Love
+Lucy, Dick Van Dyke and Andy Griffith at 21:00–23:37 and Good Times, M\*A\*S\*H
+and Sanford and Son at 00:00–01:41. The Addams Family is on air, which it could
+not be before the query fix.
+
 **Shapes that failed.** Three rotation designs were drawn and rejected before
 the network wheel:
 
@@ -639,6 +651,14 @@ Bored to Death and Elsbeth are Mystery Theatre's. The collision report shows
 **No bumpers.** There are no Corncob assets on disk. Adult Swim bumpers exist
 and are Cartoon Network's; borrowing them would put its branding on a channel
 it does not own, which is the exact mistake G12 was written for. Ships silent.
+
+**Verified on the live server, 2026-09-02 (V5).** Playout reset and read back
+out of `xmltv.xml`: 162 programmes, **zero gaps and zero overlaps**. Thursday
+at 20:00 is Parks and Recreation, 30 Rock, Community and The Office, with How
+To with John Wilson on the late shift. The Adult Swim hours rule holds in the
+guide: The Eric Andre Show and Check It Out! with Dr. Steve Brule appear only
+between 10:20 and 11:55, never in Cartoon Network's windows. The channel adds
+**no same-title collisions** to the lineup.
 
 **What the build found.** The comedy shelf was far larger than any channel
 could see. **Scrubs (243 episodes) and Frasier (273) had no registry key at
