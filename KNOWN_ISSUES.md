@@ -386,6 +386,38 @@ and the channel aired something. What it aired was wrong.
   Old House (234), The New Yankee Workshop (151) — 1,267 episodes with no key
   and no channel, which is most of a daytime schedule for Travelers Table.
 
+- [ ] 🟠 **Mystery Theatre and Totally 80s both air Magnum, P.I. and Miami Vice
+  at midday.** Found 2026-09-02 by diffing the **live** `xmltv.xml` off the
+  server rather than by simulating, and it is on air now: two overlapping
+  Miami Vice airings in the current guide. `detective.RETRO_PI_STRIP` is
+  Mystery Theatre's midday block and names both shows by title;
+  `eighties.FALL_WINTER_DAYTIME_WHEEL` draws `eighties_crime_tv` at 10:00-12:00
+  and 14:00-17:00, which returns both, and `eighties.PI_WEDNESDAY_COLLECTION`
+  names them by key at prime.
+
+  **Why no offline tool caught it.** `collision_report` section 1 groups by
+  *key name*. Mystery Theatre names Miami Vice in an inline `{"title": ...}`
+  dict and Totally 80s reaches it through `eighties_crime_tv`, a genre pool --
+  two different keys, one show, so the pairing never appears. This is the exact
+  failure mode channel-plan.md described for the duplicate `eighties_sitcom_*`
+  keys, in the other direction: there, one pool wore two names; here, one show
+  is reachable through a pool and through a title.
+
+  **The lead worth following is the method, not the fix.** `xmltv.xml` is
+  ground truth and the check is cheap -- parse it, group programmes by title,
+  flag overlapping windows on different channels. Run over the live guide it
+  found **8 distinct same-title pairings across 20 overlapping airings**, of
+  which only this one is between two *scripted* channels; the rest involve
+  Lucy TV, Japanorama, Travelers Table and Nickelodeon, which `collision_report`
+  cannot see at all because they have no channel module to simulate. One of the
+  eight -- I Love Lucy on Lucy TV against Nick at Nite -- is the lineup's
+  written exemption (C5) and is correct.
+
+  Also live and undocumented: **The Great British Bake Off** (Across the Pond /
+  Travelers Table), **Attack on Titan**, **The Boondocks** and **Cowboy Bebop**
+  (Cartoon Network / Japanorama), **Street Hawk** (Mystery Theatre / Other
+  Worlds) and **Laid-Back Camp** (Japanorama / Travelers Table).
+
 - [x] ✅ **FIXED 2026-09-01 (Good Times rebuild). Good Times declares no
   `evening` in its `WEEKEND` schedule.** All seven days now declare all ten
   slots, and the weekend arms are gone entirely -- the channel is keyed by

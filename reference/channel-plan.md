@@ -29,6 +29,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 
 | # | Channel | Content | Scripted |
 |---|---|---|---|
+| 102 | Wild Horizons | nature & wildlife — **on the server, absent from this plan**; identified 2026-09-02 from `/api/channels` | no |
 | 104 | Across the Pond | British television — **a broadcast day**, not "comedy & panel" | yes — **designed**. The last channel still on the default preset |
 | 116 | Cartoon Network | CN originals + Toonami + Adult Swim | yes — **rebuilt** |
 | 120 | Lucy TV | I Love Lucy 24/7 | no |
@@ -38,15 +39,15 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 164 | Japanorama | anime | no |
 | 180 | Totally 80s | 80s TV — **stays 80s** | yes — **designed** 2026-09-01 |
 | 190 | Good Times | **the studio audience** — multi-camera network sitcom, 1951–1999 | yes — **rebuilt** 2026-09-01 |
-| — | Nick (+ Nick at Nite) | Nicktoons, WB animation, classic TV | yes — **built**, channel number pending |
-| — | Disney | Disney Afternoon, ABC mornings, Star Wars animation | yes — **built**, channel number pending |
 | 240 | Travelers Table | cooking — **+ nature docs** | no |
 | 241 | Makers Corner | DIY & craft | no |
 | 242 | Corncob TV | **comedy after the laugh track** — single-camera, cable, streaming, sketch and alt | yes — **built** 2026-09-01 |
 | 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
 | 244 | Nightmare Theatre | horror, TV + film | yes — **built**. The film is the spine: 242 features, 17 h/day |
 | 246 | The Beat | **music videos only** | no |
-| — | Be Kind Rewind | film, **1980–present** | yes — **built**. The video store: a week, not a genre. Channel number pending |
+| 247 | Nick (+ Nick at Nite) | Nicktoons, WB animation, classic TV | yes — **built**. Live as *Nickelodeon* |
+| 248 | Disney | Disney Afternoon, ABC mornings, Star Wars animation | yes — **built** |
+| 249 | Be Kind Rewind | film, **1980–present** | yes — **built**. The video store: a week, not a genre |
 
 ### To build
 
