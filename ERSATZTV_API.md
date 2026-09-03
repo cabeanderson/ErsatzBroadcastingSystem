@@ -266,6 +266,40 @@ Useful checks, none of which need more than `curl`:
   grabs a real frame. It opens a transcode session on the server, so use it
   sparingly.
 
+### The XMLTV export is truncated separately from the playout
+
+Found 2026-09-03. `xmltv.xml` stopped at `now + 2 days` (last stop 09-05 16:19,
+identical across two pulls minutes apart) while the playout in the UI was
+correctly built to 4 days.
+
+**ErsatzTV clamps the XMLTV export with its own days setting, independent of
+`PlayoutDaysToBuild`** — a deliberate optimisation, so a long playout does not
+force a huge guide file on every client that pulls it. A short feed is therefore
+*not* evidence of a short playout, and this was misdiagnosed that way once.
+
+To extend the guide horizon, raise **both** settings, and raise
+`PlayoutScriptedScheduleTimeoutSeconds` (default 30) first — the script is killed
+at that mark and a non-zero exit fails the whole build, so doubling the day loop
+inside an unchanged budget is the likeliest way to break a working channel. The
+failure mode is a channel silently vanishing from the feed, so re-pull and count
+channels after the first rebuild.
+
+### There is no read API beyond these
+
+Probed 2026-09-03, discriminating on content type. `/api/channels` and the
+`/iptv/*` feeds are the whole surface. All of `/api/playouts`, `/api/playout`,
+`/api/schedules`, `/api/collections`, `/api/media/movies`, `/api/search`,
+`/api/epg`, `/api/guide`, `/api/scripted`, `/api/programs`, `/api/settings`,
+`/api/playout/1` and `/api/channels/1` return the SPA shell (`text/html`,
+~39,680 b). `/swagger/v1/swagger.json` is a genuine 404 — no schema at runtime.
+
+So **there is no way to ask the server for the schedule other than XMLTV**, and
+the scripted API under `/api/scripted/playout/build/{buildId}/…` is write-only in
+this sense: it has no verb that returns the built playout. What XMLTV carries is
+richer than a query API would be anyway — on the 2026-09-03 pull, 3,041 episode
+subtitles, 3,246 synopses, 3,288 content ratings, 253 film release years, and
+poster/still art for every programme.
+
 **Still out of reach:** the playout-to-script wiring lives in the SQLite DB under
 `/srv/appdata/ersatztv`, which is `drwx------ root root`, and the SSH account has
 no passwordless sudo and no docker access. Mis-wiring can be *detected* from the
