@@ -113,12 +113,33 @@ The framework already encodes the distinction:
 
 | Structure | Count | Recurs | Announce? |
 |---|---|---|---|
-| `annual_show` | 46 | Yearly | **Always** — the headline events |
+| `annual_show`, broadcast mode | 29 | Yearly | **Always** — the headline events |
+| `annual_show`, contiguous mode | 6 | Daily | **Never** — see below |
 | `SeasonalBlock` | 16 | Yearly | **Always** — block changes, holiday themes |
 | `MarathonSequence` | 10 | Occasional | **Always** — the cover story |
 | `OrderedCollection` | 175 | Weeks | Season boundaries only |
 | `DailyOrderedCollection` | 22 | Daily | Describe, don't announce |
 | `RandomCollection` | 200 | Constantly | **Never** |
+
+**`annual_show` is not a recurrence rule — it has two modes, and only one is
+annual.** Corrected 2026-09-04 when the prototype was built. Broadcast mode
+(`premiere_year`) is a gapped yearly season; contiguous mode (`start_date`) is
+gapless sequential playback, and every one of the six is a Toonami daily strip —
+Dragon Ball, Dragon Ball Z, Naruto, Yu Yu Hakusho, Rurouni Kenshin, Inuyasha.
+Announcing all `annual_show` alike produced 59 false appointments out of 66 on
+the first pass. Split on which keyword the call carries.
+
+**And an E01 *does* mean something, but only on a broadcast-mode show.** The rule
+that survives both halves: broadcast mode **and** `SxxE01`. Across Aug 31–Sep 6
+that yields exactly one headline — Fringe S04E01, Sat 5 Sep 02:12, Other Worlds.
+One headline a week is the right order of magnitude for appointment television.
+
+**Open: title matching cannot separate an appointment from a rerun.** Fringe is
+declared annual and also airs eleven times that week on Other Worlds'
+Investigation strand. XMLTV carries title and time but not which structure placed
+the airing. E01 detection dodges it for premieres; the mid-season "running this
+week" list is still noisy. Fixing it properly needs the playout's structure
+identity, which the feed does not carry.
 
 Calling a *finale* needs season lengths. `reference/library-tv.tsv` has totals
 per show, not per season — backfill from TMDB for the ordered strips only (a much
@@ -222,6 +243,15 @@ model-written period copy, if used at all, is cents and cached to disk.
 Nothing here has a growth path into a bill.
 
 ## Build order
+
+**Step 0 is done and steps 1–3 have a working prototype**, built 2026-09-04 in
+its own repo at `guide/`, a sibling of this one — see `guide/README.md`. The
+feed now runs 2026-08-30 → 2026-09-08 (7.2 MB, 6,876 programmes, all 18
+channels present), and the generator reads this repo by AST rather than
+importing it, so `channels.toml` stays the only shared surface.
+
+Still to do: Wikipedia/OMDb per-title enrichment, immutable dated paths, the
+Sunday email, and publishing.
 
 0. **Move the wall** (½ hr) — timeout to 180s, then XMLTV days and playout days
    to 10–12. Rebuild, re-pull, confirm the horizon moved *and* all 18 channels
