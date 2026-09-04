@@ -65,19 +65,22 @@ MARATHONS = [
         name="The Dollars Trilogy",
         trigger=triggers.chance(0.02, "dollars_trilogy"),
         collection=western.DOLLARS_TRILOGY,
-        hours=(18, 24)
+        hours=(18, 24),
+        priority=1
     ),
     Marathon(
         name="Fourth of July Westerns",
         trigger=triggers.has_label("JULY_4"),
         collection=western.PATRIOTIC_WESTERNS,
-        hours=(12, 24)
+        hours=(12, 24),
+        priority=2
     ),
     Marathon(
         name="Memorial Day Westerns",
         trigger=triggers.has_label("MEMORIAL_DAY"),
         collection=western.PATRIOTIC_WESTERNS,
-        hours=(12, 24)
+        hours=(12, 24),
+        priority=2
     )
 ]
 

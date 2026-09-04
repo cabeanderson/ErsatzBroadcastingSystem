@@ -35,6 +35,7 @@ different questions and a pool can be large in one and unreachable in the other.
 | [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs |
 | [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel — **implemented**, see its status header |
 | [channel-rules.md](channel-rules.md) | **The rules for making and curating channels** — founding, grid, cross-channel curation, and the checks a channel passes before it counts as built |
+| [metadata-facets.md](metadata-facets.md) | **What a content key can select on** — the 9,672-tag TMDB vocabulary the manifests drop, every `tag:` key evaluated for real, and the facets and keyword sweeps to build calendar and holiday keys from. `python3 -m scripts.testing.metadata_census` |
 | [lineup-audit.md](lineup-audit.md) | **The 2026-09-03 depth-and-programming audit** — content per channel measured over a year, the 102 orphan shows, and where marathons, seasons and appointments are unused |
 | [guide-site-plan.md](guide-site-plan.md) | **The plan for the listings-magazine website** — what the live feed carries, the XMLTV horizon settings, where per-title trivia comes from, and the publishing risk review |
 | [channel-plan.md](channel-plan.md) | The working plan — lineup, programming mechanics, sharing rules, gaps |

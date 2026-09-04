@@ -97,10 +97,11 @@ MARATHONS = [
         name="Friday the 13th Rentals",
         trigger=triggers.all_of(
             triggers.has_label("FRIDAY"),
-            triggers.day_of_month(13)
+            triggers.day_of_month(13),
         ),
         collection=modern_movies.CULT_CORNER,
-        hours=(22, 24)
+        hours=(22, 24),
+        priority=2
     ),
 ]
 

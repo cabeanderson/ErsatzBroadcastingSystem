@@ -32,7 +32,8 @@ MARATHONS = [
         name="Monk: The Trudy Arc",
         trigger=triggers.chance(0.01, "monk_trudy_marathon"),
         collection="monk_trudy_arc_tv",
-        hours=(10, 23)
+        hours=(10, 23),
+        priority=1
     )
 ]
 
@@ -87,7 +88,7 @@ SCHEDULES = {
         "morning": detective.DETECTIVE_USA_BLOCK,      # Monk / Psych
         "midday": detective.RETRO_PI_STRIP,            # was a third hour of Monk / Psych
         "noon": LUNCH_SPECIAL,
-        "afternoon": detective.DETECTIVE_USA_BLOCK,    # Monk / Psych
+        "afternoon": detective.THE_PROCEDURAL_WALL,    # was a third + fourth hour of Monk / Psych
         "evening": EVENING_BLOCK,
         "prime": PRIME_BLOCK,
         "night": detective.MYSTERY_MOVIE_WHEEL         # was late night again; now film

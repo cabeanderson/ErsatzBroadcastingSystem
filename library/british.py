@@ -182,10 +182,16 @@ BRITCOM_AFTERNOON = Block(
 # single pool on the channel and it is the only thing here that can carry two
 # hours a night seven nights a week -- 14 a week, a twelve-week cycle.
 
+# Two shows, not one, and they are the same show: The Grand Tour is the same
+# three presenters in the same format, 46 episodes that were on disk and named
+# nowhere. Ordered rather than random so the hour still reads as a strip --
+# Top Gear leads, and 176 + 46 episodes takes the cycle from twelve weeks to
+# fifteen.
 TEATIME = Block(
     name="Teatime",
     items=OrderedCollection([
         {"title": "Top Gear", "query": show_by_title("Top Gear"), "order": "Shuffle"},
+        {"title": "The Grand Tour", "query": show_by_title("The Grand Tour"), "order": "Shuffle"},
     ]),
 )
 

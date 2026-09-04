@@ -177,6 +177,7 @@ MORNING_BENCH = monthly_rotation([
 SYNDICATION_HOUR = Block(
     name="The Syndication Hour",
     items=RandomCollection([
+        "south_park_tv",
         "tim_and_eric_tv",
         "eric_andre_tv",
         "steve_brule_tv",
@@ -281,8 +282,22 @@ CABLE_ODDITIES = Block(
     ]),
 )
 
+# Adult animation, which the channel had no register for at all. It belongs
+# here rather than on Cartoon Network: Adult Swim is CN's late block and these
+# three never aired in it. South Park also carries The Syndication Hour at
+# 10:00 -- 305 episodes is large enough to wear two blocks without G4 biting,
+# and the two hours are eight apart.
+CABLE_ANIMATED = Block(
+    name="The Cable Hour",
+    items=RandomCollection([
+        "south_park_tv",
+        "bojack_horseman_tv",
+        "f_is_for_family_tv",
+    ]),
+)
+
 CABLE_HOUR = monthly_rotation(
-    [CABLE_BASIC, CABLE_PREMIUM, CABLE_PRESTIGE, CABLE_ODDITIES],
+    [CABLE_BASIC, CABLE_PREMIUM, CABLE_PRESTIGE, CABLE_ODDITIES, CABLE_ANIMATED],
     start_month=2,
 )
 

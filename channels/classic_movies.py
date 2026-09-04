@@ -64,7 +64,8 @@ MARATHONS = [
         name="Christmas in July",
         trigger=triggers.on_date(7, 25),
         collection=movies.CHRISTMAS_FESTIVAL_EVENT,
-        hours=(12, 24)
+        hours=(12, 24),
+        priority=2
     ),
     Marathon(
         name="Groundhog Day Marathon",
@@ -72,9 +73,10 @@ MARATHONS = [
         collection=themed_marathon(
             show_title="Groundhog Day",
             title="Groundhog Day Marathon",
-            is_movie=True
+            is_movie=True,
         ),
-        hours=(6, 24)
+        hours=(6, 24),
+        priority=2
     )
 ]
 

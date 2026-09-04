@@ -79,16 +79,18 @@ MARATHONS = [
         name="Friday the 13th",
         trigger=triggers.all_of(
             triggers.has_label("FRIDAY"),
-            triggers.day_of_month(13)
+            triggers.day_of_month(13),
         ),
         collection=horror.FRIDAY_THE_13TH,
-        hours=(20, 24)
+        hours=(20, 24),
+        priority=2
     ),
     Marathon(
         name="Krampusnacht",
         trigger=triggers.on_date(12, 5),
         collection=horror.KRAMPUSNACHT,
-        hours=(20, 24)
+        hours=(20, 24),
+        priority=2
     ),
 ]
 

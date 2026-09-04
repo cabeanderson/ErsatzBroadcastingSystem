@@ -207,6 +207,10 @@ def _field_match(record, field, expr):
     value = expr.strip('"').lower()
     if field == "genre":
         return value in record["genres"]
+    if field == "tags":
+        # Tags are a set of exact strings, not a phrase field: `tag:cult` must
+        # not also match "cult classic". Only NFO-backed records carry them.
+        return value in record.get("tags", ())
     if field == "studio":
         # Substring, not whole-word: the manifest holds "ITV1", "BBC One" and
         # "Disney+", and `studio:(bbc OR itv)` means to reach all of them.
@@ -229,7 +233,7 @@ def query_kind(query):
     return None
 
 
-def _clause_test(body, kind):
+def _clause_test(body, kind, has_tags=False):
     """A predicate for one clause, or None when the manifests cannot answer it.
 
     Handles the parenthesised OR groups `queries.py` builds -- `(title:*Mario*
@@ -239,12 +243,12 @@ def _clause_test(body, kind):
     """
     if body.startswith("(") and body.endswith(")"):
         parts = [p.strip() for p in re.split(r"\s+OR\s+", body[1:-1]) if p.strip()]
-        tests = [_clause_test(p, kind) for p in parts]
+        tests = [_clause_test(p, kind, has_tags) for p in parts]
         if not tests or any(t is None for t in tests):
             return None
         return lambda r, ts=tests: any(t(r) for t in ts)
 
-    if not body.startswith(CHECKABLE):
+    if not body.startswith(CHECKABLE) and not (has_tags and body.startswith("tag:")):
         return None
 
     # Only the TV manifest carries a studio column.
@@ -278,6 +282,10 @@ def _clause_test(body, kind):
         expr = body.split(":", 1)[1]
         return lambda r, e=expr: _field_match(r, "title", e)
 
+    if body.startswith("tag:") and has_tags:
+        expr = body.split(":", 1)[1]
+        return lambda r, e=expr: _field_match(r, "tags", e)
+
     return None
 
 
@@ -303,7 +311,7 @@ def title_targets(query):
     return targets
 
 
-def evaluate(query, records):
+def evaluate(query, records, has_tags=False):
     """Records a query selects, plus the clauses that could not be checked.
 
     Unevaluable clauses are dropped whole -- including negated ones, where
@@ -329,7 +337,7 @@ def evaluate(query, records):
                 return [], unchecked
             continue
 
-        test = _clause_test(body, kind)
+        test = _clause_test(body, kind, has_tags)
         if test is None:
             unchecked.append(clause)
             continue

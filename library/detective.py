@@ -22,16 +22,33 @@ CLASSIC_DETECTIVES = Block(
 MODERN_CRIME = Block(
     name="Modern Crime",
     items=OrderedCollection([
-        "procedural_tv",
+        "the_shield_tv",
+        "procedural_tv",      # 4 shows -- `tag:procedural` is thinner than it reads
         "modern_mystery_tv"   # 62 shows; `legal_drama_tv` was 4 and is dropped
     ])
 )
 
+# 08:00-10:00 weekdays, and nowhere else on the grid. This used to hold the
+# afternoon as well -- five hours a weekday, 4.5 h/day averaged, 18% of the
+# channel on two shows. Two hours is one Monk and one Psych a day, which is
+# what the block is for; the afternoon it vacated is THE_PROCEDURAL_WALL.
 DETECTIVE_USA_BLOCK = Block(
     name="USA Network Block",
     items=OrderedCollection([
         {"title": "monk"},
         {"title": "psych"}
+    ])
+)
+
+# 14:00-17:00 weekdays. The drop-in-anywhere hour this channel exists to run
+# and did not have: three episodic procedurals, ~43 minutes each, three of
+# them into a three-hour slot. All three were on disk with no registry key.
+THE_PROCEDURAL_WALL = Block(
+    name="The Procedural Wall",
+    items=OrderedCollection([
+        "nine_one_one_tv",
+        "greys_anatomy_tv",
+        "chicago_med_tv",
     ])
 )
 
@@ -166,6 +183,9 @@ DETECTIVE_TUESDAY_BLUESKY = Block(
 DETECTIVE_WEDNESDAY_HARDBOILED = Block(
     name="Hardboiled Crime",
     items=OrderedCollection([
+        # 336 episodes, the deepest show on the channel, and the register this
+        # night is named for. Shuffled: it is serialized, but the cases are not.
+        {"title": "The Shield", "query": show_by_title("The Shield"), "order": "Shuffle"},
         {"title": "Bosch", "query": show_by_title("Bosch"), "order": "Chronological"},
         {"title": "Homicide: Life on the Street", "query": show_by_title("Homicide: Life on the Street"), "order": "Shuffle"},
         {"title": "Mindhunter", "query": show_by_title("Mindhunter"), "order": "Chronological"},

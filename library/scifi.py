@@ -61,7 +61,11 @@ SCIFI_MYTHS = RandomCollection([
 
 TREK_MORNING = RandomCollection([
     {"title": "Star Trek: Enterprise", "order": "Chronological"},
-    {"title": "Star Trek: The Next Generation", "order": "Chronological"}
+    {"title": "Star Trek: The Next Generation", "order": "Chronological"},
+    # 50 episodes, on disk and named nowhere. Shuffled where the other two are
+    # chronological: it is the one episodic Trek and the only half-hour, which
+    # is what makes it a morning show rather than a fourth serialized strip.
+    {"title": "Star Trek: Lower Decks", "order": "Shuffle"},
 ])
 
 # Sci-Fi Prime Time Lineups
