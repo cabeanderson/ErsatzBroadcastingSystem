@@ -415,6 +415,29 @@ Organising the collection made the key *work*; it could never have made it *fill
 
 ## Open
 
+- [ ] 🟠 **`Block(items="some_key")` silently plays nothing, and
+  `example_channel.py` documents it as the way to do it.**
+  `engines/blocks.py::_get_next_block_item` accepts a collection (anything with
+  `.pick`) or a `list`, and returns `None` for everything else — so a bare
+  content-key string makes the block report `0 items played`, time does not
+  advance, and the slot falls through to the circuit breaker. There is no
+  warning: the block looks correctly configured, resolves a real key, and plays
+  nothing.
+
+  Found building Japanorama 2026-09-03, where three single-key blocks
+  (`FRIEREN_NIGHT`, `VINLAND_NIGHT`, `GHIBLI_SUNDAY`) took out 19:00–23:00 with
+  circuit breakers on most days of a 365-day simulation. `validate_schedule`
+  reported no gaps throughout, so it read as a content problem rather than a
+  config one.
+
+  The fix at the call site is `OrderedCollection(["the_key"])` — a one-item
+  *list* resolves once and then exhausts the rest of the slot, while a one-item
+  collection keeps handing the same key back, which is what a strip wants.
+  `example_channel.py` line ~57 shows `items="collection_80s_cartoons"` and
+  has been corrected to the collection form, but the engine should either accept
+  a bare string or warn on one; every other channel happens to pass a collection
+  or a list, which is why this survived this long.
+
 - [ ] 🔴 **ErsatzTV has not re-indexed the reorganised music video collection,
   and The Beat is scheduled against paths that no longer exist.** Confirmed in
   the live guide 2026-09-02 after the reorg: The Beat still airs 751 videos whose

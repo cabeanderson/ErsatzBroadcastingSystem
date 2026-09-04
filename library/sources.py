@@ -11,7 +11,7 @@ from scripts.library.queries import (
     episode_source, movie_source, show_source, 
     show_by_title, show_container_by_title, movie_by_title,
     playback_order, playlist_ref, apply_tags,
-    ANIME, MOVIE, SHOW
+    ANIME, ANIMATED, MOVIE, SHOW
 )
 from scripts.logic.factories import episode_list
 # Import filter constants from our local library
@@ -195,8 +195,13 @@ MOVIE_REGISTRY = {
     # --- ANIMATION (FILM) ---
     "animation_movie": movie_source(animated=True),
     "classic_animation_movie": movie_source(animated=True, era=CLASSIC_ERA, extra=SHORT),
+    # `genre:anime` is on two films in the whole library -- Laid-Back Camp the
+    # Movie and the 1986 Transformers -- so the tag cannot carry a film channel
+    # (G11). Japanorama's shelves below are named title by title instead, which
+    # is also the only form `key_census` can size: `library-movies.tsv` carries
+    # no studio column, so a studio-based film key resolves to "not in
+    # manifests" and is never checked against anything.
     "anime_movie": f"{MOVIE} AND {ANIME}",
-    "ghibli_movie": movie_source(animated=True, extra='(studio:"Studio Ghibli" OR title:*Ghibli*)'),
     "disney_movie": movie_source(animated=True, studio="Disney"),
     "pixar_movie": movie_source(animated=True,studio="Pixar"),
     "dreamworks_movie": movie_source(studio="Dreamworks"),
@@ -588,6 +593,23 @@ TV_REGISTRY = {
     "freaks_and_geeks_tv": show_by_title("freaks and geeks"),
     "mythic_quest_tv": show_by_title("mythic quest"),
 
+    # Adult animation. All three were on disk and named nowhere in `library/`
+    # or `channels/` -- invisible to `key_census`, which can only score keys
+    # that exist. South Park is 305 episodes, the largest single unscheduled
+    # show in the library and roughly twice the next Corncob title.
+    "south_park_tv": show_by_title("south park"),
+    "bojack_horseman_tv": show_by_title("bojack horseman"),
+    "f_is_for_family_tv": show_by_title("f is for family"),
+
+    # The episodic procedural bench. All four were on disk and named nowhere,
+    # and channel-coverage.md assigned three of them to this channel on
+    # 2026-08-29 without anything wiring them. The Shield is 336 episodes --
+    # the second-largest unscheduled show in the library.
+    "the_shield_tv": show_by_title("the shield"),
+    "nine_one_one_tv": show_by_title("9-1-1"),
+    "greys_anatomy_tv": show_by_title("grey's anatomy"),
+    "chicago_med_tv": show_by_title("chicago med"),
+
     # Cable half-hours.
     "always_sunny_tv": show_by_title("it's always sunny in philadelphia"),
     "curb_tv": show_by_title("curb your enthusiasm"),
@@ -747,6 +769,226 @@ ANIMATED_REGISTRY = {
 }
 
 # ============================================================================
+# 3c. JAPANORAMA
+# ============================================================================
+#
+# Channel 164. Two halves, and the split between them is the point.
+#
+# The `_syndication_tv` keys are shows Cartoon Network's Toonami also runs.
+# They carry Shuffle where Toonami's carry Chronological, which is the C2
+# rung-1 split: Toonami runs them as a first-run strip after school, Japanorama
+# runs them as daytime syndication you can drop into. The hours rule that keeps
+# the two apart is written out in the docstring of `library/anime.py`; forcing
+# Shuffle here is what makes the two presentations impossible to confuse at the
+# key level rather than by a grid remembering (C3).
+#
+# Everything else on this channel is Japanorama's alone.
+
+JAPANORAMA_REGISTRY = {
+    # --- THE MORNING: iyashikei -------------------------------------------
+    "laid_back_camp_tv": show_by_title("Laid-Back Camp"),
+    "campfire_cooking_tv": show_by_title(
+        "Campfire Cooking in Another World with My Absurd Skill"),
+    "okitsura_tv": show_by_title(
+        "OKITSURA: Fell in Love with an Okinawan Girl, but I Just Wish I Know What She's Saying"),
+    # Encouragement of Climb is three shows by running time and has to be cut
+    # into them (G2). Season 1 is twelve 3.5-minute shorts, seasons 2-3 run
+    # 13.5 minutes, season 4 is a full 24. Handing all 61 episodes to one strip
+    # drops a three-minute short into a half-hour hole.
+    "yama_no_susume_tv":
+        'type:episode AND show_title:"Encouragement of Climb" AND season_number:[2 TO 4]',
+
+    # --- THE FILLER: the 3.5-minute shelf ---------------------------------
+    # Twenty-four shorts, none over four minutes. Cartoon Network ships with no
+    # daytime filler at all because its bumper trees are empty and G12 says
+    # silence beats the wrong branding. This channel has real programming that
+    # fits the same hole, so it pads with that instead of with nothing.
+    "japanorama_shorts_tv":
+        'type:episode AND ('
+        '(show_title:"Encouragement of Climb" AND season_number:1)'
+        ' OR show_title:"Room Camp")',
+
+    # --- TEATIME ----------------------------------------------------------
+    "assassination_classroom_tv": show_by_title("Assassination Classroom"),
+    "ranking_of_kings_tv": show_by_title("Ranking of Kings"),
+    "girls_und_panzer_tv": show_by_title("Girls und Panzer"),
+    "one_punch_man_tv": show_by_title("One-Punch Man"),
+    "dandadan_tv": show_by_title("DAN DA DAN"),
+
+    # --- PRIME: the strip -------------------------------------------------
+    # Two keys per show, not one key played two ways: an ErsatzTV content key
+    # carries its playback order, so chronological on weeknights and shuffled
+    # on Sunday is two registrations (G8).
+    "frieren_chronological_tv": playback_order(
+        show_by_title("Frieren: Beyond Journey's End"), force="Chronological"),
+    "frieren_tv": playback_order(
+        show_by_title("Frieren: Beyond Journey's End"), force="Shuffle"),
+    "vinland_saga_chronological_tv": playback_order(
+        show_by_title("Vinland Saga"), force="Chronological"),
+    "vinland_saga_tv": playback_order(
+        show_by_title("Vinland Saga"), force="Shuffle"),
+    "carole_and_tuesday_tv": playback_order(
+        show_by_title("Carole & Tuesday"), force="Chronological"),
+    "kids_on_the_slope_tv": playback_order(
+        show_by_title("Kids on the Slope"), force="Chronological"),
+    "violet_evergarden_tv": show_by_title("Violet Evergarden"),
+    "kinos_journey_tv": show_by_title("Kino's Journey"),
+    "fullmetal_alchemist_brotherhood_tv": playback_order(
+        show_by_title("Fullmetal Alchemist: Brotherhood"), force="Shuffle"),
+    "death_note_tv": playback_order(show_by_title("Death Note"), force="Shuffle"),
+
+    # --- THE SATURDAY EVENTS ----------------------------------------------
+    # Four runs too short to strip, one to a season of the year (G6).
+    "blue_eye_samurai_tv": playback_order(
+        show_by_title("Blue Eye Samurai"), force="Chronological"),
+    "macross_plus_tv": playback_order(
+        show_by_title("Macross Plus"), force="Chronological"),
+    "tatami_time_machine_blues_tv": playback_order(
+        show_by_title("The Tatami Time Machine Blues"), force="Chronological"),
+    "scott_pilgrim_takes_off_tv": playback_order(
+        show_by_title("Scott Pilgrim Takes Off"), force="Chronological"),
+
+    # --- DEEP NIGHT -------------------------------------------------------
+    "tatami_galaxy_tv": show_by_title("The Tatami Galaxy"),
+    "terror_in_resonance_tv": playback_order(
+        show_by_title("Terror in Resonance"), force="Chronological"),
+    "cyberpunk_edgerunners_tv": playback_order(
+        show_by_title("Cyberpunk: Edgerunners"), force="Chronological"),
+    # Deliberately unbounded: the phrase matches Midnight Diner (2009) and
+    # Midnight Diner: Tokyo Stories (2016) both, which is 40 episodes of one
+    # show under two titles. The only live-action series on the channel.
+    "midnight_diner_tv": show_by_title("Midnight Diner"),
+
+    # --- SHARED WITH TOONAMI: the syndication half ------------------------
+    "pokemon_syndication_tv": playback_order(show_by_title("Pokémon"), force="Shuffle"),
+    # `show_title:"Dragon Ball"` is a phrase match and returns Z, GT, Super and
+    # DAIMA with it (G10). The kids' hour wants the 1986 show alone.
+    "dragon_ball_syndication_tv": playback_order(
+        'type:episode AND show_title:"Dragon Ball"'
+        ' AND NOT show_title:"Dragon Ball Z" AND NOT show_title:"Dragon Ball GT"'
+        ' AND NOT show_title:"Dragon Ball Super" AND NOT show_title:"Dragon Ball DAIMA"',
+        force="Shuffle"),
+    # Same trap: Sailor Moon returns Sailor Moon Crystal. animation.py carries
+    # the identical exclusion for the identical reason.
+    "sailor_moon_syndication_tv": playback_order(
+        'type:episode AND show_title:"Sailor Moon" AND NOT show_title:"Sailor Moon Crystal"',
+        force="Shuffle"),
+    "sailor_moon_crystal_tv": playback_order(
+        show_by_title("Sailor Moon Crystal"), force="Shuffle"),
+    "one_piece_syndication_tv": playback_order(show_by_title("One Piece"), force="Shuffle"),
+    "naruto_syndication_tv": playback_order(show_by_title("Naruto"), force="Shuffle"),
+    "inuyasha_syndication_tv": playback_order(show_by_title("InuYasha"), force="Shuffle"),
+    "rurouni_kenshin_syndication_tv": playback_order(
+        show_by_title("Rurouni Kenshin"), force="Shuffle"),
+    "dragon_ball_z_syndication_tv": playback_order(
+        show_by_title("Dragon Ball Z"), force="Shuffle"),
+    "dragon_ball_gt_tv": playback_order(show_by_title("Dragon Ball GT"), force="Shuffle"),
+    "dragon_ball_super_syndication_tv": playback_order(
+        show_by_title("Dragon Ball Super"), force="Shuffle"),
+    "yu_yu_hakusho_syndication_tv": playback_order(
+        show_by_title("Yu Yu Hakusho"), force="Shuffle"),
+
+    # --- THE FALLBACK BED -------------------------------------------------
+    # Everything on the channel that no other channel names, as one key. A
+    # fallback has to be a key and not a Block -- `resolve_fallback_key()`
+    # resolves keys and collections and warns on anything else -- and it has to
+    # be drawn from the owned half: a stall can fire at any hour, so a bed built
+    # from the syndication keys would be the one thing on the channel that can
+    # reach Toonami's window and break the hours rule. Same reason Nick and
+    # Disney carry `nicktoons_vault_tv` and `disney_vault_tv`.
+    "japanorama_vault_tv": playback_order(
+        'type:episode AND ('
+        'show_title:"Laid-Back Camp" OR show_title:"Encouragement of Climb"'
+        ' OR show_title:"Campfire Cooking in Another World with My Absurd Skill"'
+        ' OR show_title:"Assassination Classroom" OR show_title:"Ranking of Kings"'
+        ' OR show_title:"Girls und Panzer" OR show_title:"One-Punch Man"'
+        ' OR show_title:"DAN DA DAN" OR show_title:"Frieren: Beyond Journey\'s End"'
+        ' OR show_title:"Vinland Saga" OR show_title:"Violet Evergarden"'
+        ' OR show_title:"Kino\'s Journey" OR show_title:"Carole & Tuesday"'
+        ' OR show_title:"The Tatami Galaxy" OR show_title:"Midnight Diner"'
+        ' OR show_title:"Dragon Ball GT")',
+        force="Shuffle"),
+
+    # --- FILM -------------------------------------------------------------
+    # Named title by title rather than by studio or genre, because neither tag
+    # can carry this shelf. `genre:anime` is on two films in the whole library,
+    # and `library-movies.tsv` has no studio column -- so a
+    # `studio:"Studio Ghibli"` key resolves to "not in manifests" in key_census
+    # and cannot be checked offline at all (V3). That is what the old
+    # `ghibli_movie` key was, and it is why this one is a title list.
+    #
+    # Every title is in the manifest's own form. `movie_by_title` builds a
+    # phrase match against the indexed title and the library stores articles
+    # inverted -- "Cat Returns, The", not "The Cat Returns" -- which is the trap
+    # library/british.py records against `title:"The World's End"`, a query that
+    # matched nothing for as long as it was there.
+    #
+    # Every shelf is closed with `genre:animation`, and that is load-bearing
+    # rather than decorative. `title:"Metropolis"` is a phrase match that
+    # returns Fritz Lang's 1927 silent as well as Rintaro's 2001 film -- the
+    # oldest picture on Cabes Classic Cinema, on an anime channel at midnight --
+    # and `title:"Your Name"` returns Call Me by Your Name. Both wrong films are
+    # live action and every right one is animated, so one clause closes both
+    # holes where a year bound would have had to be written per title.
+    #
+    # It has to be `animation OR anime`, not either alone. The library uses the
+    # two tags inconsistently on exactly the films that most need catching:
+    # The Transformers: The Movie and Laid-Back Camp the Movie carry `Anime`
+    # and no `Animation`, while Your Name and all 23 Ghibli films carry
+    # `Animation` and no `Anime`. Only two films in the library have the anime
+    # tag at all, which is the same reason `anime_movie` cannot carry a shelf.
+    "ghibli_movie": playback_order(
+        'type:movie AND ('
+        'title:"Nausicaä of the Valley of the Wind" OR title:"Castle in the Sky"'
+        ' OR title:"Grave of the Fireflies" OR title:"My Neighbor Totoro"'
+        ' OR title:"Kiki\'s Delivery Service" OR title:"Only Yesterday"'
+        ' OR title:"Porco Rosso" OR title:"Ocean Waves" OR title:"Pom Poko"'
+        ' OR title:"Whisper of the Heart" OR title:"Princess Mononoke"'
+        ' OR title:"My Neighbors the Yamadas" OR title:"Spirited Away"'
+        ' OR title:"Cat Returns, The" OR title:"Howl\'s Moving Castle"'
+        ' OR title:"Tales from Earthsea" OR title:"Ponyo"'
+        ' OR title:"Secret World of Arrietty, The" OR title:"From Up on Poppy Hill"'
+        ' OR title:"Wind Rises, The" OR title:"Tale of The Princess Kaguya, The"'
+        ' OR title:"When Marnie Was There" OR title:"Boy and the Heron, The")'
+        f' AND ({ANIMATED} OR {ANIME})',
+        force="Shuffle"),
+
+    # The canon, and the two films Cartoon Network also plays. Akira and Ghost
+    # in the Shell air on its Midnight Run at 23:00-02:00 with Toonami bumper
+    # sets on them; this key is scheduled at 19:00-21:00 and nowhere else, which
+    # is the whole of the hours rule for film.
+    "anime_canon_movie": playback_order(
+        'type:movie AND (title:"Akira" OR title:"Ghost in the Shell"'
+        ' OR title:"Dirty Pair - Project Eden" OR title:"Transformers - The Movie, The")'
+        f' AND ({ANIMATED} OR {ANIME})',
+        force="Shuffle"),
+
+    # The late shelf. Angel's Egg, Perfect Blue and Paprika are the reason this
+    # channel has a 23:00 at all.
+    "anime_arthouse_movie": playback_order(
+        'type:movie AND (title:"Angel\'s Egg" OR title:"Perfect Blue"'
+        ' OR title:"Metropolis" OR title:"Tokyo Godfathers" OR title:"Paprika"'
+        ' OR title:"Miss Hokusai" OR title:"Blade Runner - Black Out 2022")'
+        f' AND ({ANIMATED} OR {ANIME})',
+        force="Shuffle"),
+
+    # `title:"Evangelion"` is a phrase match on a single token, so it returns
+    # all four Rebuild features once type:movie has removed the 1995 series.
+    # Chronological because 1.0 through 3.0+1.0 is one film in four parts.
+    "evangelion_movie": playback_order(
+        'type:movie AND title:"Evangelion"', force="Chronological"),
+
+    # Battle of Gods, Broly and Super Hero -- same phrase behaviour, bounded to
+    # film so the 1,100 television episodes stay out.
+    "dragon_ball_movie": playback_order('type:movie AND title:"Dragon Ball"', force="Shuffle"),
+
+    "anime_modern_movie": playback_order(
+        'type:movie AND (title:"Your Name" OR title:"Laid-Back Camp the Movie")'
+        f' AND ({ANIMATED} OR {ANIME})',
+        force="Shuffle"),
+}
+
+# ============================================================================
 # 3b. NICKELODEON
 # ============================================================================
 
@@ -884,7 +1126,10 @@ CARTOON_NETWORK_REGISTRY = {
     "toonami_vault_tv": playback_order(
         'type:episode AND (show_title:"Dragon Ball Z" OR show_title:"Naruto"'
         ' OR show_title:"InuYasha" OR show_title:"Yu Yu Hakusho"'
-        ' OR show_title:"Rurouni Kenshin" OR show_title:"Sailor Moon")',
+        ' OR show_title:"Rurouni Kenshin" OR show_title:"Sailor Moon"'
+        # 82 episodes on disk, named nowhere. Toonami's anime bench was four
+        # shows behind six appointment strips; this is the fifth.
+        ' OR show_title:"Pokémon")',
         force="Shuffle"),
 }
 
@@ -1117,6 +1362,7 @@ MASTER_SOURCES = {
     **PLAYLIST_REGISTRY,
     **TV_REGISTRY,
     **ANIMATED_REGISTRY,
+    **JAPANORAMA_REGISTRY,
     **NICK_REGISTRY,
     **DISNEY_REGISTRY,
     **CARTOON_NETWORK_REGISTRY,

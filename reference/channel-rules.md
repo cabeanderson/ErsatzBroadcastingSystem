@@ -236,6 +236,21 @@ instead. Tales from the Crypt — the only pre-1990 horror show on disk — is
 tagged *Comedy; Crime; Mystery; Science Fiction* and never Horror. When the tag
 lies, name the titles.
 
+**The film side is worse, because there the tag is often absent rather than
+wrong.** `genre:anime` is on **two films in the whole library** — Laid-Back Camp
+the Movie and the 1986 Transformers — so it cannot carry an anime channel's
+shelf, and both of those films carry *no* `Animation` tag at all while the 23
+Ghibli films carry `Animation` and never `Anime`. Japanorama's four film keys
+are explicit title lists closed with `(genre:animation OR genre:anime)` for
+exactly this reason.
+
+The same split had a cost nobody had noticed: `NOT_ANIMATED` was
+`NOT genre:animation` alone, so **every live-action film pool on the lineup
+quietly contained two animated films**, and Be Kind Rewind's `recent_movie` was
+drawing Laid-Back Camp the Movie against Japanorama's feature. `NOT_ANIMATED`
+now excludes both tags. If a genre key matters, check what the *absence* of the
+tag lets through, not only what its presence catches.
+
 ### G12 · Silence beats the wrong branding
 
 Cartoon Network ran `filler_content="adult_swim_bumpers"` channel-wide with only
@@ -303,6 +318,24 @@ Totally 80s runs film 10:00–23:00, so Be Kind Rewind schedules its 1980s shelf
 at 02:00–06:00 and 22:00–24:00 — and the decade is unreachable from its
 afternoon and prime keys **at the key level**, not because the grid remembers to
 avoid it. A convention that lives only in a grid survives until the next edit.
+
+**And the rule has to cover the beds, not just the grid.** Japanorama shares
+about 2,450 episodes with Toonami under an hours rule — shared titles daytime
+only, 06:00–17:00 — and its grid honoured that exactly. Its *overnight vault*
+did not: `THE_REBROADCAST` fills 02:00–06:00 and the obvious thing to fill it
+with was the day's own syndication wheel, which put One Piece, Naruto, Dragon
+Ball Z and Yu Yu Hakusho opposite Cartoon Network's **Toonami: The Midnight
+Run** — 02:00–06:00 on Saturday nights, out of those same four shows — once a
+week, every week.
+
+Nothing in the grid was wrong. The bed was built from the wrong half of the
+library, and a bed is reached *past* the grid. Vaults, rerun beds and
+`fallback_content` all need drawing from owned content, which is why Japanorama's
+fallback is `japanorama_vault_tv` and not one of the shared pools.
+
+It took a three-year simulation to see, because no checker looks for it:
+`collision_report` groups by key *name*, so Toonami's `{"title": "One Piece"}`
+and Japanorama's `one_piece_syndication_tv` read as unrelated pools to it.
 
 ### C4 · The era line
 

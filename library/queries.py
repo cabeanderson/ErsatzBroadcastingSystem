@@ -26,7 +26,17 @@ SHOW = "type:show"
 EPISODE = "type:episode"
 ANIMATED = "genre:animation"
 ANIME = "genre:anime"
-NOT_ANIMATED = "NOT genre:animation"
+# Both tags, and the second one is not redundant. The library uses `Anime` and
+# `Animation` inconsistently: The Transformers: The Movie (1986) and Laid-Back
+# Camp the Movie (2022) carry `Anime` and no `Animation` at all, so for as long
+# as this was a single clause every live-action film pool on the lineup quietly
+# contained two animated films. It surfaced as a real C1 collision when
+# Japanorama was built -- Be Kind Rewind's `recent_movie` is 2018+ and
+# NOT-animated and was drawing Laid-Back Camp the Movie against Japanorama's
+# feature. Left unparenthesised on purpose: `key_census` splits a query on
+# top-level AND and can score each NOT clause, where a bracketed group would
+# read as unevaluable and silently widen every pool that carries it.
+NOT_ANIMATED = "NOT genre:animation AND NOT genre:anime"
 
 def playback_order(query, force=None):
     """Returns a dictionary containing the search query and the playback order."""

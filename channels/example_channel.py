@@ -21,7 +21,7 @@ from scripts.scheduling.pre_registration import pre_register_all_content
 from scripts.logic.calendar.seasonal import SeasonalBlock
 from scripts.logic.resolution.resolver import ContentResolver
 from scripts.library.sources import MASTER_SOURCES
-from scripts.logic.structures import Block
+from scripts.logic.structures import Block, OrderedCollection
 from scripts.logic.calendar.holidays import with_holidays
 from scripts.logic.triggers import chance, has_label, on_date
 from scripts.logic.models import Marathon, BlockProfile, Feather, Swap
@@ -54,7 +54,9 @@ MY_TIMESLOTS = {
 # Content keys must exist in library/sources.py
 SATURDAY_MORNING_BLOCK = Block(
     name="Saturday Morning Cartoons",
-    items="collection_80s_cartoons",  # Reference to a collection or key
+    # Must be a collection (anything with .pick) or a list -- a bare key string
+    # plays nothing and stalls the slot. See KNOWN_ISSUES.md.
+    items=OrderedCollection(["collection_80s_cartoons"]),
     intro="intro_saturday_morning",     # Key for intro video
     outro="outro_saturday_morning",     # Key for outro video
     bumpers="bumpers_cartoons",         # Key for bumpers

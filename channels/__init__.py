@@ -11,6 +11,7 @@ from . import detective
 from . import disney
 from . import eighties
 from . import high_noon
+from . import japanorama
 from . import nick
 from . import nightmare_theatre
 from . import scifi
@@ -26,6 +27,7 @@ __all__ = [
     'disney',
     'eighties',
     'high_noon',
+    'japanorama',
     'nick',
     'nightmare_theatre',
     'scifi',

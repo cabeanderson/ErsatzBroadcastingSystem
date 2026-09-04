@@ -36,7 +36,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 142 | Cabes Classic Cinema | film, **1920–1979** | yes — **designed**. The 1980s handed back; identity finally stated |
 | 144 | Mystery Theatre | detective / procedural | yes — **refined** |
 | 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
-| 164 | Japanorama | anime | no |
+| 164 | Japanorama | anime — **the Japanese broadcast day** | yes — **built** 2026-09-03 |
 | 180 | Totally 80s | 80s TV — **stays 80s** | yes — **designed** 2026-09-01 |
 | 190 | Good Times | **the studio audience** — multi-camera network sitcom, 1951–1999 | yes — **rebuilt** 2026-09-01 |
 | 240 | Travelers Table | cooking — **+ nature docs** | no |
@@ -91,6 +91,115 @@ Simulated over 365 continuous days: no gaps, no circuit breakers, no unresolved 
 **No daytime filler.** `filler_content="adult_swim_bumpers"` was channel-wide and only the five branded blocks overrode it, so ~14 hours of every 24 — Saturday-morning Scooby-Doo included — ran Adult Swim bumps. There is nothing to replace it with: `filler/bumpers/cartoon network/general/` is empty and the 110 files under `commercials/90s` are mislabelled 2000s British adverts. Silence is closer to Cartoon Network than Adult Swim is. Sourcing checkerboard / Powerhouse / CN City branding is the outstanding asset job.
 
 Summer (Jun–Aug) hands weekday 08:00–14:00 to CN's own shows and drops the vault from lunchtime; spring still leans Marvel, in the Action Hour rather than the retired 08:00 superhero hour. Marathons are date-anchored — Thanksgiving and New Year's Toonami, July 4th DBZ, Memorial Day Bebop, first Saturday of the month CN — each keeping its old random chance on top via `triggers.any_of`.
+
+### Japanorama — built
+`scripts/channels/japanorama.py` · `scripts/library/anime.py`
+
+**Identity.** A Japanese network's whole day, not an after-school block. Toonami
+is the best three hours of anime on the lineup and it is a *block*; a block has
+no morning, no feature and no small hours. This channel signs on at six and
+reaches 深夜アニメ by 23:00 — the half of the medium American television never
+imported. The channel had existed since the beginning with no configuration and
+no stated identity.
+
+**Axis: the clock, as a broadcast day.**
+
+| Slot | Mon–Fri | Saturday | Sunday |
+|---|---|---|---|
+| 02–06 rebroadcast | The Rebroadcast — owned content only | ← | ← |
+| 06–08 morning | Morning Cast — iyashikei | ← | ← |
+| 08–12 kids | The Kids' Hours — Pokémon, Dragon Ball, Sailor Moon | ← | ← |
+| 12–15 midday | The Syndication Hour — One Piece, Naruto, InuYasha, Kenshin | ← | ← |
+| 15–17 afternoon | The Dragon Ball Hour — Z, GT, Super | ← | ← |
+| 17–19 teatime | Teatime — **owned titles only** | ← | ← |
+| 19–21 feature | Japanorama Theatre | the canon | **Ghibli Sunday** |
+| 21–23 prime | the named night | the limited series | The Sunday Replay |
+| 23–24 late | Deep Night | ← | ← |
+| 00–02 deep night | Deep Night — the film half | ← | ← |
+
+365 continuous days simulated: no gaps, no circuit breakers, no unresolved
+programs, **15,101 programme plays**. Three years re-run to confirm every named
+night airs on its own weekday and nowhere else, and that the three Saturday
+limited series stay on Saturdays. Validator clean; test suite passing.
+
+**The library, counted off disk.** 46 anime series / 3,140 episodes and 43
+features, of which **587 episodes across 24 shows were claimed by nothing** —
+and two shows nothing had ever counted, *The Tatami Time Machine Blues* (6) and
+*Midnight Diner: Tokyo Stories* (20, which doubles Midnight Diner to 40). The
+feature shelf was the surprise: a **complete 23-film Ghibli run**, 1984–2023,
+plus Akira, Perfect Blue, Ghost in the Shell, Metropolis, Tokyo Godfathers,
+Paprika, Angel's Egg, Miss Hokusai, Your Name and all four Rebuild of Evangelion.
+
+**TV-led with a nightly feature (F5).** 587 owned episodes plus 2,450 shared
+against 43 features — television with a film shelf, the High Noon shape. The
+feature still gets two hours because 43 films at seven a week is a six-week
+cycle. It opens at 19:00 because C7 measured 18:00–20:00 as the emptiest film
+hour and Be Kind Rewind already holds 18:00.
+
+**The hours rule against Toonami is the whole design.** Cartoon Network holds
+the entire shonen canon — ~2,450 episodes, four times everything else here.
+Ceding it leaves a fortnight's cycle; taking it without a rule breaks C1 a dozen
+times a night. So C2 rungs 1 and 2 together: Toonami runs these shows as a
+first-run chronological strip after school, Japanorama runs them as **shuffled
+daytime syndication**, and the `_syndication_tv` keys carry Shuffle at the key
+level (C3). Cartoon Network airs anime in four windows — 17:00–20:00 weekdays,
+17:00–23:00 Saturday, 23:00–02:00 nightly, 02:00–06:00 Saturday night — leaving
+06:00–17:00 daily plus 20:00–23:00 off-Saturday. Every shared title sits inside
+that window. Verified over three simulated years: the only shared titles outside
+daytime are Fullmetal Alchemist: Brotherhood and Death Note on Friday
+21:00–23:00, which is the documented exception.
+
+**Attack on Titan is deliberately not on this channel** — it anchors CN's
+Midnight Run at 23:00 every night, which makes it a coin flip rather than a
+rule. Teatime draws no shared title at all because 17:00–19:00 is inside
+Toonami's window.
+
+**Measured, not asserted (C6).** `collision_report` groups by key name and so
+cannot see any of this — Toonami's `{"title": "One Piece"}` and
+`one_piece_syndication_tv` look unrelated to it. Both channels were simulated
+together and resolved down to titles: **0 simultaneous same-title airings
+against Cartoon Network over 60 days**, and 0 against every other channel once
+two real defects were fixed (below). The remaining reported hits are all
+`studio:`/`tag:` keys the manifests cannot evaluate, the same supersets
+`same_title_check` files under POSSIBLE.
+
+**Three defects found and fixed on the way, none of them this channel's:**
+
+* **`NOT_ANIMATED` was half a rule.** It was `NOT genre:animation` alone, and
+  the library tags Laid-Back Camp the Movie and the 1986 Transformers `Anime`
+  with no `Animation` — so every live-action film pool on the lineup contained
+  two animated films, and Be Kind Rewind's `recent_movie` was drawing Laid-Back
+  Camp the Movie against this channel's feature. Now excludes both tags. See G11.
+* **The old `ghibli_movie` key was unverifiable.** It was `studio:"Studio
+  Ghibli"`, and `library-movies.tsv` has no studio column, so `key_census`
+  scored it "not in manifests" and never checked it against anything. It is an
+  explicit 23-title list now, and it resolves to exactly 23.
+* **Two film keys over-matched on phrase.** `title:"Metropolis"` also returns
+  Fritz Lang's 1927 silent — Cabes Classic Cinema's oldest film, on an anime
+  channel at midnight — and `title:"Your Name"` returns Call Me by Your Name.
+  Both closed by the genre guard rather than per-title year bounds (G10).
+
+**The vault was the near-miss.** `THE_REBROADCAST` at 02:00–06:00 was first
+built from the day's syndication wheel, which put four Toonami shows opposite
+CN's Saturday-night Midnight Run weekly. The grid was right and the *bed* was
+wrong; it is owned content only now, and it is why `fallback_content` is
+`japanorama_vault_tv`. This is written up as an addendum to C3.
+
+**It has filler on day one, which no other channel does.** Encouragement of
+Climb season 1 and Room Camp are 24 episodes of 3.5-minute shorts — real
+programming the right length for an hour boundary, where Cartoon Network has an
+empty bumper tree and runs nothing (G12). Running time drove the whole show:
+Encouragement of Climb is three shows by length (S1 3.5 min, S2–3 13.5, S4 24)
+and had to be cut into them (G2).
+
+**Calendar: all three.** Golden Week (29 Apr – 3 May) runs Ghibli in release
+order — it stops on the 3rd rather than the 5th because 4 May is Star Wars Day
+and a marathon cannot fire inside a holiday season (G9). Obon (13–16 Aug) is
+Grave of the Fireflies and the shelf's other ghost stories. Ōmisoka is a holiday
+*schedule* on 31 December for the same G9 reason. All three verified firing.
+
+**No bumpers.** There are no anime assets on disk beyond Toonami's, which belong
+to Cartoon Network. Same asset gap Nightmare Theatre has.
 
 ### Disney — built
 `scripts/channels/disney.py` · `scripts/library/disney.py`
