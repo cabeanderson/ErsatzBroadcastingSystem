@@ -186,6 +186,8 @@ class Program:
     intro: Optional[str] = None
     outro: Optional[str] = None
     bumpers: Optional[str] = None
+    # "none" | "some" | "all"; None defers to the parent in the cascade.
+    smart_bumpers: Optional[str] = None
     epg_title: Optional[str] = None
     commercials: Optional[str] = None
     commercial_duration: int = 0
@@ -222,6 +224,8 @@ class Block:
     intro: Optional[str] = None
     outro: Optional[str] = None
     bumpers: Optional[str] = None
+    # "none" | "some" | "all"; None defers to the parent in the cascade.
+    smart_bumpers: Optional[str] = None
     commercials: Optional[str] = None
     commercial_duration: int = 0
     use_epg_group: bool = False

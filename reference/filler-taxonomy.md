@@ -227,18 +227,25 @@ The empty `general/` and `seasonal/` subfolders under the old `90s/` were remove
 
 ## 7. What it takes to make filler actually fire
 
-Four independent gates, three of them still shut. `filler_content="adult_swim_bumpers"` is already set on Cartoon Network and does nothing on its own.
+> **Updated 2026-09-05.** Gate 2 was rebuilt; the paragraph below the table is the
+> current state. See [interstitial-policy.md](interstitial-policy.md) for the design.
+
+Four independent gates, two of them still shut. `filler_content="adult_swim_bumpers"` is already set on Cartoon Network and does nothing on its own.
 
 | # | Gate | State | Fix |
 |---|---|---|---|
-| 1 | `ENABLE_FILLER = False` (`settings.py:44`) | shut | `enable_filler=True` in CN's `ScheduleConfig`. Gates the hour-boundary filler at `dispatcher.py:286`, the only consumer of `config.filler_content`. |
-| 2 | `ENABLE_SMART_BUMPERS = False` (`settings.py:39`) | shut | This is the per-show bumper mechanism (`dispatcher.py:116`). Read as a module-level constant, **not** resolvable per channel — flipping it is global. |
+| 1 | `ENABLE_FILLER = False` (`settings.py`) | shut | `enable_filler=True` in CN's `ScheduleConfig`. Gates the hour-boundary filler at `dispatcher.py`, the only consumer of `config.filler_content`. |
+| 2 | `SMART_BUMPERS = "none"` (`settings.py`) | shut, **but now per-channel** | Three modes — `"none"` / `"some"` / `"all"` — resolved by `resolve_smart_bumpers()` through the same Program > Block > Channel > Global cascade as filler. Set `smart_bumpers=` on a `ScheduleConfig`, `Block` or `Program`. |
 | 3 | `config.bumpers` never set | unset | CN passes no channel-level `bumpers=`, so `resolve_bumper_collection` falls through to `None`. Individual blocks in `animation.py` do set `bumpers=`, so block-level branding works and channel-level does not. |
 | 4 | `enable_bumpers=True` | **already set** on CN | drives `play_block_intro` / `play_block_outro` only |
 
-Note that `fill_to_boundary`'s `enabled` parameter defaults to `True` and `blocks.py:155` never passes it, so a block with `fill_strategy="fill"` fills regardless of `ENABLE_FILLER`. Gate 1 governs the hour-boundary path specifically.
+Note that `fill_to_boundary`'s `enabled` parameter defaults to `True` and `blocks.py` never passes it, so a block with `fill_strategy="fill"` fills regardless of `ENABLE_FILLER`. Gate 1 governs the hour-boundary path specifically.
 
-Recommended order: turn on gate 1 for CN alone and confirm one build looks right, then gate 2 once show folder names match library titles — turning on smart bumpers before the renames means every lookup misses and quietly populates `BUMPER_FAILURE_CACHE`.
+**What changed in gate 2.** It was a module-level `ENABLE_SMART_BUMPERS` bool read directly by the dispatcher, which made the choice lineup-wide: every channel or none. That could not express "Cartoon Network yes, Good Times no", and it could not express Japanorama at all — 1,249 of the 1,251 files in the Toonami tree are literally named `Toonami_*`, so a generic fallback there puts a Cartoon Network ident on a Japanese broadcast-day channel. The `"all"` mode exists for exactly that case: per-show bumpers where one genuinely belongs to the show, and silence everywhere else.
+
+The per-show query was also corrected from `tag` to `tag_full` in the same pass. Both fields carry the folder name, but §1b applies: `tag` is whitespace-tokenized, so `tag:"naruto"` matched the `naruto shippuden` folder too. Titles are lowercased at the call site because `tag_full` is case-sensitive and folder names on disk are lowercase.
+
+Recommended order is unchanged for gate 1, and gate 2's precondition is now met for films and for the 32 Toonami show folders whose names already match library titles.
 
 ---
 

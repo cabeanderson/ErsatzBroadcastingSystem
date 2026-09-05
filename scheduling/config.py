@@ -16,7 +16,7 @@ from scripts.settings import (
     ENABLE_HOLIDAY_INJECTION, ENABLE_COMMERCIALS,
     ENABLE_FILLER, ENABLE_BUMPERS, ENABLE_MARATHONS, ENABLE_SEASONAL_INJECTION,
     DEFAULT_COMMERCIAL_DURATION, DEFAULT_COMMERCIAL_CONTENT,
-    DEFAULT_CIRCUIT_BREAKER_SKIP
+    DEFAULT_CIRCUIT_BREAKER_SKIP, SMART_BUMPERS
 )
 
 # 5. SCHEDULE CONFIGURATION
@@ -35,6 +35,7 @@ class ScheduleConfig:
         block_profiles: Optional[Dict[str, Any]] = None,
         filler_content: Optional[Any] = None,
         bumpers: Optional[str] = None,
+        smart_bumpers: Optional[str] = None,
         logger: Optional[ChannelLogger] = None,
         fallback_content: Optional[Any] = None,
         commercial_content: Any = DEFAULT_COMMERCIAL_CONTENT,
@@ -93,6 +94,7 @@ class ScheduleConfig:
         self.enable_filler = enable_filler if enable_filler is not None else ENABLE_FILLER
         self.enable_bumpers = enable_bumpers if enable_bumpers is not None else ENABLE_BUMPERS
         self.enable_marathons = enable_marathons if enable_marathons is not None else ENABLE_MARATHONS
+        self.smart_bumpers = smart_bumpers if smart_bumpers is not None else SMART_BUMPERS
 
         # Create reverse map for timeslot commercial lookups
         self.timeslot_reverse_map = {v: k for k, v in timeslots.items()}

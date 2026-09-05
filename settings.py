@@ -36,7 +36,24 @@ DEFAULT_COMMERCIAL_CONTENT = "commercials_spot"
 DEFAULT_CIRCUIT_BREAKER_SKIP = 30 # Minutes to skip if playback stalls
 
 # Feature Flags
-ENABLE_SMART_BUMPERS = False
+# Smart (per-show) bumpers. Three modes, resolvable per program, block and
+# channel by logic/resolution/config_utils.resolve_smart_bumpers -- the same
+# Program > Block > Channel > Global cascade filler and commercials already use.
+#
+#   "none"  never look up a per-show bumper; generic pools only.
+#   "some"  try the per-show bumper, fall back to the generic pool. The mix.
+#   "all"   per-show bumpers only; a show with none gets no bumper rather than
+#           a generic one. For a channel whose branding is entirely per-show.
+#
+# This replaced a module-level ENABLE_SMART_BUMPERS bool that dispatcher read
+# directly, which meant the choice was lineup-wide: every channel or none.
+SMART_BUMPERS = "none"
+
+# Break composition. A break carries at most this many bumpers, and never two
+# in a row -- a bumper always touches a show on one side and is separated from
+# any other bumper by content or commercials. Enforced by dispatcher.BreakState,
+# not by call sites, so the invariant holds no matter which path emits branding.
+MAX_BUMPERS_PER_BREAK = 2
 ENABLE_HOLIDAY_INJECTION = False
 ENABLE_SEASONAL_INJECTION = False # This flag controls auto-tagging
 ENABLE_THEMATIC_INJECTION = False

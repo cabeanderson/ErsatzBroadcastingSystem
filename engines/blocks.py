@@ -15,9 +15,10 @@ from scripts.logic.structures import Block, Program
 from scripts.logic.resolution.playback import hour_in_window, calculate_boundary_dt
 from scripts.library.queries import extract_episode_range
 from etv_client.models import ControlSkipToItem
-from scripts.logic.resolution.config_utils import resolve_feature, resolve_commercial_duration, resolve_filler_content, resolve_bumper_collection
+from scripts.logic.resolution.config_utils import resolve_feature, resolve_commercial_duration, resolve_filler_content, resolve_bumper_collection, resolve_smart_bumpers
 from scripts.engines.dispatcher import (
     play_commercials, play_bumper, fill_to_boundary, play_generic_branding,
+    breaks,
     resolve_fallback_key
 )
 
@@ -305,7 +306,8 @@ def _handle_program_bumpers(
 ) -> Any:
     """Helper to resolve and play bumpers for a program."""
     bumper_key = resolve_bumper_collection(program, parent_block, session.config)
-    return play_bumper(session, content_key, bumper_key=bumper_key, enabled=enabled)
+    mode = resolve_smart_bumpers(program, parent_block, session.config)
+    return play_bumper(session, content_key, bumper_key=bumper_key, enabled=enabled, mode=mode)
 
 def _handle_program_commercials(
     session: PlayoutSession, program: Program, parent_block: Optional[Block], slot_name: Optional[str]
@@ -388,6 +390,12 @@ def play_program(session: PlayoutSession, program: Program, start_hour: int, end
         )
     else:
         session.context = play_with_fallback(session.api, session.build_id, content_key, session.logger, context=session.context, count=count)
+
+    # The show played, so the break that preceded it is closed and the bumper
+    # budget resets. Guarded on the clock actually advancing: a program that
+    # resolved to nothing must not clear the state and let branding stack.
+    if session.context.current_time > last_time:
+        breaks(session).note_content()
 
     session.context = _handle_program_commercials(session, program, parent_block, slot_name)
 

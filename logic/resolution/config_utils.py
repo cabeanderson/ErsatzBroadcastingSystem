@@ -71,6 +71,30 @@ def resolve_filler_content(program: Optional["Program"], block: Optional["Block"
         return block.filler
     return config.filler_content
 
+SMART_BUMPER_MODES = ("none", "some", "all")
+
+
+def resolve_smart_bumpers(program: Optional["Program"], block: Optional["Block"], config: "ScheduleConfig") -> str:
+    """
+    Resolves the smart (per-show) bumper mode.
+    Hierarchy: Program > Block > Channel. The channel value already folds in the
+    global default, the same way the enable_* flags do.
+
+    Returns one of SMART_BUMPER_MODES. An unrecognised value resolves to "none"
+    rather than raising: a typo in one block's config should cost that block its
+    per-show bumpers, not the whole build.
+    """
+    mode = None
+    if program and _is_set(program.smart_bumpers):
+        mode = program.smart_bumpers
+    elif block and _is_set(block.smart_bumpers):
+        mode = block.smart_bumpers
+    else:
+        mode = config.smart_bumpers
+
+    return mode if mode in SMART_BUMPER_MODES else "none"
+
+
 def resolve_bumper_collection(program: Optional["Program"], block: Optional["Block"], config: "ScheduleConfig") -> Optional[str]:
     """
     Resolves bumper collection key.

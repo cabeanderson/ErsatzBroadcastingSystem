@@ -32,7 +32,9 @@ different questions and a pool can be large in one and unreachable in the other.
 | [library-movies-all.txt](library-movies-all.txt) | Flat list of movie folders |
 | [library-animation-tv.md](library-animation-tv.md) | 151 animated series with episode and season counts |
 | [library-animation-movies.md](library-animation-movies.md) | 94 animated features, grouped by studio |
-| [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs |
+| [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs — **counts superseded**, see filler-taxonomy.md |
+| [filler-taxonomy.md](filler-taxonomy.md) | **The filler tree** — how ErsatzTV derives tags from folder paths, the applied reorganization, the commercial gates, and the movie trailer/extras farm |
+| [interstitial-policy.md](interstitial-policy.md) | **When a break happens and what goes in it** — the smart-bumper modes, the break invariant, the 221 promos already on disk, and the five-decade acquisition brief |
 | [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel — **implemented**, see its status header |
 | [channel-rules.md](channel-rules.md) | **The rules for making and curating channels** — founding, grid, cross-channel curation, and the checks a channel passes before it counts as built |
 | [metadata-facets.md](metadata-facets.md) | **What a content key can select on** — the 9,672-tag TMDB vocabulary the manifests drop, every `tag:` key evaluated for real, and the facets and keyword sweeps to build calendar and holiday keys from. `python3 -m scripts.testing.metadata_census` |
@@ -40,7 +42,7 @@ different questions and a pool can be large in one and unreachable in the other.
 | [guide-site-plan.md](guide-site-plan.md) | **The plan for the listings-magazine website** — what the live feed carries, the XMLTV horizon settings, where per-title trivia comes from, and the publishing risk review |
 | [channel-plan.md](channel-plan.md) | The working plan — lineup, programming mechanics, sharing rules, gaps |
 | [acquisitions.md](acquisitions.md) | What the lineup is missing, per channel — the gap each acquisition fills |
-| [next-session.md](next-session.md) | Build order and carry-forward notes — framework bugs found in the CN restructure, then the collision report |
+| [next-session.md](next-session.md) | Build order and carry-forward notes — currently the interstitial acquisition brief; Japanorama's notes below it |
 | [channel-coverage.md](channel-coverage.md) | All 576 shows + 2,067 movies mapped to channels; orphans and conflicts |
 
 Episode counts come from files under `Season NN/` folders.
