@@ -1256,15 +1256,32 @@ FILLERS = {
     # combination of those is an AND of flat tags. The gate level is the one
     # that matters for scheduling: "alcohol" must never reach a kids daypart.
     "commercials_spot": 'type:"other_video" AND tag_full:"commercials"',
-    # Excludes alcohol. This is the key a kids or daytime channel should use.
+    # Excludes every gate a kids or daytime block must not draw from. This is
+    # the key such a block should use.
+    #
+    # `tobacco` was added with the 1950s US set: six of those 37 spots are
+    # cigarette ads, and one of them -- a Flintstones cartoon that turns out to
+    # be a Winston commercial -- is identifiable only from its closing frame.
+    # Before the gate existed this query returned it as family-safe.
+    #
+    # `uncategorized` is everything whose category is not clear, which is most
+    # of the US set. A gate is a positive determination, never the residue left
+    # after some keywords failed to match -- a filename says almost nothing
+    # about what is in a commercial. Broadcast ad breaks live here too, since
+    # they carry whatever the network aired that night. Channels that want the
+    # whole reel ask for it by name.
     "commercials_family_safe_spot":
-        'type:"other_video" AND tag_full:"commercials" AND NOT tag_full:"alcohol"',
+        'type:"other_video" AND tag_full:"commercials"'
+        ' AND NOT tag_full:"alcohol" AND NOT tag_full:"tobacco"'
+        ' AND NOT tag_full:"uncategorized"',
 
     # audience gate
     "commercials_kids_spot": filler_source("commercials", "kids"),
     "commercials_alcohol_spot": filler_source("commercials", "alcohol"),
+    "commercials_tobacco_spot": filler_source("commercials", "tobacco"),
     "commercials_christmas_spot": filler_source("commercials", "christmas"),
     "commercials_general_spot": filler_source("commercials", "general"),
+    "commercials_uncategorized_spot": filler_source("commercials", "uncategorized"),
 
     # country
     "commercials_uk_spot": filler_source("commercials", "uk"),
@@ -1284,11 +1301,40 @@ FILLERS = {
     # block is Wallace & Gromit and Mr. Bean, so that one block overrides to the
     # family-safe cut -- 11 of the 116 UK spots are beer and spirits.
     "commercials_uk_family_safe_spot":
-        'type:"other_video" AND tag_full:"commercials" AND tag_full:"uk" AND NOT tag_full:"alcohol"',
+        'type:"other_video" AND tag_full:"commercials" AND tag_full:"uk"'
+        ' AND NOT tag_full:"alcohol" AND NOT tag_full:"tobacco"'
+        ' AND NOT tag_full:"uncategorized"',
     "commercials_uk_kids_spot": filler_source("commercials", "uk", "kids"),
     "commercials_uk_90s_kids_spot": filler_source("commercials", "uk", "90s", "kids"),
     "commercials_uk_90s_general_spot": filler_source("commercials", "uk", "90s", "general"),
     "commercials_uk_90s_alcohol_spot": filler_source("commercials", "uk", "90s", "alcohol"),
+
+    # US, added 2026-09-05 with 208 spots from archive.org. The 50s decade is
+    # the public-domain set, dated from frames rather than metadata; the rest
+    # are year-prefixed at source. Anything over seven minutes was left out of
+    # the tree entirely -- see filler-taxonomy.md.
+    "commercials_us_family_safe_spot":
+        'type:"other_video" AND tag_full:"commercials" AND tag_full:"us"'
+        ' AND NOT tag_full:"alcohol" AND NOT tag_full:"tobacco"'
+        ' AND NOT tag_full:"uncategorized"',
+    "commercials_us_kids_spot": filler_source("commercials", "us", "kids"),
+    "commercials_us_general_spot": filler_source("commercials", "us", "general"),
+    "commercials_us_tobacco_spot": filler_source("commercials", "us", "tobacco"),
+    "commercials_us_uncategorized_spot": filler_source("commercials", "us", "uncategorized"),
+    # Decade lists differ per gate because they track what is actually on disk:
+    # no decade after the eighties has a spot whose product is clear enough for
+    # `general`, and the 2010s hold two uncategorized files and nothing else.
+    **{f"commercials_us_{d}_spot": filler_source("commercials", "us", d)
+       for d in ("50s", "60s", "70s", "80s", "90s", "00s", "10s")},
+    **{f"commercials_us_{d}_general_spot":
+       filler_source("commercials", "us", d, "general")
+       for d in ("50s", "60s", "70s", "80s", "90s")},
+    **{f"commercials_us_{d}_kids_spot":
+       filler_source("commercials", "us", d, "kids")
+       for d in ("50s", "60s", "70s", "80s", "90s", "00s")},
+    **{f"commercials_us_{d}_uncategorized_spot":
+       filler_source("commercials", "us", d, "uncategorized")
+       for d in ("50s", "60s", "70s", "80s", "90s", "00s", "10s")},
 
     # product, across every country and decade
     **{f"commercials_{c.replace(' ', '_')}_spot": filler_source("commercials", c)

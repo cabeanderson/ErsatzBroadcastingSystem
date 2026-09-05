@@ -251,3 +251,311 @@ Recommended order: turn on gate 1 for CN alone and confirm one build looks right
 5. **The 5-file threshold** for cutting a show folder out of `bumps/general/`. 31 shows clear it.
 7. **Is `filler` itself a tag?** The relative path is computed from the *parent* of the ErsatzTV library root, so the root folder's own name becomes a tag on every item. If the library is rooted at `.../media/filler`, everything carries `filler` and it is free namespacing; if it is rooted at `.../media`, the first tag is `media` instead. Not determinable from disk — it depends on how the library path is configured in ErsatzTV, which is not on this machine. None of the 65 keys depend on it either way, but it is worth checking on the next scan.
 8. **Music videos** are a separate problem with separate rules (§1c) and no folder-tag lever at all. Worth its own pass rather than being folded into this one — the immediate defect is that 5 genre folders are being ingested as artists, plus ~40 artist folders with trailing spaces in their names.
+
+---
+
+## 9. Movie interstitials — trailers and extras
+
+Status: **built and applied 2026-09-04.** 8,809 hardlinks, 0 bytes of disk. Built
+by `scripts/filler/sync_interstitials.py`, which is re-runnable and is the only
+thing that should ever write to this tree.
+
+### Why none of it was reachable
+
+The library holds 2,260 trailers across 2,012 film folders and 6,559 extras —
+1.2TB — and ErsatzTV could see none of it. `MovieFolderScanner` excludes extras
+two ways, and only one of them is the obvious one:
+
+1. A filename filter. `MovieFolderScanner.cs:133` drops any file whose stem ends
+   in one of `ExtraFiles` (`behindthescenes, deleted, featurette, interview,
+   scene, short, trailer, other`), so `…-trailer.mp4` never survives.
+2. **The recursion gate.** Subfolders are enqueued *only* when the current folder
+   yielded no video files. A film folder containing the film therefore never has
+   its `extras/` or `trailers/` walked at all.
+
+The natural assumption — that `ExtraDirectories` (`extras`, `trailers`,
+`specials`, …) is a folder blocklist — is wrong. Grepped repo-wide, that constant
+is referenced **only** by `MovieFolderScannerTests.cs:867`, as the `ValueSource`
+of `Should_Ignore_Extra_Folders`. It is a test fixture. The production exclusion
+is the recursion gate, which means **the folder names carry no magic**: nothing
+will skip a folder called `trailers/` in a library of a different kind.
+
+That is what makes this possible. `OtherVideoFolderScanner` recurses
+unconditionally and applies no `ExtraFiles` filter, so an Other Videos library
+sees everything beneath it.
+
+### The tree
+
+Pointing Other Videos at `/media/movies` would ingest all 2,072 features a second
+time, so the farm is a parallel tree. Hardlinks, not copies: 1.2TB against 3.3TB
+free, and both trees sit on the same export. Free space was unchanged after the
+run, which is the only proof that matters.
+
+```text
+filler/
+  interstitials/
+    trailers/            2,261     <- 2,971 per-film folders across all types
+      1920s/ … 2020s/
+        a clockwork orange/
+        alien/
+    extras/              6,279
+    deleted scenes/         85
+    interviews/             78
+    behind the scenes/      65
+    featurettes/            28
+    shorts/                 13
+```
+
+Every level earns its place. Because tags are flat (§1a), one tree answers two
+different questions at once:
+
+- `tag:"trailers" AND tag:"1970s"` — an era pool for a film channel.
+- The **film-title level** is what `dispatcher.play_smart_bumper` needs. It
+  interpolates `type:"other_video" AND tag:"{title}" AND tag:"bumpers"`, and with
+  `required_tags=["trailers"]` it resolves a film's *own* trailer as its pre-roll
+  **with no registry key at all** — the same mechanism §3 identified for per-show
+  bumpers, now with matching titles. Titles are un-inverted (`Knight's Tale, A` →
+  `a knight's tale`) precisely so they match the library title the dispatcher
+  interpolates.
+
+Trailer coverage against the film-era line: **425 pre-1980, 351 in the eighties,
+1,485 from 1990 on**. `acquisitions.md` calls interstitials the largest single
+thing Cabes Classic Cinema and Be Kind Rewind are missing; they were already on
+disk. Genre cross-referenced against `library-movies.tsv` (2,008 of 2,012 films
+matched) reaches the two channels that own **nothing**: Horror 240, Western 46 —
+plus Science Fiction 410 and Fantasy 324 for the channel not yet built.
+
+### Why the types are not flattened into `extras/`
+
+The folder is the only length signal there is, and the spread is an order of
+magnitude:
+
+| Type | Median | Max |
+|---|---|---|
+| trailers | 2m11s | 2m51s |
+| deleted scenes | 1m38s | 29m38s |
+| featurettes | 6m55s | 43m17s |
+| behind the scenes | 6m58s | 48m03s |
+| shorts | 8m34s | 36m34s |
+| interviews | 12m56s | 49m45s |
+
+Flattened, a 50-minute interview shares a pool with a 98-second deleted scene.
+Trailers are the outlier worth isolating: a 2m11s median against a 2m51s max is
+tight enough to schedule against without peeking at durations.
+
+### Case is normalised in the script, not on disk
+
+71 source dirs are capitalised — `Extras` 30, `Trailers` 17, `Interviews` 12,
+`Deleted Scenes` 5, `Featurettes` 4, `Shorts` 2, `Behind the Scenes` 1 — plus one
+singular `trailer`. **`Featurettes` has no lowercase form at all**, so a
+lowercase-only match misses the type entirely.
+
+This matters for the reason §1b gives: `tag_full` is indexed with a
+`KeywordAnalyzer` and is case-sensitive, so a stray `Extras/` would yield
+`tag_full:"Extras"` and never match a lowercase query. The script matches sources
+case-insensitively and always writes destinations lowercase, which fixes it
+without renaming 71 directories or triggering a Jellyfin rescan. Renaming the
+source tree would be cosmetic — Jellyfin's extras matching is case-insensitive
+too.
+
+One true collision exists: `Animatrix, The (2003)` holds both `Extras` and
+`extras`. No filenames overlap, so the two merge into one destination folder.
+
+### What the traversal had to learn
+
+A depth-limited read silently dropped 237 files. Three findings, all now handled:
+
+- **22 dirs nest a subtype inside `extras/`** — `Whiplash (2014)/extras/Deleted
+  Scenes`, and one pathological `extras/extras`. A nested known type reclassifies
+  what is under it.
+- **236 files sit three and four levels down** in free-form disc groupings:
+  `Mission Control`, `Outtakes - Day 2`, `Press Timeline - 16 Interviews &
+  Conversations`. These are not types; their names fold into the destination
+  filename.
+- That folding is not cosmetic. **`Panic Room (2002)` ships seven same-named
+  files** (`B-Roll.mkv`, `Dailies.mkv`, `Storyboards.mkv`, …) across different
+  grouping folders. Discard the grouping and they collide; they now read
+  `Sequence Breakdowns - The Phone Jack - B-Roll.mkv`.
+
+Coverage was verified against an independent `find`: 8,809 planned links against
+8,810 files on disk, the difference being `.deletedByTMM/` — tinyMediaManager's
+trash, which ErsatzTV's `ShouldIncludeFolder` skips for the same dot-prefix
+reason the script does.
+
+### Staying in sync
+
+The farm is derived state, so the script reconciles rather than appends, and all
+three paths were tested end to end with a scratch film folder:
+
+| Event | Behaviour |
+|---|---|
+| New disc ripped | linked |
+| Disc **re-ripped** | **relinked** |
+| Film deleted | pruned, empty dirs removed |
+
+The middle row is the one with teeth. A re-rip writes a **new inode at the same
+path**, so a script that only asks "does the destination exist?" leaves a link
+serving stale content *and* pinning the replaced file's blocks forever. The
+script compares `st_ino` on both sides and repairs. Re-running is otherwise a
+no-op, and dry-run is the default.
+
+Scheduled by a `systemd --user` timer at 04:30 daily, `Persistent=true`. Caveat:
+`Linger=no` on the account, so it only fires while logged in —
+`loginctl enable-linger cabe` (root) removes that.
+
+### Still gated
+
+The tree is inert until the ErsatzTV side is done, and none of it is reachable
+from this machine (no read API beyond `/api/channels`; the DB is root-only):
+
+1. **Confirm the Other Videos library root.** This is open question 7. Rooted at
+   `/media/filler`, every item here also carries `filler` and the existing
+   `filler_source()` keys keep working; rooted at `/media`, the namespacing tag
+   is `media` instead.
+2. `ENABLE_FILLER = False` (`settings.py:44`) — gate 1 of §7.
+3. `ENABLE_SMART_BUMPERS` is what fires the per-film trailer. Still a
+   module-level global, so flipping it is lineup-wide — but §7's precondition
+   ("once show folder names match library titles") is now met for films.
+
+Genre is deliberately absent. Adding a genre level would mean hardlinking a
+multi-genre film's trailer into several folders, which registers as several
+items and skews shuffle. Other Videos reads NFO sidecars
+(`OtherVideoNfoReader` supports `<title> <year> <plot> <genre> <tag>`), so genre
+belongs there — and would replace filename titles with real ones in the guide.
+
+> **Source note.** `ErsatzTV/ErsatzTV` now redirects to **`ErsatzTV/legacy`**;
+> the paths cited throughout this document resolve under that name.
+
+---
+
+## 10. US commercials — acquired 2026-09-05
+
+Status: **208 spots filed**, from two archive.org items. `commercials/us/` is no
+longer the empty scaffold §3 left it as. Filed by
+`scripts/filler/file_us_commercials.py`.
+
+### What was actually acquired
+
+The larger item advertises itself as a commercial collection. By duration it is
+mostly not one:
+
+| Band | Files | Hours |
+|---|---:|---:|
+| Single spot (≤75s) | 128 | 1.2 |
+| Ad break (75s–7m) | 43 | 2.0 |
+| **Off-air reel (>7m)** | **56** | **29.7** |
+
+**Ninety percent of the runtime is in 56 reels**, the longest a 131-minute
+`1999-2000 NBC Commercials`. Those are tape recordings, not interstitials, and
+they were **not filed** — they remain staged under `.staging/us_commercials`
+pending a decision on whether silence-and-scene splitting is worth a session. It
+plausibly yields well over a thousand spots, which would dwarf everything else
+in this tree.
+
+Two counting traps are worth recording, because the item's file list misleads:
+
+- **IA derivatives inflate the count.** `X.mp4` and `X.ia.mp4` are the same
+  commercial. Filtering on the API's `source` field gives 227 genuine originals,
+  not the 254 a naive extension match reports.
+- Picking one file per spot — the h.264 derivative where it exists, the original
+  otherwise — is 13.56 GB rather than 16.16.
+
+The second item (37 spots, explicitly public domain) is the better filler
+despite being a fortieth of the size: 10–89s durations, median 30s, all genuine
+single spots.
+
+### Two new gates
+
+**`tobacco/`.** The gate vocabulary had `alcohol/` and nothing for cigarettes,
+which does not survive contact with 1950s television. Six of the 37 public-domain
+spots are tobacco ads: Chesterfield, L&M (two), Roi-Tan cigars, Philip Morris
+(Lucille Ball and Desi Arnaz) — and **Winston, in a Flintstones cartoon**.
+
+That last one is why this section exists. It is animation, so any heuristic
+reading "cartoon" as "children's content" files a cigarette commercial into a
+kids block, and the filename (`ctvc_FLINT.AVI`) says nothing. It was identified
+only by extracting its closing frame, where the Winston pack appears over
+Bedrock. **Filenames were not sufficient for either the Winston or the L&M
+spots.**
+
+**`uncategorized/`.** 122 of the 209, and the most important gate here.
+
+### A gate is a determination, never a residue
+
+The first filing pass got this wrong and is worth recording as a mistake. It
+sent anything matching no kids or mature keyword to `general/` — so `general/`
+meant "no keyword fired", which is not evidence of anything. Half of what landed
+there was not a categorized commercial at all: network promos (Dolly, Wings,
+*Sister Sister*), movie TV spots (*The Wiz*, *Mystic Pizza*), and PSAs. A promo
+also tells you nothing about the rated content it advertises.
+
+The rule, corrected: **categorize only when the category is clear — a named
+consumer brand, a named children's property — and send everything else to
+`uncategorized/`,** which no daytime or kids key draws from. Channels that want
+the whole reel ask for it by name. The brand list in
+`scripts/filler/recategorize_commercials.py` is deliberately explicit rather
+than heuristic: "clear" means the product can be named, so the list *is* the
+definition of the gate.
+
+Re-gating on that basis moved 126 files and cut `general/` from 102 to 47.
+
+Three traps the second pass had to handle, each caught by a check rather than by
+reading the code:
+
+- **Frame evidence outranks any filename rule.** A regex over `ctvc_RICECRPS`
+  and `ctvc_KAISER` cannot know they are Rice Krispies and a *Maverick* mail-in
+  premium. The public-domain set keeps its determinations in an explicit map.
+- **Mature themes must override brand matches.** `Pepsi Cool Sex Cans` carries a
+  brand that would otherwise have promoted it into daytime.
+- **An off-air break is not about the show it was recorded from.**
+  `Commercials (from ABC's Brady Bunch Hour)` is 28 minutes of 1977 advertising;
+  gating it as children's content on the title is exactly the Winston error in
+  another costume. A `(from <network>)` guard forces those to `uncategorized`
+  whatever else matches.
+
+Both new gates are excluded from `commercials_family_safe_spot` and
+`commercials_uk_family_safe_spot`, which previously excluded only `alcohol`.
+This **changes the meaning of an existing key** — it now returns 185 rather than
+239 — and is the §5 rule applied consistently: a false gate withholds a spot
+from daytime, the opposite error airs a Winston ad in a children's block.
+
+### The tree
+
+```text
+commercials/us/
+  50s/   general 24  kids  3  tobacco 6  uncategorized  4   <- dated from frames
+  60s/   general  1  kids  3             uncategorized 10
+  70s/   general  3  kids  3             uncategorized  8
+  80s/   general 11  kids  8  christmas 1  uncategorized 32
+  90s/   general  8  kids 11             uncategorized 52  (+1 alcohol/beer)
+  00s/                kids  3  christmas 1  uncategorized 14
+  10s/                                   uncategorized  2
+```
+
+209 files, of which **122 are uncategorized — 58%**. That number is the honest
+shape of the collection, not a failure of the pass.
+
+The 50s decade is the outlier at 89% categorized, and the reason is simply that
+those 37 were watched: frames were extracted and read. Every other decade was
+classified from filenames alone, which is why so little of it clears the bar.
+The gap between the two is the argument for viewing the rest.
+
+The 50s decade is also the only one dated by inspection — the item carries no
+date metadata at all, and the frames place it 1950s to early 60s (a DeSoto
+dealer card, DeSoto having died in 1961; a *Zorro* title card; a *Maverick*
+mail-in premium; all black-and-white). A few are certainly early 60s and are
+filed under `50s` anyway. Every other spot is year-prefixed at source, so its
+decade is exact.
+
+### Registry
+
+`FILLERS` gains 37 commercial keys (27 → 64), all verified against files on
+disk: none resolves to zero. The per-decade key lists differ by gate because
+they track what is actually there — no decade after the eighties has a spot
+whose product is clear enough for `general`.
+
+`commercials_us_spot` returns 209 and `commercials_us_family_safe_spot` returns
+80 — the difference being 6 tobacco, 122 uncategorized and the one pre-existing
+Budweiser spot.
+
+`python3 -m scripts.testing.validate_titles` → no problems.
