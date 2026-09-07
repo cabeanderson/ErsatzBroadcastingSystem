@@ -51,7 +51,9 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-STAGING = Path("/media/.staging/downloads")
+from scripts import config
+
+STAGING = config.STAGE_DOWNLOADS
 METADATA = "https://archive.org/metadata"
 DOWNLOAD = "https://archive.org/download"
 

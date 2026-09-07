@@ -54,9 +54,11 @@ import sys
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 
+from scripts import config
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-MEDIA_ROOT = "/media"
+MEDIA_ROOT = str(config.MEDIA_ROOT)
 REFERENCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "reference")
 OUT = os.path.join(REFERENCE_DIR, "metadata-facets.md")
 

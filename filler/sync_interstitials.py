@@ -49,8 +49,10 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-ROOT_MOVIES = Path("/media/movies")
-ROOT_FARM = Path("/media/filler/interstitials")
+from scripts import config
+
+ROOT_MOVIES = config.MOVIES_ROOT
+ROOT_FARM = config.INTERSTITIALS_ROOT
 
 # ErsatzTV LocalFolderScanner.VideoFileExtensions, verbatim. Anything outside
 # this list is invisible to the scanner, so linking it would only make orphans.

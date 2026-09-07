@@ -10,9 +10,9 @@
 > - **Item 10 (Smurfs, Bullwinkle)** is library work, untouched.
 > - **Item 8 (per-show Toonami bumpers) is done**, and Adult Swim's 5,316 too.
 
-Reviewed `scripts/channels/cartoon_network.py` + `scripts/library/animation.py` against the library at `/media` on 2026-08-29.
+Reviewed `scripts/channels/cartoon_network.py` + `scripts/library/animation.py` against the library at the media root on 2026-08-29.
 
-Companion references: [library-animation-tv.md](library-animation-tv.md) · [library-animation-movies.md](library-animation-movies.md) · [bumper-inventory.md](bumper-inventory.md) · [library-tv-all.txt](library-tv-all.txt) · [library-movies-all.txt](library-movies-all.txt)
+Companion references: library-animation-tv.md · library-animation-movies.md · bumper-inventory.md · library-tv-all.txt · library-movies-all.txt
 
 ---
 
@@ -81,7 +81,7 @@ Period-correct syndication also sitting idle: ThunderCats (125), He-Man (130), T
 
 There is no fix available in the current asset tree, because `filler/bumpers/cartoon network/general/` is **empty**. You have zero daytime Cartoon Network branding: no checkerboard era, no Powerhouse, no CN City, no "Yes!" era. That single gap is what stops the daytime half of this channel from feeling like Cartoon Network.
 
-The Toonami block has the inverse problem: it draws from `tag:toonami AND (tag:bumps OR tag:general)` = **21 files**, while ~940 per-show Toonami bumpers sit on disk unreachable because nothing wires per-show bumpers. Adult Swim draws from 5,316. See [bumper-inventory.md](bumper-inventory.md).
+The Toonami block has the inverse problem: it draws from `tag:toonami AND (tag:bumps OR tag:general)` = **21 files**, while ~940 per-show Toonami bumpers sit on disk unreachable because nothing wires per-show bumpers. Adult Swim draws from 5,316. See bumper-inventory.md.
 
 You also have **110 tagged 90s commercials** and commercials are globally disabled (`ENABLE_COMMERCIALS = False`, `DEFAULT_COMMERCIAL_DURATION = 0`). For a nostalgia channel that is the single highest-value asset going unused.
 

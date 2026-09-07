@@ -1,9 +1,9 @@
 # Filler Taxonomy — Proposal
 
 Status: **agreed and applied 2026-08-29.** 6,658 files moved, 7,501 verified present, none lost. Undo manifest retained.
-Companion to [bumper-inventory.md](bumper-inventory.md), which this document corrects in four places.
+Companion to bumper-inventory.md, which this document corrects in four places.
 
-> **How this was verified.** There is no ErsatzTV instance, database, or container on this machine, so nothing here was confirmed against a live index. Every claim about tag behaviour was read from ErsatzTV's source on `main` — the scanner, the fallback metadata provider, the Lucene index writer and the query analyzer, each cited inline. File counts come from a full walk of `/media/filler` on 2026-08-29. One consequence is flagged as open question 7.
+> **How this was verified.** There is no ErsatzTV instance, database, or container on this machine, so nothing here was confirmed against a live index. Every claim about tag behaviour was read from ErsatzTV's source on `main` — the scanner, the fallback metadata provider, the Lucene index writer and the query analyzer, each cited inline. File counts come from a full walk of the filler root on 2026-08-29. One consequence is flagged as open question 7.
 
 ---
 
@@ -258,7 +258,7 @@ Recommended order is unchanged for gate 1, and gate 2's precondition is now met 
 5. **The 5-file threshold** for cutting a show folder out of `bumps/general/`. 31 shows clear it.
 7. ~~**Is `filler` itself a tag?**~~ **CLOSED 2026-09-05 — yes.** The library is
    local, rooted at `/media/filler` inside the container (host
-   `/media` mounts to `/media:ro`), added as Other Videos.
+   the media root mounts to `/media:ro`), added as Other Videos.
    So every item carries `filler` as its first tag, and the NFO sidecars
    generated on 2026-09-05 emit it correctly. Original question below.
 
@@ -492,7 +492,7 @@ nothing while looking correct in the file.
 
 Found the hard way on 2026-09-05, while verifying the NFO write above.
 
-`/srv/library` is `nfs4` with default attribute caching. After a large
+The library share is `nfs4` with default attribute caching. After a large
 write burst, **`readdir` served a stale listing indefinitely**: a directory
 reported one entry while `stat` on a file inside it succeeded and returned the
 correct size. Files created seconds earlier were invisible to `ls`, `find`,

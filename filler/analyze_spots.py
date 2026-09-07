@@ -64,11 +64,13 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-# Sibling module in this directory. Python puts the running script's own
-# directory on sys.path, so no path manipulation is needed to reach it -- and
+# Sibling module, imported by package path so this runs as
+# `python3 -m scripts.filler.analyze_spots` from the ErsatzTV scripts parent.
 # `gate` must come from here rather than be reimplemented, because it is the
 # single source of truth for what a gate means.
-from recategorize_commercials import gate
+from scripts.filler.recategorize_commercials import gate
+
+from scripts import config
 
 # Imported at module scope so a missing dependency fails immediately and
 # visibly, rather than after the caller has waited through a decode pass.
@@ -77,13 +79,13 @@ try:
 except ImportError:  # reported in main(), where we can name the venv
     WhisperModel = None
 
-FILLER = Path("/media/filler")
+FILLER = config.FILLER_ROOT
 
 
 def duration(path: Path) -> float:
     try:
         out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+            [config.FFPROBE, "-v", "error", "-show_entries", "format=duration",
              "-of", "csv=p=0", str(path)],
             capture_output=True, text=True, timeout=60)
         return float(out.stdout.strip() or 0)
@@ -94,14 +96,14 @@ def duration(path: Path) -> float:
 def extract_audio(video: Path, wav: Path) -> bool:
     """16 kHz mono PCM — what the model wants, and it avoids a second decode
     inside the transcriber for every file."""
-    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(video),
+    cmd = [config.FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-i", str(video),
            "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(wav)]
     return subprocess.run(cmd, capture_output=True).returncode == 0
 
 
 def extract_frame(video: Path, jpg: Path, secs: float, at: float = 0.65) -> bool:
     """One representative frame from around `at` of the spot."""
-    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+    cmd = [config.FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
            "-ss", f"{max(0.0, secs * at):.2f}", "-i", str(video),
            "-vf", "thumbnail=n=30,scale=320:240:force_original_aspect_ratio=decrease,"
                   "pad=320:240:(ow-iw)/2:(oh-ih)/2:color=black",
@@ -123,8 +125,8 @@ def main():
 
     if WhisperModel is None:
         sys.exit("faster-whisper is not importable.\n"
-                 "Run with the project venv: "
-                 "<project>/.venv/bin/python")
+                 "Install it into the interpreter you are running:\n"
+                 f"    {config.PYTHON_BIN} -m pip install faster-whisper")
 
     out = Path(args.out)
     (out / "frames").mkdir(parents=True, exist_ok=True)

@@ -3,7 +3,7 @@
 Status: **evaluated and partly built, 2026-09-05.** The composition rules and the
 smart-bumper cascade shipped in this pass; acquisition is the open half.
 Companion to [filler-taxonomy.md](filler-taxonomy.md) (the tree) and
-[bumper-inventory.md](bumper-inventory.md) (superseded counts).
+bumper-inventory.md (superseded counts).
 
 > **§8 item 1 is done.** The 56 staged reels were split on 2026-09-05 and
 > yielded **3,721 spots** — not the "well over a thousand" estimated below.

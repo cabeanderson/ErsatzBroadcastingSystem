@@ -31,12 +31,15 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from recategorize_commercials import gate  # noqa: E402  single source of truth
+# `gate` is the single source of truth for what a gate means; import it rather
+# than reimplement it.
+from scripts.filler.recategorize_commercials import gate
 
-STAGE_US = Path("/media/.staging/us_commercials")
-STAGE_CTVC = Path("/media/.staging/ctvc")
-DEST = Path("/media/filler/commercials/us")
+from scripts import config
+
+STAGE_US = config.STAGE_US_COMMERCIALS
+STAGE_CTVC = config.STAGE_CTVC
+DEST = config.COMMERCIALS_US
 REEL_SECONDS = 420  # over seven minutes is an off-air recording, not a spot
 
 VIDEO = {".mp4", ".mkv", ".avi", ".mpg", ".mpeg", ".m4v", ".webm", ".mov", ".ts"}
@@ -54,7 +57,7 @@ def duration(path: Path) -> float:
     """
     try:
         out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+            [config.FFPROBE, "-v", "error", "-show_entries", "format=duration",
              "-of", "csv=p=0", str(path)],
             capture_output=True, text=True, timeout=60)
         return float(out.stdout.strip() or 0)

@@ -43,6 +43,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from scripts import config
+
 HASH_SIDE = 9  # dHash compares adjacent pixels, so 9x8 yields 64 bits
 MAX_DISTANCE = 6
 
@@ -50,7 +52,7 @@ MAX_DISTANCE = 6
 def duration(path: Path) -> float:
     try:
         out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+            [config.FFPROBE, "-v", "error", "-show_entries", "format=duration",
              "-of", "csv=p=0", str(path)],
             capture_output=True, text=True, timeout=60)
         return float(out.stdout.strip() or 0)
@@ -63,7 +65,7 @@ def dhash(video: Path, tmp: Path) -> int | None:
     secs = duration(video)
     if secs <= 0:
         return None
-    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+    cmd = [config.FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
            "-ss", f"{secs * 0.5:.2f}", "-i", str(video),
            "-vf", f"scale={HASH_SIDE}:{HASH_SIDE - 1},format=gray",
            "-frames:v", "1", str(tmp)]

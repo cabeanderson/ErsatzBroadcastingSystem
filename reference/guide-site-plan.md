@@ -185,7 +185,7 @@ caches artwork, merges `channels.toml` and the per-title cache, and emits
 Static is the right call and was the user's own starting position. The page knows
 the time, so "on now" and the dimming of past days are computed client-side with
 no rebuild. A hosted CI runner **cannot** do this job — it has no route to
-<ersatztv-host>. The generator must run on the LAN.
+the ErsatzTV host. The generator must run on the LAN.
 
 Rejected: a public reverse proxy to ErsatzTV. Its endpoints are completely
 unauthenticated.

@@ -66,7 +66,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-FILLER = Path("/media/filler")
+from scripts import config
+
+FILLER = config.FILLER_ROOT
 DEST = FILLER / "promos"
 
 DAY = re.compile(r'\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday'

@@ -96,9 +96,11 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-STAGE = Path("/media/.staging/us_commercials")
-CACHE = Path("/media/.staging/.reelcuts")
-DEST = Path("/media/filler/commercials/us")
+from scripts import config
+
+STAGE = config.STAGE_US_COMMERCIALS
+CACHE = config.REEL_CUT_CACHE
+DEST = config.COMMERCIALS_US
 
 # Detector settings. Part of the cache key -- see the module docstring.
 BLACK_MIN_DURATION = 0.04   # one frame at 25fps, so a single black frame counts
@@ -133,7 +135,7 @@ def duration(path: Path) -> float:
     """Seconds, or 0.0 if ffprobe cannot read the file."""
     try:
         out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+            [config.FFPROBE, "-v", "error", "-show_entries", "format=duration",
              "-of", "csv=p=0", str(path)],
             capture_output=True, text=True, timeout=120)
         return float(out.stdout.strip() or 0)
@@ -154,7 +156,7 @@ def detect(path: Path) -> dict:
     tail is silent still has a real boundary there.
     """
     cmd = [
-        "ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
+        config.FFMPEG, "-hide_banner", "-nostats", "-i", str(path),
         "-vf", (f"blackdetect=d={BLACK_MIN_DURATION}"
                 f":pic_th={BLACK_PICTURE_RATIO}"
                 f":pix_th={BLACK_PIXEL_THRESHOLD}"),
@@ -307,7 +309,7 @@ def cut(src: Path, start: float, end: float, dest: Path, threads: int) -> bool:
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(".partial.mp4")
     cmd = [
-        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        config.FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
         "-ss", f"{start:.3f}", "-i", str(src), "-t", f"{end - start:.3f}",
         "-threads", str(threads),
         "-c:v", "libx264", "-crf", "20", "-preset", "veryfast", "-pix_fmt", "yuv420p",

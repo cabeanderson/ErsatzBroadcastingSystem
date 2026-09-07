@@ -58,7 +58,7 @@ correct in the file. Casing is not cosmetic here.
 Tags come from `Path.GetRelativePath(parent_of_library_root, folder)`, so the
 root determines whether the first tag is `filler` or `media`. **Confirmed
 2026-09-05:** the library is local, rooted at `/media/filler` in the container
-(host `/media` mounts to `/media:ro`), added as Other
+(the host library mounts to `/media:ro`), added as Other
 Videos. The default is therefore correct and every item carries `filler` first.
 The parameter stays because a second library over a different root would need
 it.
@@ -74,7 +74,9 @@ from collections import Counter
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-FILLER = Path("/media/filler")
+from scripts import config
+
+FILLER = config.FILLER_ROOT
 VIDEO = {".mp4", ".mkv", ".avi", ".mpg", ".mpeg", ".m4v", ".webm", ".mov", ".ts"}
 
 LEADING_YEAR = re.compile(r"(19|20)\d{2}")
@@ -85,12 +87,10 @@ LEADING_YEAR = re.compile(r"(19|20)\d{2}")
 # because the copy lacked the PROGRAMME/RETAIL gate that cut the count from 857
 # to 325. Two classifiers over one question is one too many.
 #
-# This module lives in `filler/` rather than `nfo/` precisely so that import is
-# a plain sibling one. `nfo/` is movie-library tooling (normalize_tag_case.py
-# operates on /media/movies); this compiles sidecars for the filler tree, and
-# putting it there forced a sys.path hack to reach its own dependency -- which
-# was the signal it was in the wrong directory.
-from split_promos import claim as promo_claim
+# This module lives in `filler/` rather than `nfo/` because that is where its
+# dependency is. `nfo/` is movie-library tooling (normalize_tag_case.py operates
+# on the movie root); this compiles sidecars for the filler tree.
+from scripts.filler.split_promos import claim as promo_claim
 
 
 def folder_tags(video: Path, library_root: Path) -> list:

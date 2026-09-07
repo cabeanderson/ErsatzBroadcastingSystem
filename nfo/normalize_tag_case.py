@@ -30,7 +30,9 @@ from xml.sax.saxutils import escape, unescape
 
 from lxml import etree
 
-ROOT = Path("/media/movies")
+from scripts import config
+
+ROOT = config.MOVIES_ROOT
 
 
 def movie_dirs():

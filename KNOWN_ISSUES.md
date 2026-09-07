@@ -35,12 +35,17 @@ invisible.
   so the next slot still begins on time.
 
 
-**The method that found all three.** Simulate, then walk the schedule summing
-each item's duration and flag wherever the next item starts after the previous
-one ends. The existing tools do not do this — `visualize_week` prints structure
-and `collision_report` compares channels, but nothing measured continuity. Over
-13 channels × 30 days it is a few seconds and it localises a gap to the block
-that opened it. It wants to be a tool in `scripts/testing/`.
+**The method that found all three.** Walk the schedule summing each item's
+duration and flag wherever the next item starts after the previous one ends.
+The existing tools did not do this — `visualize_week` prints structure and
+`collision_report` compares channels, but nothing measured continuity.
+
+**Now a tool: `scripts/testing/continuity_check.py`** (2026-09-07). It reads the
+live XMLTV export rather than a simulation, which is the important half — a
+simulation shows what the current code would build, and the most common cause of
+a real gap is a playout built by older code and never reset. Exits non-zero when
+it finds one, so it can gate a pipeline; `--future-only` restricts it to the
+gaps that can still be fixed.
 
 ### 2026-09-01 — what the live server said that the offline tools could not
 
@@ -415,6 +420,35 @@ Organising the collection made the key *work*; it could never have made it *fill
 
 ## Open
 
+### 2026-09-07 — measured with `continuity_check` against the live guide
+
+- [ ] 🟠 **Totally 80s and Be Kind Rewind are on pre-rescan playouts and are
+  broadcasting 570 minutes of future dead air between them.** Both were built
+  *before* the music-video rescan landed, so `eighties_music_videos` still
+  resolves to nothing inside their baked playouts even though the index is now
+  correct. Totally 80s has **4 future gaps totalling 420 minutes**, every one of
+  them 04:00–06:00 — precisely The Video Jukebox slot. Be Kind Rewind has **one,
+  119 minutes, Tue 08 Sep 04:07–06:05**, in the same hours.
+
+  **Not a config defect, and not fixable by editing the channel.** This is the
+  deployment rule biting again in its narrower form: a rebuild extends a playout
+  forward, but already-built items keep the resolution they were built with. The
+  fix is a **reset** of those two channels, and only those two — every other
+  channel on the lineup is continuous.
+
+  Reproduce with `python3 -m scripts.testing.continuity_check --future-only`.
+
+- [ ] 🟡 **Japanorama drops 4–16 minutes before 19:00 most nights.** Four future
+  gaps, each ending exactly at 19:00: Mon 18:56, Tue 18:43, Wed 18:53, Thu 18:54.
+  The 19:00 block starts on time, so this is the *preceding* block under-filling
+  its tail rather than the 19:00 one starting late. Japanorama's playout is from
+  today and built by current code, which makes this the only gap on the lineup
+  that is a live code defect rather than a stale playout.
+
+  Suspect the same tail-fill shortfall as the `fill_strategy="bridge"` entry
+  below — `pad_until_exact` places only whole items, and the 18:00 block's items
+  do not divide its hour evenly. Worth checking whether `yield` is right there.
+
 - [ ] 🟠 **`Block(items="some_key")` silently plays nothing, and
   `example_channel.py` documents it as the way to do it.**
   `engines/blocks.py::_get_next_block_item` accepts a collection (anything with
@@ -438,8 +472,16 @@ Organising the collection made the key *work*; it could never have made it *fill
   a bare string or warn on one; every other channel happens to pass a collection
   or a list, which is why this survived this long.
 
-- [ ] 🔴 **ErsatzTV has not re-indexed the reorganised music video collection,
-  and The Beat is scheduled against paths that no longer exist.** Confirmed in
+- [x] ~~🔴 **ErsatzTV has not re-indexed the reorganised music video collection,
+  and The Beat is scheduled against paths that no longer exist.**~~
+  **Verified fixed 2026-09-07** by reading the live guide. The Beat carries
+  1,448 programmes on a 2026-09-07 epoch, **0** of them titled with the old
+  genre buckets (`hip_hop`, `rock`, `pop`, `oldies`, `dance`), and **98% carry
+  a `<date>`** — the titles are artist names, which is the reorganised shape.
+  The rescan ran and the playout was rebuilt against it. The open question the
+  entry raised — whether ErsatzTV indexes `<year>` from a music video `.nfo` —
+  is answered yes; no fallback to `<tag>80s</tag>` is needed.
+  *Original entry below.* Confirmed in
   the live guide 2026-09-02 after the reorg: The Beat still airs 751 videos whose
   `<title>` is `hip_hop` (244), `rock` (128), `pop` (120), `oldies` (64) and
   `dance` (37) — the old genre-bucket folders, **none of which exist on disk any
@@ -479,12 +521,17 @@ Organising the collection made the key *work*; it could never have made it *fill
   whose neighbour is another Block; it is wrong for one whose items are shorter
   than the remainder it leaves.
 
-**The method that found all three.** Simulate, then walk the schedule summing
-each item's duration and flag wherever the next item starts after the previous
-one ends. The existing tools do not do this — `visualize_week` prints structure
-and `collision_report` compares channels, but nothing measured continuity. Over
-13 channels × 30 days it is a few seconds and it localises a gap to the block
-that opened it. It wants to be a tool in `scripts/testing/`.
+**The method that found all three.** Walk the schedule summing each item's
+duration and flag wherever the next item starts after the previous one ends.
+The existing tools did not do this — `visualize_week` prints structure and
+`collision_report` compares channels, but nothing measured continuity.
+
+**Now a tool: `scripts/testing/continuity_check.py`** (2026-09-07). It reads the
+live XMLTV export rather than a simulation, which is the important half — a
+simulation shows what the current code would build, and the most common cause of
+a real gap is a playout built by older code and never reset. Exits non-zero when
+it finds one, so it can gate a pipeline; `--future-only` restricts it to the
+gaps that can still be fixed.
 
 ### 2026-09-01 — what the live server said that the offline tools could not
 
@@ -865,8 +912,15 @@ and the channel aired something. What it aired was wrong.
   Old House (234), The New Yankee Workshop (151) — 1,267 episodes with no key
   and no channel, which is most of a daytime schedule for Travelers Table.
 
-- [ ] 🔴 **Totally 80s and Cabes Classic Cinema are running 2026-03-17
-  playouts and have never been reset.** Found 2026-09-02 by reading the live
+- [x] ~~🔴 **Totally 80s and Cabes Classic Cinema are running 2026-03-17
+  playouts and have never been reset.**~~
+  **Verified fixed 2026-09-07.** No channel on the lineup carries a March
+  epoch any longer. All 18 channels in the live `xmltv.xml` start between
+  2026-08-30 and 2026-09-07; Totally 80s and Cabes Classic Cinema are both
+  2026-09-02, and Nickelodeon has moved off its 2026-08-30 epoch. The resets
+  were done. **A narrower version of the same rule survives** — see the
+  pre-rescan playout entry at the top of Open.
+  *Original entry below.* Found 2026-09-02 by reading the live
   `xmltv.xml` after Good Times and Corncob were deployed: every other channel
   carries an August or September epoch, those two carry March. Consequences are
   live now — Totally 80s has **26 hours of future gaps** (10.5 h from Thu 03
@@ -1046,9 +1100,14 @@ and the channel aired something. What it aired was wrong.
   restrict the tier to referenced collections or label dead ones. Related:
   `CYBERPUNK_SPOTLIGHT`, `TIME_TRAVEL_SPOTLIGHT` and `ALIEN_INVASION_SPOTLIGHT`
   in `library/movies.py` are all defined and used by nothing.
-- [ ] **`test_imports.py` at the repo root is broken.** It does
+- [ ] **`test_imports.py` is broken, and is not in the repository.** It does
   `from channels import cartoon_network`, which has not been the module path
-  since the `scripts/` package reorganisation. Predates this session.
+  since the `scripts/` package reorganisation — confirmed 2026-09-07,
+  `ModuleNotFoundError: No module named 'channels'`. Corrected detail: it sits
+  in the *parent* directory, one level above the git root, so it is tracked by
+  neither repo and will not ship. Delete it or fix it to
+  `from scripts.channels import cartoon_network`; `scripts.testing.test_refactor`
+  already covers what it was for.
 - [ ] **Thin automated tests.** `testing/test_comprehensive.py` is print-based
   (no asserts). `test_scenarios.py` does use `unittest`. Add assertion coverage
   for date math (leap years, year wraparound), determinism (same date → same
@@ -1058,6 +1117,13 @@ and the channel aired something. What it aired was wrong.
   (`dispatcher.play_schedule_slot` imports `play_block`; `calendar/assembly.py`
   locally imports `ContentResolver`) indicate `logic`↔`engines` coupling that the
   layering claims to forbid.
+- [ ] **`sys.path` manipulation in `testing/` and `example_channel.py`.** Eleven
+  modules under `scripts/testing/` and `channels/example_channel.py` open with
+  `sys.path.insert(0, .../'..')` so they can be run as loose scripts. It works,
+  but it means the package can be imported two different ways and the shipped
+  example teaches the hack. `filler/` and `nfo/` were cleaned of this on
+  2026-09-07 when they moved to `python3 -m scripts.filler.<tool>`; the same
+  treatment applies here, and `testing/` already has the `__init__.py` it needs.
 - [ ] **`Any` overuse.** `api`, `context`, and `boss` are typed `Any` in most
   helpers, erasing the value of the otherwise-good hints. Consider a `Protocol`
   for the ErsatzTV API and concrete `DayDirector` hints.

@@ -47,7 +47,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-DEST = Path("/media/filler/commercials/us")
+from scripts import config
+
+DEST = config.COMMERCIALS_US
 
 TILE_W, TILE_H = 320, 240
 LABEL_H = 18
@@ -64,7 +66,7 @@ def frame(video: Path, out: Path, at_fraction: float, duration: float) -> bool:
     """
     start = max(0.0, duration * at_fraction)
     cmd = [
-        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        config.FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
         "-ss", f"{start:.2f}", "-i", str(video),
         "-vf", f"thumbnail=n=30,scale={TILE_W}:{TILE_H}:force_original_aspect_ratio=decrease,"
                f"pad={TILE_W}:{TILE_H}:(ow-iw)/2:(oh-ih)/2:color=black",
@@ -76,7 +78,7 @@ def frame(video: Path, out: Path, at_fraction: float, duration: float) -> bool:
 def duration(path: Path) -> float:
     try:
         out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+            [config.FFPROBE, "-v", "error", "-show_entries", "format=duration",
              "-of", "csv=p=0", str(path)],
             capture_output=True, text=True, timeout=60)
         return float(out.stdout.strip() or 0)

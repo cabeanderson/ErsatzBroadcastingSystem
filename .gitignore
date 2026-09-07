@@ -25,3 +25,15 @@ reference/library-*.tsv
 reference/library-*.txt
 reference/library-analysis.md
 reference/library-animation-*.md
+
+# Collection inventories and personal worklogs. These enumerate what is on
+# disk, or are handover notes to myself; the design docs beside them are the
+# reusable half and stay tracked. Regenerate the census ones with
+# scripts.testing.media_inventory / metadata_census.
+reference/registry-inventory.md
+reference/channel-coverage.md
+reference/lineup-audit.md
+reference/acquisitions.md
+reference/bumper-inventory.md
+reference/metadata-facets.md
+reference/next-session.md

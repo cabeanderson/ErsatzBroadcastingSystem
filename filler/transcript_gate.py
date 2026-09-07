@@ -49,7 +49,9 @@ import shutil
 from collections import Counter
 from pathlib import Path
 
-FILLER = Path("/media/filler")
+from scripts import config
+
+FILLER = config.FILLER_ROOT
 
 # Restrictive vocabularies. Tuned for recall -- a false positive costs a spot
 # one daypart, a false negative is the failure mode the gate exists for.

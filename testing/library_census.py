@@ -30,7 +30,9 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-MEDIA_ROOT = "/media"
+from scripts import config
+
+MEDIA_ROOT = str(config.MEDIA_ROOT)
 
 VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mpg", ".mpeg",
                     ".wmv", ".mov"}

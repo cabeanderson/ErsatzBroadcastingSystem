@@ -54,7 +54,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-ROOT = Path("/media/filler/bumpers")
+from scripts import config
+
+ROOT = config.BUMPERS_ROOT
 
 # Order matters. `Toonami_2_0_Evangelion_2_22_Back_3` must read as "back", and
 # `Toonami_Now_Evangelion_1_11` as "now", so the more specific two-word markers

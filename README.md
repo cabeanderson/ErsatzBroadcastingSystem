@@ -26,26 +26,32 @@ This framework separates **scheduling logic** from **channel configuration**. In
 *   [ErsatzTV API Contract](ERSATZTV_API.md) - The scripted-schedule endpoints, their real semantics, and where the simulator's mock does and does not match them.
 *   [Known Issues & Tech Debt](KNOWN_ISSUES.md) - Tracked findings and fixes-for-later.
 *   [Channel Rules](reference/channel-rules.md) - How channels get founded, gridded, curated against each other, and verified. The law, with the channel that proved each rule.
-*   [Reference Library](reference/README.md) - Library manifests, the channel plan, and the coverage audit. Programming decisions and what is actually on disk, kept next to the code that schedules it.
+*   [Reference](reference/README.md) - The programming method: founding a channel, building the grid, curating across channels, and composing a break. The reasoning the channel code was written against.
 
 ## Project Structure
 
+**This repository *is* the `scripts` package.** Clone it so that the checkout
+directory is named `scripts`, sitting inside the directory ErsatzTV reads
+scripted schedules from. ErsatzTV imports channels out of it directly; every
+module resolves as `scripts.<something>`, which is why the directory name
+matters.
+
 ```text
-scripted-schedules/
-├── scripts/            # Main Package
-│   ├── channels/       # Your channel configurations (User Data)
-│   ├── filler/         # Interstitial acquisition, splitting and classification
-│   ├── nfo/            # Movie-library NFO tooling
-│   ├── library/        # Content queries and collections (User Data)
-│   ├── scheduling/     # The Scheduling Subsystem (Config, Runner)
-│   ├── core/           # Date math and state
-│   ├── logic/          # Scheduling decisions
-│   ├── engines/        # Playback behaviors (Marathons, Blocks, Programs)
-│   ├── testing/        # Simulator and validators
-│   ├── reference/      # Library manifests and programming plans (offline data)
-│   ├── settings.py     # Global settings
-│   └── requirements.txt
-└── README.md
+<ErsatzTV scripting directory>/
+└── scripts/                # <- this repository
+    ├── channels/           # Channel configurations (the grids)
+    ├── library/            # Content queries and collections
+    ├── scheduling/         # Config and Runner
+    ├── core/               # Date math and state
+    ├── logic/              # Scheduling decisions
+    ├── engines/            # Playback behaviours (Marathons, Blocks, Programs)
+    ├── testing/            # Simulator and validators
+    ├── filler/             # Interstitial acquisition, splitting, classification
+    ├── nfo/                # Movie-library NFO tooling
+    ├── reference/          # Programming method and channel design notes
+    ├── config.py           # Paths and server address — see Configuration
+    ├── settings.py         # Framework behaviour flags
+    └── env.example         # Copy to .env for the offline tools
 ```
 
 ## Getting Started
@@ -58,28 +64,44 @@ scripted-schedules/
 
 ### Installation
 
-1.  Clone this repository:
-    ```bash
-    git clone https://github.com/yourusername/ersatztv-scheduling-framework.git
-    cd ersatztv-scheduling-framework
-    ```
+Clone the repository into ErsatzTV's scripting directory, named `scripts`:
 
-2.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-    > **Note:** The framework uses only the Python standard library, so this is
-    > effectively a no-op. There are no third-party packages to install.
+```bash
+cd <ErsatzTV scripting directory>
+git clone https://github.com/cabeanderson/ErsatzBroadcastingSystem.git scripts
+```
 
-3.  Make `etv_client` available:
-    *   `etv_client` is the API binding that **ships inside ErsatzTV**; it is not
-        on PyPI and is not part of this repo.
-    *   **Running inside the ErsatzTV container** (the normal case): it is already
-        importable from ErsatzTV's scripting runtime — there is nothing to do.
-        See ErsatzTV's scripting documentation:
-        <https://github.com/ErsatzTV/ErsatzTV>.
-    *   **Running locally** (simulator/tests for channel planning): you do **not**
-        need the real client — see [Local channel planning](#local-channel-planning) below.
+There is nothing to install. The scheduler runs on the standard library, and
+`etv_client` — the API binding — already ships inside ErsatzTV, so it is
+importable from the scripting runtime with no action on your part.
+
+If you also want the offline tooling in `filler/` and `nfo/`, those have real
+dependencies; see [requirements.txt](requirements.txt).
+
+## Configuration
+
+Two files, with different jobs:
+
+* **[config.py](config.py) — where things are.** Every filesystem path and the
+  ErsatzTV address, in one place. The defaults are correct inside the container
+  (`/media`, `http://127.0.0.1:8409`), so in the normal case you configure
+  nothing.
+
+  The offline tools are the exception: they run on a workstation, where the
+  library is mounted somewhere else. Point one variable at it and every tool
+  follows:
+
+  ```bash
+  cp env.example .env && $EDITOR .env
+  set -a && . ./.env && set +a
+  ```
+
+  `.env` is gitignored. `config.py` holds no machine-specific values and is
+  meant to stay that way — override through the environment, not by editing it.
+
+* **[settings.py](settings.py) — how it behaves.** Fill strategies, smart
+  bumpers, commercial and filler toggles, log verbosity. Framework behaviour,
+  not deployment.
 
 ## Simulation & Testing
 

@@ -34,7 +34,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-DEST = Path("/media/filler/commercials/us")
+from scripts import config
+
+DEST = config.COMMERCIALS_US
 
 # Structural markers. A promo advertises something whose content we cannot see,
 # so it is not categorized -- unless it names an unambiguous children's property,

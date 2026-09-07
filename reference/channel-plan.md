@@ -1,6 +1,6 @@
 # Channel Plan
 
-Working plan for the scripted-schedules lineup. Companion to [channel-coverage.md](channel-coverage.md) (what exists and where it goes) and the library references in this directory.
+Working plan for the scripted-schedules lineup. Companion to channel-coverage.md (what exists and where it goes) and the library references in this directory.
 
 > **The rules are now in [channel-rules.md](channel-rules.md)** — founding a
 > channel, building the grid, curating across channels, and the checks that
@@ -489,7 +489,7 @@ Simulated over 365 continuous days: **no gaps, no circuit breakers, no unresolve
 - **Sunday morning as a second Breakfast.** The first Sunday grid ran the Breakfast block twice, 06:00–12:00 — six unbroken hours of Bake Off and Clarkson's Farm, which is the weekday grid printed twice under another name. It is **The Omnibus** now: the week's drama repeated on a Sunday morning, which is the same title in a different presentation (C2, G8) rather than a second helping of the same pool.
 - **A crime hour at prime.** Wanted, and dropped: it would have drawn the morning's own pool and handed Mystery Theatre four collisions.
 
-**Still without:** any panel show, which remains the single most fixable identity gap on the lineup. See [acquisitions.md](acquisitions.md).
+**Still without:** any panel show, which remains the single most fixable identity gap on the lineup. See acquisitions.md.
 
 ### Totally 80s — designed
 
@@ -523,7 +523,7 @@ defect and the smallest of the four:
   Disney and High Noon each carry a custom map to avoid. Split into
   `late: (23, 24)` and `night: (0, 2)`.
 - **Six content keys resolved to nothing.** See
-  [acquisitions.md](acquisitions.md); all six are gone and the blocks are
+  acquisitions.md; all six are gone and the blocks are
   rebuilt on what the library holds.
 
 **The cult movie is at noon, and that is not a whim.** `eighties_cult_movie` is
@@ -665,7 +665,7 @@ another channel, every show left works at any hour, so nothing has to be fenced
 into a daypart.
 
 **What it went without.** Sunday is five shows, and the fourth-network shelf is
-the channel's thinnest — see [acquisitions.md](acquisitions.md). The 1973 CBS
+the channel's thinnest — see acquisitions.md. The 1973 CBS
 Saturday night is three of five: All in the Family and The Carol Burnett Show
 are both missing, and All in the Family is the single most valuable acquisition
 on the list, since Good Times is a Norman Lear spin-off airing without the show
@@ -744,7 +744,7 @@ shows cycling, and zero violations of the one hours rule below.
 **The one sharing rule.** Cartoon Network's Adult Swim airs The Eric Andre Show
 and Check It Out! with Dr. Steve Brule inside `AS_ORIGINALS_B`: 20:00–23:00
 Tuesday and Thursday, 23:00–24:00 Sunday, 00:00–02:00 Monday.
-[channel-coverage.md](channel-coverage.md) already prescribed the C2 rung-1
+channel-coverage.md already prescribed the C2 rung-1
 split for exactly these — Adult Swim first-run, Corncob syndication — and The
 Syndication Hour at 10:00–12:00 is it. Adult Swim is not on air at that hour on
 any day, so **the split holds by the clock rather than by the grid remembering
@@ -781,7 +781,7 @@ same pass.
 its 89 episodes** on disk — the one demonstrably partial series in the roster.
 Saturday Night Sketch is the thinnest named night at five shows, and the
 channel has no variety register at all. See
-[acquisitions.md](acquisitions.md), which now opens with a ranked shortlist.
+acquisitions.md, which now opens with a ranked shortlist.
 
 ### Travelers Table
 Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.
@@ -846,7 +846,7 @@ Reads the manifests in `reference/`, so it runs offline with no ErsatzTV.
 
 ### Still needs building
 
-**Collision report.** The framework has no cross-channel awareness. Sharing rules stay a convention until something can simulate N days across all channels and flag a title double-booked in the same hour. `visualize_week.py` and the walker in `validate_titles.py` are the two halves of it — same traversal, plus a time dimension. Deferred through the Cartoon Network restructure, on the grounds that CN's eviction list was written down rather than needing deriving. That list is now cleared, so the next time two channels overlap nothing will be holding the answer — and `common.HALLOWEEN_TEEN_FRIGHTS` is already one live example. See [next-session.md](next-session.md).
+**Collision report.** The framework has no cross-channel awareness. Sharing rules stay a convention until something can simulate N days across all channels and flag a title double-booked in the same hour. `visualize_week.py` and the walker in `validate_titles.py` are the two halves of it — same traversal, plus a time dimension. Deferred through the Cartoon Network restructure, on the grounds that CN's eviction list was written down rather than needing deriving. That list is now cleared, so the next time two channels overlap nothing will be holding the answer — and `common.HALLOWEEN_TEEN_FRIGHTS` is already one live example. See next-session.md.
 
 ---
 
@@ -1014,5 +1014,5 @@ of what a video store stocks.
 | **Largest untapped** | ~1,390 films from 1990 on |
 | **Manifests overstate episodes** | `library-tv.tsv` counts `extras/` folders as episodes — Justified reads 117 for 78, Deadwood 51 for 36, Rifleman 167 for 166. Count off disk before sizing an `annual_show()` |
 | **Genre tags are not genres** | Breaking Bad, Westworld and Cowboy Bebop all carry a Western tag. `western_tv` returns all three, which is why High Noon names its shows instead |
-| **No classic horror TV at all** | Not one pre-1989 horror show is on disk — no Dark Shadows, Kolchak, Night Gallery, Tales from the Darkside, Monsters, Thriller. This is why Nightmare Theatre came out film-led. Shopping list in [acquisitions.md](acquisitions.md) |
+| **No classic horror TV at all** | Not one pre-1989 horror show is on disk — no Dark Shadows, Kolchak, Night Gallery, Tales from the Darkside, Monsters, Thriller. This is why Nightmare Theatre came out film-led. Shopping list in acquisitions.md |
 | **Nightmare Theatre has no host** | A hosted format running unhosted, with no horror bumpers on disk. Joe Bob Briggs / Svengoolie / Elvira are worth more to the channel than most shows |

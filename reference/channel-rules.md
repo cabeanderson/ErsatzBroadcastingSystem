@@ -430,8 +430,8 @@ five, because a window opened over episodes that resolve to nothing stalls the
 block.
 
 The same applies to genre pools:
-[library-analysis.md](library-analysis.md) answers *is there enough content for
-a channel*, [registry-inventory.md](registry-inventory.md) answers *can the
+library-analysis.md answers *is there enough content for
+a channel*, registry-inventory.md answers *can the
 scheduler address it*. Those are different questions and a pool can be large in
 one and unreachable in the other.
 
@@ -446,8 +446,8 @@ A channel is not finished until [channel-plan.md](channel-plan.md) has its grid,
 its counts, its simulation result and — most valuable to the next session — the
 shapes that *failed*. Nightmare Theatre's note is the model: three rejected
 Saturday shapes, each with the reason, is worth more than the grid that worked.
-Update [channel-coverage.md](channel-coverage.md) for the titles it claims, and
-[acquisitions.md](acquisitions.md) for what it went without.
+Update channel-coverage.md for the titles it claims, and
+acquisitions.md for what it went without.
 
 ---
 

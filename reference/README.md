@@ -1,70 +1,64 @@
-# Library Reference
+# Reference
 
-Snapshots of the local media library, for use when writing channel and
-block definitions.
+The programming method behind the lineup: how channels get founded, how the
+grid is built, how content is curated across channels, and how a break is
+composed. These are the documents the channel code was written against, and
+they are meant to be reusable — the reasoning is portable even though the
+collection it was applied to is not.
 
-> **Local only.** The seven `library-*` snapshots below are gitignored — they
-> inventory a personal collection, so they live on disk but are not published.
-> Regenerate them with the commands in the tables; the links here resolve only
-> in a local checkout.
-
-## Generated — do not edit by hand
-
-Four files are produced by scripts and regenerate in seconds. Regenerate them
-when the library changes or the registry does.
-
-| File | Contents | Regenerate with |
-|---|---|---|
-| [library-movies.tsv](library-movies.tsv) | 2,063 films: title, year, genres, runtime, tier | `python3 -m scripts.testing.library_census` |
-| [library-tv.tsv](library-tv.tsv) | 575 shows: title, year, episode count, genres, studio | same |
-| [library-analysis.md](library-analysis.md) | Genre pools sized for channel decisions, plus full listings of small pools | same |
-| [registry-inventory.md](registry-inventory.md) | All content keys, their queries, and which channels air them | `python3 -m scripts.testing.media_inventory` |
-
-`library-analysis.md` answers "is there enough content for a channel";
-`registry-inventory.md` answers "can the scheduler address it". Those are
-different questions and a pool can be large in one and unreachable in the other.
-
-## Hand-maintained
+## The method
 
 | File | Contents |
 |---|---|
-| [library-tv-all.txt](library-tv-all.txt) | Flat list of TV show folders |
-| [library-movies-all.txt](library-movies-all.txt) | Flat list of movie folders |
-| [library-animation-tv.md](library-animation-tv.md) | 151 animated series with episode and season counts |
-| [library-animation-movies.md](library-animation-movies.md) | 94 animated features, grouped by studio |
-| [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs — **counts superseded**, see filler-taxonomy.md |
-| [filler-taxonomy.md](filler-taxonomy.md) | **The filler tree** — how ErsatzTV derives tags from folder paths, the applied reorganization, the commercial gates, and the movie trailer/extras farm |
-| [interstitial-policy.md](interstitial-policy.md) | **When a break happens and what goes in it** — the smart-bumper modes, the break invariant, the 221 promos already on disk, and the five-decade acquisition brief |
-| [interstitial-acquisition.md](interstitial-acquisition.md) | **Where the material is and how to get it** — the 3,721 spots split out of the staged reels, verified archive.org identifiers per gap, and the fetch/split/delete cycle |
-| [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel — **implemented**, see its status header |
-| [channel-rules.md](channel-rules.md) | **The rules for making and curating channels** — founding, grid, cross-channel curation, and the checks a channel passes before it counts as built |
-| [metadata-facets.md](metadata-facets.md) | **What a content key can select on** — the 9,672-tag TMDB vocabulary the manifests drop, every `tag:` key evaluated for real, and the facets and keyword sweeps to build calendar and holiday keys from. `python3 -m scripts.testing.metadata_census` |
-| [lineup-audit.md](lineup-audit.md) | **The 2026-09-03 depth-and-programming audit** — content per channel measured over a year, the 102 orphan shows, and where marathons, seasons and appointments are unused |
-| [guide-site-plan.md](guide-site-plan.md) | **The plan for the listings-magazine website** — what the live feed carries, the XMLTV horizon settings, where per-title trivia comes from, and the publishing risk review |
-| [channel-plan.md](channel-plan.md) | The working plan — lineup, programming mechanics, sharing rules, gaps |
-| [acquisitions.md](acquisitions.md) | What the lineup is missing, per channel — the gap each acquisition fills |
-| [next-session.md](next-session.md) | Build order and carry-forward notes — currently the interstitial acquisition brief; Japanorama's notes below it |
-| [channel-coverage.md](channel-coverage.md) | All 576 shows + 2,067 movies mapped to channels; orphans and conflicts |
+| [channel-rules.md](channel-rules.md) | **The rules for making and curating channels** — founding, grid, cross-channel curation, and the checks a channel passes before it counts as built. The law, with the channel that proved each rule. |
+| [channel-plan.md](channel-plan.md) | The working plan — lineup, programming mechanics, sharing rules, and the design of each channel. |
+| [filler-taxonomy.md](filler-taxonomy.md) | **The filler tree** — how ErsatzTV derives tags from folder paths, the applied reorganisation, the commercial gates, and the movie trailer/extras farm. |
+| [interstitial-policy.md](interstitial-policy.md) | **When a break happens and what goes in it** — the smart-bumper modes and the break invariant. |
+| [interstitial-acquisition.md](interstitial-acquisition.md) | **Where interstitial material is and how to get it** — archive.org identifiers per gap, and the fetch/split/delete cycle. |
+| [guide-site-plan.md](guide-site-plan.md) | **The plan for the listings-magazine website** — what the live feed carries, the XMLTV horizon settings, and the publishing risk review. |
 
-Episode counts come from files under `Season NN/` folders.
+## Worked examples
 
-Two long-standing exceptions were resolved on 2026-08-30. **Smurfs** is reorganized and indexes: 8 season folders, 367 episodes, `tvshow.nfo` present — season 9 is still missing, and the count is down from the 405 loose files because of it. **Bullwinkle** is no longer in `tv/` under any name and has been dropped from these lists; the files exist elsewhere but have not been identified or placed, so nothing can schedule it yet.
+Two channel designs kept as written, for the reasoning rather than the result.
 
-`Popeye the Sailor (1933)` seasons are foldered by broadcast **year** (`Season 1943` … `Season 1949`), not by season number. It indexes, but any query using `season_number:` against it means the year.
+| File | Contents |
+|---|---|
+| [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel — **implemented**; see its status header for what shipped differently. |
+| [modern-movies-plan.md](modern-movies-plan.md) | Build plan for a modern film channel — **superseded**; it shipped as Be Kind Rewind. |
 
-Regenerate the flat lists with `ls /media/tv` and `ls .../movies`.
+## Library snapshots — local only, not published
 
-**Correction (2026-08-30):** this file previously said per-file `.nfo` genre
-scanning over NFS was impractically slow, which is why the animation lists were
-built by title sweep and hand-checked. It is not — `library_census.py` parses all
-575 `tvshow.nfo` files and walks 42,412 episode files in a few seconds. Movie
-genres come free from `movies/LIBRARY-INVENTORY.csv`, which was already probed.
-Genre data is cheap; the hand-built lists were solving a problem that no longer
-needs solving.
+Channel and block definitions are written against manifests of the actual
+library: what is on disk, how large each genre pool is, and which keys resolve
+to nothing. Those files inventory a personal collection, so they are gitignored
+— they exist in a working checkout and not in this repository.
 
-The manifests are also consumed by two checkers, both offline:
-`scripts/testing/validate_titles.py`, which checks that every scheduled *title*
-resolves, and `scripts/testing/key_census.py`, which resolves every *key* in
-`MASTER_SOURCES` against them and fails on any key a collection lists that
-selects nothing. Regenerate the manifests when the library changes — a stale
-manifest makes both checkers wrong in the direction of false alarms.
+Nothing in the framework needs them at runtime. They are inputs to writing
+channels, and to two offline checkers: `scripts/testing/validate_titles.py`,
+which checks that every scheduled *title* resolves, and
+`scripts/testing/key_census.py`, which resolves every *key* in `MASTER_SOURCES`
+and fails on any that selects nothing.
+
+Generate your own against your own library:
+
+```bash
+python3 -m scripts.testing.library_census      # film + TV manifests, genre pools
+python3 -m scripts.testing.media_inventory     # every content key and what airs it
+python3 -m scripts.testing.metadata_census     # what a query can actually select on
+```
+
+All three read `config.MEDIA_ROOT`, or take `--media-root`. See
+[Configuration](../README.md#configuration).
+
+> A stale manifest makes both checkers wrong in the direction of false alarms.
+> Regenerate when the library changes.
+
+## Notes that outlived their file
+
+Two library quirks worth knowing, because they change what a query means:
+
+* **Season folders named by year.** `Popeye the Sailor (1933)` is foldered by
+  broadcast year (`Season 1943` … `Season 1949`) rather than season number. It
+  indexes fine, but `season_number:` against it means the year.
+* **Episode counts** come from files under `Season NN/` folders, so a show
+  whose seasons are not foldered that way will count as zero.
