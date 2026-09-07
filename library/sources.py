@@ -706,15 +706,14 @@ TV_REGISTRY = {
     # late 1970s adds Boston, the Carpenters, Pink Floyd and "Don't Stop 'Til
     # You Get Enough" for 35 videos and 152 minutes.
     #
-    # !! THIS KEY SELECTS NOTHING, and the cause is the `year:` clause.
-    # Settled by build 2026-09-07: `type:"music_video"` alone returns videos,
-    # and adding the year range returns nothing. ErsatzTV does not populate the
-    # Lucene `year` field for music videos -- the sidecar <year> reaches the
-    # metadata store, which is why the guide prints it as <date>, but never the
-    # search index. There is no decade facet on these files to replace it with;
-    # see KNOWN_ISSUES 2026-09-07 for the three options still to test.
-    # Detected by `python3 -m scripts.testing.key_airing_check`.
-    "eighties_music_videos": 'type:"music_video" AND year:[1975 TO 1989]',
+    # `release_date:`, not `year:`. This key spent its whole life on `year:`,
+    # which is not a field that answers here -- it was the only one of 645 keys
+    # using it, every other era filter in library/filters.py already used
+    # release_date, and the mismatch is why the block never played. Settled by
+    # build 2026-09-07: the release_date form returns the expected 35 videos.
+    # See KNOWN_ISSUES 2026-09-07, and note that a `<date>` in the guide proves
+    # only that metadata carries the value, never that a field can be queried.
+    "eighties_music_videos": 'type:"music_video" AND release_date:[1975-01-01 TO 1989-12-31]',
     # NO_HORROR, matching `eighties_daytime_movie` above, which has carried the
     # exclusion since before there was a horror channel to justify it. Without
     # it this key is the whole 1980s and contains `eighties_horror_movie`

@@ -430,9 +430,35 @@ Organising the collection made the key *work*; it could never have made it *fill
 
 ### 2026-09-07 — the music video key never resolved, and the "fixed" note was wrong
 
-- [ ] 🔴 **`eighties_music_videos` still matches nothing on the server, and the
+- [x] ~~🔴 **`eighties_music_videos` still matches nothing on the server, and the
   entry in Resolved claiming it "finally resolves" was never verified against a
-  live guide.** Totally 80s airs **zero** music videos. Measured 2026-09-07 on a
+  live guide.**~~ **Fixed 2026-09-07.** The key is now
+  `type:"music_video" AND release_date:[1975-01-01 TO 1989-12-31]`.
+
+  **The cause was the field name, not the library.** `year:` does not answer on
+  this server for any type. This key was **the only one of 645** using it; every
+  other era filter in `library/filters.py` — more than forty, all working — was
+  already on `release_date:`. The music video library was reorganised, rescanned
+  and reset twice to fix a query that was never about music videos at all.
+
+  Four probes settled the field vocabulary, and the three that passed are worth
+  keeping: `release_date:` **yes**, `genre:` **yes**, `artist:` **yes**,
+  `tag`/`tag_full` **no**. So a sidecar *can* restore genre and artist even
+  though `GetMusicVideoMetadata` clears them, but it cannot create a tag — which
+  means **The Beat can be scripted on genre and artist and never on tags.**
+  Recorded in filler-taxonomy.md §1c.
+
+  **Two traps closed with it.** `movie_source(year=…)` and `show_source(year=…)`
+  both appended the same dead `year:` clause and had never once been called;
+  they now build a `release_date:` range, so the next era key written through
+  them works instead of silently selecting nothing. And the standing lesson:
+  **a `<date>` in the guide proves metadata carries a value, never that a field
+  can be queried.** Validating the 2026-09-02 reorganisation by reading `<date>`
+  out of XMLTV confirmed the wrong store, which is the whole reason this
+  survived as long as it did.
+
+  Regression-tested by `key_airing_check`, which keeps The Beat as the declared
+  witness for this key. *Original entry below.* Totally 80s airs **zero** music videos. Measured 2026-09-07 on a
   freshly reset playout: the channel's 185 programmes span 51 distinct titles and
   **not one** of them appears in the 302-video music library, which The Beat airs
   from without trouble on the same server.
@@ -472,14 +498,11 @@ Organising the collection made the key *work*; it could never have made it *fill
   count. A build was the only instrument available, and it was the one that
   should have been used in the first place.
 
-  **The fix is still open.** There is no decade facet on these files: genre
-  splits the 35 in-window videos as Oldies 19, none 10, Rock 5, Hip-Hop 1, and
-  `Oldies` is only 19-of-27 in window. Options worth testing, cheapest first —
-  whether a `<tag>` in a music video NFO reaches `tag`/`tag_full` (the fallback
-  provider sets `Tags = []`, but an NFO may still populate it); whether `artist:`
-  is indexed, which would allow an explicit artist list; or an ErsatzTV
-  collection built by hand, which sidesteps the index entirely. Each is one
-  build to settle.
+  **Fixed by changing the field, not the data.** No decade facet was needed:
+  `release_date:` was there the whole time and is what the rest of the repo
+  uses. The tag route was tested and is closed — an NFO `<tag>` does not reach
+  the index for a music video — and the artist and genre routes both work, which
+  is new capability rather than a workaround.
 
   **Genre is not the escape hatch.** Cross-tabulating the pool, the 35 in-window
   videos are Oldies 19, no genre 10, Rock 5, Hip-Hop 1 — and `Oldies` itself is

@@ -71,7 +71,7 @@ def movie_source(
     if tags: parts.append(tags)
     if rating: parts.append(rating)
     if studio: parts.append(f"studio:{studio}")
-    if year: parts.append(f"year:{year}")
+    if year: parts.append(f"release_date:[{year}-01-01 TO {year}-12-31]")
     if extra: parts.append(extra)
     if exclude: parts.append(f"NOT ({exclude})")
     
@@ -97,7 +97,7 @@ def show_source(
     if tags: parts.append(tags)
     if rating: parts.append(rating)
     if studio: parts.append(f"studio:{studio}")
-    if year: parts.append(f"year:{year}")
+    if year: parts.append(f"release_date:[{year}-01-01 TO {year}-12-31]")
     if extra: parts.append(extra)
     if exclude: parts.append(f"NOT ({exclude})")
 

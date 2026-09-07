@@ -50,6 +50,19 @@ This is the correction that matters most for The Beat. `GetMusicVideoMetadata` s
 
 So under `/media/music_videos`, the folders `hip_hop`, `rock`, `pop`, `oldies`, `dance` are currently being ingested as five *artists*, and the 239 files nested beneath them are attributed to those "artists". The folder tree is not a tag schema here; it is an artist list, exactly one level deep. Genre blocks for The Beat cannot come from folders at all — they need NFO sidecars or ErsatzTV collections.
 
+**Confirmed and extended by build, 2026-09-07.** Four probes against the live index settled what a music video can actually be selected on:
+
+| Field | Works? | Note |
+|---|---|---|
+| `type:"music_video"` | **yes** | returns the whole library |
+| `release_date:[… TO …]` | **yes** | the decade filter; use this, not `year:` |
+| `genre:` | **yes** | NFO-sourced, so sidecars *do* reach the index |
+| `artist:` | **yes** | NFO-sourced; makes per-artist blocks possible |
+| `tag` / `tag_full` | **no** | an NFO `<tag>` does not reach the index for this type |
+| `year:` | **no** | not a field that answers here, for any type |
+
+So `Tags = []` in `GetMusicVideoMetadata` is authoritative and a sidecar cannot override it, while `Genres` and `Artists` *are* recoverable from the NFO despite the fallback provider clearing them. The Beat can be scripted on genre and artist; it can never be scripted on tags.
+
 ---
 
 ## 2. Corrections to the prior inventory
