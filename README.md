@@ -34,6 +34,8 @@ This framework separates **scheduling logic** from **channel configuration**. In
 scripted-schedules/
 ├── scripts/            # Main Package
 │   ├── channels/       # Your channel configurations (User Data)
+│   ├── filler/         # Interstitial acquisition, splitting and classification
+│   ├── nfo/            # Movie-library NFO tooling
 │   ├── library/        # Content queries and collections (User Data)
 │   ├── scheduling/     # The Scheduling Subsystem (Config, Runner)
 │   ├── core/           # Date math and state

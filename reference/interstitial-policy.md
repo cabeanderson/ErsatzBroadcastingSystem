@@ -5,6 +5,12 @@ smart-bumper cascade shipped in this pass; acquisition is the open half.
 Companion to [filler-taxonomy.md](filler-taxonomy.md) (the tree) and
 [bumper-inventory.md](bumper-inventory.md) (superseded counts).
 
+> **§8 item 1 is done.** The 56 staged reels were split on 2026-09-05 and
+> yielded **3,721 spots** — not the "well over a thousand" estimated below.
+> Sources for the remaining gaps are now verified and listed in
+> [interstitial-acquisition.md](interstitial-acquisition.md), which supersedes
+> §8's "where to look" and leaves its ranking intact.
+
 The goal: *a random mix that fits each channel's vibe as the default, specific
 sets inside specific blocks, 1–2 minutes between shows, only when it's worth it,
 and some channels get none at all.*

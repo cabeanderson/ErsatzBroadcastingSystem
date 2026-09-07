@@ -254,9 +254,15 @@ Recommended order is unchanged for gate 1, and gate 2's precondition is now met 
 1. **`eureka` (14) vs `eureka 7` (23).** Toonami aired *Eureka Seven*. Are these one set that got split, or is `eureka` something else? If one set, merge to `eureka seven`. **Cannot determine from filenames alone.**
 2. **`shows/` level — in or out?** It buys an "any per-show bumper" pool and collision safety, at the cost of one more level. Out is defensible; the tree is already unambiguous.
 3. **Show-title renames** — confirm the four in §3. They are what makes smart bumpers work without registry keys.
-4. **`fox kids/`** is empty and its keys (`fox_kids_intro`, `fox_kids_bumper`) are undefined over it. Delete the tree, or keep it as a stub for content you intend to acquire?
+4. ~~**`fox kids/`** is empty and its keys are undefined over it.~~ **CLOSED 2026-09-05 — deleted.** The empty tree is gone; no key in `sources.py` referenced it.
 5. **The 5-file threshold** for cutting a show folder out of `bumps/general/`. 31 shows clear it.
-7. **Is `filler` itself a tag?** The relative path is computed from the *parent* of the ErsatzTV library root, so the root folder's own name becomes a tag on every item. If the library is rooted at `.../media/filler`, everything carries `filler` and it is free namespacing; if it is rooted at `.../media`, the first tag is `media` instead. Not determinable from disk — it depends on how the library path is configured in ErsatzTV, which is not on this machine. None of the 65 keys depend on it either way, but it is worth checking on the next scan.
+7. ~~**Is `filler` itself a tag?**~~ **CLOSED 2026-09-05 — yes.** The library is
+   local, rooted at `/media/filler` inside the container (host
+   `/media` mounts to `/media:ro`), added as Other Videos.
+   So every item carries `filler` as its first tag, and the NFO sidecars
+   generated on 2026-09-05 emit it correctly. Original question below.
+
+   **Is `filler` itself a tag?** The relative path is computed from the *parent* of the ErsatzTV library root, so the root folder's own name becomes a tag on every item. If the library is rooted at `.../media/filler`, everything carries `filler` and it is free namespacing; if it is rooted at `.../media`, the first tag is `media` instead. Not determinable from disk — it depends on how the library path is configured in ErsatzTV, which is not on this machine. None of the 65 keys depend on it either way, but it is worth checking on the next scan.
 8. **Music videos** are a separate problem with separate rules (§1c) and no folder-tag lever at all. Worth its own pass rather than being folded into this one — the immediate defect is that 5 genre folders are being ingested as artists, plus ~40 artist folders with trailing spaces in their names.
 
 ---
@@ -432,6 +438,77 @@ belongs there — and would replace filename titles with real ones in the guide.
 
 > **Source note.** `ErsatzTV/ErsatzTV` now redirects to **`ErsatzTV/legacy`**;
 > the paths cited throughout this document resolve under that name.
+
+---
+
+## 9a. NFO and folder tags are mutually exclusive — verified 2026-09-05
+
+§9 above says genre "belongs in NFO sidecars". That is right, and it is more
+dangerous than it reads, because **an NFO does not add to the folder tags. It
+replaces them.**
+
+`ErsatzTV.Core/Metadata/FallbackMetadataProvider.cs::GetOtherVideoMetadata`
+does not merge — it assigns, and clears its neighbours:
+
+```csharp
+metadata.Tags    = tags;   // the split folder path
+metadata.Genres  = [];
+metadata.Actors  = [];
+metadata.Studios = [];
+```
+
+and `ErsatzTV.Scanner/Core/Metadata/OtherVideoFolderScanner.cs::UpdateMetadata`
+selects between them on `MetadataKind`, refreshing sidecar metadata when the
+current kind is `Fallback`. The two are alternatives, not layers.
+
+**Consequence.** The moment any filler file gains an NFO, every folder-derived
+tag on it stops existing — and every `filler_source()` key in
+`library/sources.py` is an AND of exactly those tags. A single hand-written NFO
+dropped next to a commercial silently removes it from
+`commercials_us_spot`, `commercials_90s_spot` and everything else.
+
+**What the reader accepts.**
+`ErsatzTV.Scanner/Core/Metadata/Nfo/OtherVideoNfoReader.cs` handles roots
+`episodedetails`, `movie`, `musicvideo`, and elements `title`, `sorttitle`,
+`outline`, `year`, `mpaa`, `premiered`, `plot`, `genre`, `tag`, `studio`,
+`actor`, `credits`, `director`, `uniqueid`. **`<tag>` repeats and accumulates**,
+which is the whole reason NFO is worth the risk: it is how a file says "and".
+
+**The resolution adopted.** NFO is *compiled*, never hand-written —
+`scripts/filler/generate_filler_nfo.py`. It re-emits every path segment as a
+lowercase `<tag>` (so no registry key changes), then appends what folders
+structurally cannot carry. Folders keep the single-valued navigation spine —
+country, decade, gate — and stay the source of truth. `--verify` proves the
+floor holds and is the only check that matters; it passed 4,128/4,128 on
+2026-09-05.
+
+Casing is load-bearing: `tag_full` is a KeywordAnalyzer field (§1), so
+`<tag>Commercials</tag>` would index as `tag_full:"Commercials"` and match
+nothing while looking correct in the file.
+
+---
+
+## 9b. The NFS client will lie about directory contents
+
+Found the hard way on 2026-09-05, while verifying the NFO write above.
+
+`/srv/library` is `nfs4` with default attribute caching. After a large
+write burst, **`readdir` served a stale listing indefinitely**: a directory
+reported one entry while `stat` on a file inside it succeeded and returned the
+correct size. Files created seconds earlier were invisible to `ls`, `find`,
+`os.listdir` and `os.scandir` alike, in any spelling of the path, because the
+directory's cached mtime never advanced (it read 09:58 at 17:08).
+
+`touch <dir>` forces revalidation and the entries appear at once.
+
+Two consequences worth carrying:
+
+1. **Any file count taken from this machine over NFS is provisional.** Re-touch
+   the tree before trusting one. The counts in this document were re-taken
+   after a `find … -type d -exec touch {} +` across `/media/filler`.
+2. **This is a plausible failure mode for ErsatzTV's own scanner**, which
+   enumerates directories over the same kind of mount. A scan that runs against
+   a stale listing will not see new files and will report no error.
 
 ---
 

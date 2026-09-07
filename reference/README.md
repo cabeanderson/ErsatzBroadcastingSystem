@@ -35,6 +35,7 @@ different questions and a pool can be large in one and unreachable in the other.
 | [bumper-inventory.md](bumper-inventory.md) | Interstitials in `filler/`, cross-referenced against what airs — **counts superseded**, see filler-taxonomy.md |
 | [filler-taxonomy.md](filler-taxonomy.md) | **The filler tree** — how ErsatzTV derives tags from folder paths, the applied reorganization, the commercial gates, and the movie trailer/extras farm |
 | [interstitial-policy.md](interstitial-policy.md) | **When a break happens and what goes in it** — the smart-bumper modes, the break invariant, the 221 promos already on disk, and the five-decade acquisition brief |
+| [interstitial-acquisition.md](interstitial-acquisition.md) | **Where the material is and how to get it** — the 3,721 spots split out of the staged reels, verified archive.org identifiers per gap, and the fetch/split/delete cycle |
 | [cartoon-network-review.md](cartoon-network-review.md) | Programming review of the Cartoon Network channel — **implemented**, see its status header |
 | [channel-rules.md](channel-rules.md) | **The rules for making and curating channels** — founding, grid, cross-channel curation, and the checks a channel passes before it counts as built |
 | [metadata-facets.md](metadata-facets.md) | **What a content key can select on** — the 9,672-tag TMDB vocabulary the manifests drop, every `tag:` key evaluated for real, and the facets and keyword sweeps to build calendar and holiday keys from. `python3 -m scripts.testing.metadata_census` |
