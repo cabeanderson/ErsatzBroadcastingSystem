@@ -550,8 +550,18 @@ Organising the collection made the key *work*; it could never have made it *fill
 
 ### 2026-09-07 — measured with `continuity_check` against the live guide
 
-- [ ] 🟠 **Totally 80s and Be Kind Rewind are on pre-rescan playouts and are
-  broadcasting 570 minutes of future dead air between them.** Both were built
+> Both findings in this section are **closed**. The stale-playout pair was reset
+> and the Japanorama gaps were a rebuild away; the lineup now runs with two
+> minutes of dead air in total, all of it whole-item placement residue.
+
+- [x] ~~🟠 **Totally 80s and Be Kind Rewind are on pre-rescan playouts and are
+  broadcasting 570 minutes of future dead air between them.**~~ **Resolved by
+  reset, verified 2026-09-07.** Both channels are continuous; Be Kind Rewind has
+  no gaps at all and Totally 80s has two minutes of whole-item placement residue.
+  Lineup-wide future dead air went **570 minutes → 2**. Note that the reset alone
+  would not have fixed Totally 80s' Jukebox slot — it closed the *gap* by letting
+  the fallback fill it, and the block itself needed the `release_date:` fix
+  before any music video played. Two defects wearing one symptom. Both were built
   *before* the music-video rescan landed, so `eighties_music_videos` still
   resolves to nothing inside their baked playouts even though the index is now
   correct. Totally 80s has **4 future gaps totalling 420 minutes**, every one of
@@ -566,16 +576,27 @@ Organising the collection made the key *work*; it could never have made it *fill
 
   Reproduce with `python3 -m scripts.testing.continuity_check --future-only`.
 
-- [ ] 🟡 **Japanorama drops 4–16 minutes before 19:00 most nights.** Four future
-  gaps, each ending exactly at 19:00: Mon 18:56, Tue 18:43, Wed 18:53, Thu 18:54.
-  The 19:00 block starts on time, so this is the *preceding* block under-filling
-  its tail rather than the 19:00 one starting late. Japanorama's playout is from
-  today and built by current code, which makes this the only gap on the lineup
-  that is a live code defect rather than a stale playout.
+- [x] ~~🟡 **Japanorama drops 4–16 minutes before 19:00 most nights.** Four future
+  gaps, each ending exactly at 19:00: Mon 18:56, Tue 18:43, Wed 18:53, Thu 18:54.~~
+  **Resolved, verified 2026-09-07.** Japanorama is now **completely continuous —
+  no gaps at all, past or future** — across the whole guide. It was read as a
+  live code defect because the playout was built that morning by current code;
+  it was not, and a rebuild closed it. The diagnosis to keep is the one that was
+  wrong: *"built by current code" is not the same as "built by the code on disk
+  now"*, and on a day with several deploys those drift apart within hours.
 
-  Suspect the same tail-fill shortfall as the `fill_strategy="bridge"` entry
-  below — `pad_until_exact` places only whole items, and the 18:00 block's items
-  do not divide its hour evenly. Worth checking whether `yield` is right there.
+- [x] ~~🟡 **Totally 80s leaves a 2-minute tail before 14:00 on 11 Sep.**~~ **Not
+  a defect — it is the filler working.** The 12:06 film ends at 13:53, filler
+  places a 4-minute music video at 13:53–13:57, and the ~3 minutes left cannot
+  hold another whole 3–5 minute item, so the slot waits for 14:00.
+  `pad_until_exact` places whole items only, which is documented and correct.
+
+  This is the visible edge of a fix, not a fault. Totally 80s carries **149 music
+  videos: 120 in the 04:00–06:00 Jukebox block and 29 placed as tail filler
+  elsewhere** — so `filler_content="eighties_music_videos"` is genuinely doing
+  its job for the first time. Channel dead air went from **420 minutes to 2**
+  over a comparable window. Two minutes across twelve days is the residue of
+  whole-item placement and is not worth closing.
 
 - [ ] 🟠 **`Block(items="some_key")` silently plays nothing, and
   `example_channel.py` documents it as the way to do it.**
