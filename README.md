@@ -1,5 +1,7 @@
 # ErsatzTV Scheduling Framework
 
+[![CI](https://github.com/cabeanderson/ErsatzBroadcastingSystem/actions/workflows/ci.yml/badge.svg)](https://github.com/cabeanderson/ErsatzBroadcastingSystem/actions/workflows/ci.yml)
+
 A declarative, feature-rich scheduling system for [ErsatzTV](https://ersatztv.org/) that enables professional-grade broadcast programming with minimal code.
 
 ## Overview
