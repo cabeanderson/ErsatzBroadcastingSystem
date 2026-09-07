@@ -98,6 +98,21 @@ GAPS = OrderedDict([
                "contrary to the policy's read",
         "q": 'mediatype:movies AND title:("Disney Afternoon")',
     }),
+    ("bbc-continuity", {
+        "why": "Across the Pond's remaining gap. The tier-5 fetch turned out to be "
+               "Channel 4, not BBC, and skews 1995-96 -- the older decades are "
+               "still unserved",
+        "q": 'mediatype:movies AND title:(BBC)'
+             ' AND title:(continuity OR closedown OR "test card" OR testcard OR idents)',
+    }),
+    ("bbc-early", {
+        "why": "the scarce end -- BBC closedowns of the 70s and 80s exist and are "
+               "tiny (a few MB each), unlike the 15-33 GB 2000s captures",
+        "q": 'mediatype:movies AND title:(BBC)'
+             ' AND title:(closedown OR continuity)'
+             ' AND title:(1970 OR 1975 OR 1978 OR 1979 OR 1980 OR 1981 OR 1982'
+             ' OR 1983 OR 1984 OR 1985 OR 1986 OR 1987 OR 1988 OR 1989 OR 70s OR 80s)',
+    }),
     ("vista-airchecks", {
         "why": "#1's successor — the deepest single well of US off-air captures found",
         "q": 'collection:the-vista-group-video AND title:("TV Commercials")',

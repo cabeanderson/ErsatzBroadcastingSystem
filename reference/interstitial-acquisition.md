@@ -366,10 +366,49 @@ which the splitter skips rather than guessing.
 
 Filed to `commercials/uk/<decade>/uncategorized/`. **These reels are continuity
 *and* adverts mixed**, so the tree is impure by construction: idents filed as
-commercials are the same mislabel the promo split just corrected. Separating them
-wants a transcript pass — a continuity announcer is highly distinctive ("you're
-watching Channel 4", "next on Four") — and that is the outstanding work on this
-material.
+commercials are the same mislabel the promo split just corrected.
+
+**Decided 2026-09-07: the idents belong in `bumpers/channel 4/`,** not in the
+commercial tree and not under a generic `uk` bumper folder. The taxonomy's path
+reads network → brand → function, and Channel 4 is a network with its own voice;
+folding it into something generic would produce the same `general` tag collision
+§1a warns about, and would make a Channel 4 ident indistinguishable from a BBC
+one once BBC material arrives.
+
+The folder is **not** being created empty. `fox kids/` was just deleted for being
+exactly that — a scaffold with keys undefined over it — and creating another one
+would repeat the mistake in the same week. It gets made when the first ident is
+filed into it.
+
+Separating them wants a transcript pass. A continuity announcer is highly
+distinctive ("you're watching Channel 4", "next on Four", "that's all from us
+tonight"), so precision should be better here than the promo case, not worse —
+and the pipeline already exists: `analyze_spots.py`, then a classifier shaped
+like `split_promos.py` but keyed on announcer language.
+
+### BBC is still the open gap — and it is not the same shape as Channel 4
+
+The tier-5 item was mislabelled, so **no BBC material was actually acquired.**
+Scouted 2026-09-07: 335 BBC continuity items exist, 46 of them from the 1970s and
+80s. Two things make this unlike the Channel 4 fetch:
+
+- **The old material is tiny.** `bbc-1-closedown-january-26-1979` and
+  `bbc-two-closedown-december-22-1980` are a few megabytes each, against 15–33 GB
+  for the 2000s captures. The scarce decades are the cheap ones.
+- **They are single events, not reels.** A closedown is one continuous sequence,
+  so `split_reels` will find few boundaries in it and that is correct — the file
+  *is* the ident. Expect to file most of these whole rather than split them.
+
+| Item | Size | Era |
+|---|---:|---|
+| `bbc1closedown` | 0.10 G | BBC 1, 11 April 1988 |
+| `bbc-continuity-1989` | 0.09 G | Oscars trailer + continuity, 1989 |
+| `bbc-1-closedown-january-26-1979` | ~4 M | 1979 |
+| `bbc-two-closedown-december-22-1980` | ~4 M | 1980 |
+| `bbc-two-closedown-17th-december-1978` | 0.02 G | 1978 |
+| `BBCProgrammes2000-01` / `BBCCBBC2002` | 33.5 G / 19.2 G | 2000s, reel-shaped |
+
+`scout_archive.py` now carries `bbc-continuity` and `bbc-early` as named gaps.
 
 ### An acquisition scout — `scripts/filler/scout_archive.py`
 
