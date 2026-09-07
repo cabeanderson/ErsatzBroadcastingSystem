@@ -413,12 +413,74 @@ now `year:[1975 TO 1989]`, and Totally 80s' video block is **two hours
 action and drama reruns, which is what an 80s independent actually ran overnight.
 Organising the collection made the key *work*; it could never have made it *fill*.
 
+  > **CORRECTION 2026-09-07.** The claim that organising the collection made the
+  > key work was never verified on the server, and it is false. The key still
+  > selects nothing and Totally 80s airs no music videos at all. Reopened at the
+  > top of Open. The pool measurements in this entry are all confirmed correct —
+  > 302 videos, 298 dated, 35 in window — which is what makes the query the only
+  > remaining suspect.
+
 - ~~🟠 **`enable_filler=True` with `filler_content=None` is an inert flag.**~~
-  Totally 80s now fills with `eighties_music_videos`, which finally resolves —
-  three-to-five-minute items that fit the tails a film leaves. **Worth auditing
-  the other channels for the same pairing.**
+  Totally 80s was pointed at `eighties_music_videos` for filler. **The flag is no
+  longer inert, but the content it names still resolves to nothing** (see the
+  2026-09-07 entry), so the practical effect is unchanged until the key is fixed.
+  **Worth auditing the other channels for the same pairing.**
 
 ## Open
+
+### 2026-09-07 — the music video key never resolved, and the "fixed" note was wrong
+
+- [ ] 🔴 **`eighties_music_videos` still matches nothing on the server, and the
+  entry in Resolved claiming it "finally resolves" was never verified against a
+  live guide.** Totally 80s airs **zero** music videos. Measured 2026-09-07 on a
+  freshly reset playout: the channel's 185 programmes span 51 distinct titles and
+  **not one** of them appears in the 302-video music library, which The Beat airs
+  from without trouble on the same server.
+
+  **The content is there and it is dated.** The Beat carries 302 distinct videos,
+  **298 of them dated**, and **exactly 35 fall in 1975–1989** — the number the
+  docstring predicts, aired 166 times in a four-day guide. So the reorganisation
+  did everything it claimed: the sidecars exist, the years are real, ErsatzTV
+  reads them, and the pool is the size it was measured to be. What was never
+  checked is the one thing that matters: whether
+  `type:"music_video" AND year:[1975 TO 1989]` selects any of it. It does not.
+
+  **04:00–06:00 is not dark, which is why `continuity_check` is green.** The slot
+  is covered by `fallback_content`, so the channel airs Knight Rider, Magnum P.I.
+  and Remington Steele in The Video Jukebox hour. A working fallback is exactly
+  what makes this invisible: the guide is continuous, the channel looks healthy,
+  and the block behind it has never played. **A gap is a loud failure; a fallback
+  is a silent one.** This is the same lesson as the Nightmare Theatre sitcom
+  incident from a different direction.
+
+  **Two candidates, and nothing offline can choose between them.**
+  1. Lucene does not populate `year` for music videos, so the range clause
+     excludes everything regardless of type.
+  2. `type:"music_video"` is not the right token, so the type clause does.
+
+  There is **no read API to ask with** — `/api/search` and `/graphql` both serve
+  the SPA shell (re-probed 2026-09-07, including a POST, which 400s identically
+  for an invented path), and `api.add_search` schedules items without reporting a
+  count. So no probe tool can settle this; only a build can.
+
+  **The experiment that decides it.** Set the key to bare `type:"music_video"`,
+  rebuild Totally 80s, read the guide. Videos appear → the type is right and
+  `year:` is unindexed for music videos, and the fix is to select the decade some
+  other way. Nothing appears → the type token is wrong, and every `music_video`
+  key in the repo is dead.
+
+  **Genre is not the escape hatch.** Cross-tabulating the pool, the 35 in-window
+  videos are Oldies 19, no genre 10, Rock 5, Hip-Hop 1 — and `Oldies` itself is
+  only 19-of-27 in window. There is no decade facet on these files, so the
+  `<tag>80s</tag>` fix the old entry proposed does not exist either.
+
+  **Why nothing caught it, still.** `key_census` reads the two TSV manifests,
+  which hold shows and films only — `music_video` keys are not in them at all.
+  The simulator's mock returns content for any key. `validate_schedule` sees a
+  structurally fine block. And now `continuity_check` passes too, because the
+  fallback fills the hole. **Four checkers, all green, on a block that has never
+  played.** The gap this leaves is a live-guide check that a *scheduled key
+  actually aired* — not that the channel is continuous.
 
 ### 2026-09-07 — measured with `continuity_check` against the live guide
 

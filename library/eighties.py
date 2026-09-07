@@ -172,6 +172,11 @@ SKETCH_HOUR = RandomCollection([
 # artist rather than a genre bucket -- and the honest size of the pool is 35
 # videos over 1975-1989, about 152 minutes. Two hours is what that fills without
 # repeating; six was never available.
+#
+# !! The key still selects nothing (verified 2026-09-07 on a reset playout --
+# Totally 80s airs no music videos at all). The slot is carried by the block's
+# fallback, which is why the guide looks continuous. Reorganising the library
+# fixed the metadata and did not fix the query. See KNOWN_ISSUES, 2026-09-07.
 LATE_NIGHT_MUSIC = "eighties_music_videos"
 
 # 00:00-04:00. The four hours the video block gave back.
