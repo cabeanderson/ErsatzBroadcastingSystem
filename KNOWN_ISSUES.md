@@ -441,12 +441,13 @@ Organising the collection made the key *work*; it could never have made it *fill
   already on `release_date:`. The music video library was reorganised, rescanned
   and reset twice to fix a query that was never about music videos at all.
 
-  Four probes settled the field vocabulary, and the three that passed are worth
-  keeping: `release_date:` **yes**, `genre:` **yes**, `artist:` **yes**,
-  `tag`/`tag_full` **no**. So a sidecar *can* restore genre and artist even
-  though `GetMusicVideoMetadata` clears them, but it cannot create a tag — which
-  means **The Beat can be scripted on genre and artist and never on tags.**
-  Recorded in filler-taxonomy.md §1c.
+  The field vocabulary, settled: `release_date:` **yes**, `genre:` **yes**,
+  `artist:` **yes**, `tag`/`tag_full` **yes**, `year:` **no**. A sidecar
+  overrides all of `Tags`, `Genres` and `Artists` — `GetMusicVideoMetadata`
+  clearing them describes only the no-NFO fallback path, not a ceiling. **Every
+  file already carries a decade tag** (`00s` 125, `90s` 111, `80s` 31, `10s` 18,
+  `70s` 6, `60s` 6, `20s` 2), exactly consistent with `<year>`, so The Beat can
+  be scripted by decade. Recorded in filler-taxonomy.md §1c.
 
   **Two traps closed with it.** `movie_source(year=…)` and `show_source(year=…)`
   both appended the same dead `year:` clause and had never once been called;
@@ -498,16 +499,21 @@ Organising the collection made the key *work*; it could never have made it *fill
   count. A build was the only instrument available, and it was the one that
   should have been used in the first place.
 
-  **Fixed by changing the field, not the data.** No decade facet was needed:
-  `release_date:` was there the whole time and is what the rest of the repo
-  uses. The tag route was tested and is closed — an NFO `<tag>` does not reach
-  the index for a music video — and the artist and genre routes both work, which
-  is new capability rather than a workaround.
+  **Fixed by changing the field, not the data.** `release_date:` was there the
+  whole time and is what the rest of the repo uses; it selects exactly the
+  curated 35. `tag_full:"80s"` also works and selects 31 — the tag route the
+  original entry proposed was viable all along. `release_date` is kept because
+  it matches the 1975–1989 intent, which no single decade tag can express.
 
-  **Genre is not the escape hatch.** Cross-tabulating the pool, the 35 in-window
-  videos are Oldies 19, no genre 10, Rock 5, Hip-Hop 1 — and `Oldies` itself is
-  only 19-of-27 in window. There is no decade facet on these files, so the
-  `<tag>80s</tag>` fix the old entry proposed does not exist either.
+  **Genre is not the escape hatch** — the 35 in-window videos are Oldies 19, no
+  genre 10, Rock 5, Hip-Hop 1, and `Oldies` is only 19-of-27 in window.
+
+  > **Correction.** This entry first claimed there was no decade facet on these
+  > files, so the `<tag>80s</tag>` route was dead. That was wrong: every file
+  > carries a decade tag and `tag_full:"80s"` works. The claim came from reading
+  > `<category>` in the guide, which carries genre and never tags — the same
+  > class of mistake as validating `<year>` by reading `<date>`. **Absence from
+  > XMLTV is not absence from the index.** Read the sidecars on disk instead.
 
   **Why nothing caught it — and the checker that now does.** `key_census` reads
   the two TSV manifests, which hold shows and films only. The simulator's mock

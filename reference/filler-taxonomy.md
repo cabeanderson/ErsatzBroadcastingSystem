@@ -50,18 +50,31 @@ This is the correction that matters most for The Beat. `GetMusicVideoMetadata` s
 
 So under `/media/music_videos`, the folders `hip_hop`, `rock`, `pop`, `oldies`, `dance` are currently being ingested as five *artists*, and the 239 files nested beneath them are attributed to those "artists". The folder tree is not a tag schema here; it is an artist list, exactly one level deep. Genre blocks for The Beat cannot come from folders at all — they need NFO sidecars or ErsatzTV collections.
 
-**Confirmed and extended by build, 2026-09-07.** Four probes against the live index settled what a music video can actually be selected on:
+**Confirmed and extended by build, 2026-09-07.** Probes against the live index settled what a music video can actually be selected on:
 
 | Field | Works? | Note |
 |---|---|---|
 | `type:"music_video"` | **yes** | returns the whole library |
-| `release_date:[… TO …]` | **yes** | the decade filter; use this, not `year:` |
-| `genre:` | **yes** | NFO-sourced, so sidecars *do* reach the index |
-| `artist:` | **yes** | NFO-sourced; makes per-artist blocks possible |
-| `tag` / `tag_full` | **no** | an NFO `<tag>` does not reach the index for this type |
+| `release_date:[… TO …]` | **yes** | the era filter; use this, not `year:` |
+| `genre:` | **yes** | NFO-sourced |
+| `artist:` | **yes** | NFO-sourced; per-artist blocks are possible |
+| `tag` / `tag_full` | **yes** | NFO-sourced; every file carries a decade tag |
 | `year:` | **no** | not a field that answers here, for any type |
 
-So `Tags = []` in `GetMusicVideoMetadata` is authoritative and a sidecar cannot override it, while `Genres` and `Artists` *are* recoverable from the NFO despite the fallback provider clearing them. The Beat can be scripted on genre and artist; it can never be scripted on tags.
+So **`Tags = []` in `GetMusicVideoMetadata` describes only the fallback provider, and a sidecar overrides all three of `Tags`, `Genres` and `Artists`.** The clearing happens when there is no NFO to read; it is not a ceiling.
+
+**The decade tags already exist**, one per file, written by the 2026-09-02 reorganisation and exactly consistent with `<year>`:
+
+| Tag | Files | Tag | Files |
+|---|---:|---|---:|
+| `00s` | 125 | `80s` | 31 |
+| `90s` | 111 | `70s` | 6 |
+| `10s` | 18 | `60s` | 6 |
+| `20s` | 2 | *(untagged)* | 4 |
+
+`tag_full:"80s"` selects 31 videos, all 1980–1989. So The Beat **can** be scripted by decade, which is the obvious axis for a music video channel, and the `<tag>80s</tag>` route that earlier notes proposed was viable the whole time.
+
+> **Method note, and the second time this exact mistake was made.** The claim that these files had no decade facet came from reading `<category>` in the XMLTV guide, which carries *genre* and never tags — so their absence there said nothing. That is the same error as validating `<year>` by reading `<date>`: **the guide exposes some metadata, and absence from the guide is not absence from the index.** Read the sidecars on disk, or query the field directly. Do not infer a field's existence from XMLTV.
 
 ---
 

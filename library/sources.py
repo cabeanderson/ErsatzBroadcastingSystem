@@ -711,8 +711,12 @@ TV_REGISTRY = {
     # using it, every other era filter in library/filters.py already used
     # release_date, and the mismatch is why the block never played. Settled by
     # build 2026-09-07: the release_date form returns the expected 35 videos.
-    # See KNOWN_ISSUES 2026-09-07, and note that a `<date>` in the guide proves
-    # only that metadata carries the value, never that a field can be queried.
+    # `tag_full:"80s"` also works and gives 31; release_date is kept because it
+    # expresses the 1975-1989 window, which no single decade tag can. See
+    # KNOWN_ISSUES 2026-09-07 -- and note that the guide proves nothing about
+    # what is queryable: `<date>` showed a year that could not be searched, and
+    # `<category>` carries genre and never tags, which is how the decade tags
+    # sitting in every sidecar got written off as nonexistent.
     "eighties_music_videos": 'type:"music_video" AND release_date:[1975-01-01 TO 1989-12-31]',
     # NO_HORROR, matching `eighties_daytime_movie` above, which has carried the
     # exclusion since before there was a horror channel to justify it. Without
