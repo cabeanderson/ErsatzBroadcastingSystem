@@ -173,10 +173,12 @@ SKETCH_HOUR = RandomCollection([
 # videos over 1975-1989, about 152 minutes. Two hours is what that fills without
 # repeating; six was never available.
 #
-# !! The key still selects nothing (verified 2026-09-07 on a reset playout --
-# Totally 80s airs no music videos at all). The slot is carried by the block's
-# fallback, which is why the guide looks continuous. Reorganising the library
-# fixed the metadata and did not fix the query. See KNOWN_ISSUES, 2026-09-07.
+# !! The key selects nothing, because ErsatzTV does not index `year` for music
+# videos -- proven by build 2026-09-07, where the bare type clause returned
+# videos and the year range returned none. The slot is carried by the block's
+# fallback, which is why the guide looks continuous and why this went unnoticed.
+# Reorganising the library fixed the metadata and could not fix the query.
+# See KNOWN_ISSUES, 2026-09-07.
 LATE_NIGHT_MUSIC = "eighties_music_videos"
 
 # 00:00-04:00. The four hours the video block gave back.

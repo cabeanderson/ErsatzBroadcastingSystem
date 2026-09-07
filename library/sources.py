@@ -706,13 +706,14 @@ TV_REGISTRY = {
     # late 1970s adds Boston, the Carpenters, Pink Floyd and "Don't Stop 'Til
     # You Get Enough" for 35 videos and 152 minutes.
     #
-    # !! THIS KEY SELECTS NOTHING ON THE SERVER. Verified 2026-09-07 against a
-    # freshly reset playout: Totally 80s airs zero music videos, while The Beat
-    # airs all 302 of them and 35 do fall in this window. The pool is real and
-    # dated; the query does not reach it. Either Lucene does not index `year`
-    # for music videos, or `music_video` is the wrong type token -- and there is
-    # no read API to ask. Do not trust this key until a build proves it.
-    # See KNOWN_ISSUES, 2026-09-07.
+    # !! THIS KEY SELECTS NOTHING, and the cause is the `year:` clause.
+    # Settled by build 2026-09-07: `type:"music_video"` alone returns videos,
+    # and adding the year range returns nothing. ErsatzTV does not populate the
+    # Lucene `year` field for music videos -- the sidecar <year> reaches the
+    # metadata store, which is why the guide prints it as <date>, but never the
+    # search index. There is no decade facet on these files to replace it with;
+    # see KNOWN_ISSUES 2026-09-07 for the three options still to test.
+    # Detected by `python3 -m scripts.testing.key_airing_check`.
     "eighties_music_videos": 'type:"music_video" AND year:[1975 TO 1989]',
     # NO_HORROR, matching `eighties_daytime_movie` above, which has carried the
     # exclusion since before there was a horror channel to justify it. Without

@@ -39,6 +39,20 @@ which checks that every scheduled *title* resolves, and
 `scripts/testing/key_census.py`, which resolves every *key* in `MASTER_SOURCES`
 and fails on any that selects nothing.
 
+Both ask what the *library* can satisfy. Two further checkers ask what the
+server actually *aired*, which is a different question and catches what the
+manifests cannot see:
+
+```bash
+python3 -m scripts.testing.continuity_check --future-only   # dead air
+python3 -m scripts.testing.key_airing_check                 # keys that never play
+```
+
+`key_airing_check` exists because a block with a working `fallback_content` can
+schedule a key that selects nothing and still look perfectly healthy — no gap,
+no error, and the wrong content on air. A gap is a loud failure; a fallback is a
+silent one.
+
 Generate your own against your own library:
 
 ```bash

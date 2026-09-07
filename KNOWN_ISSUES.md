@@ -453,34 +453,58 @@ Organising the collection made the key *work*; it could never have made it *fill
   is a silent one.** This is the same lesson as the Nightmare Theatre sitcom
   incident from a different direction.
 
-  **Two candidates, and nothing offline can choose between them.**
-  1. Lucene does not populate `year` for music videos, so the range clause
-     excludes everything regardless of type.
-  2. `type:"music_video"` is not the right token, so the type clause does.
+  **Root cause, settled 2026-09-07 by build.** `type:"music_video"` alone
+  returns videos. Adding `year:[1975 TO 1989]` returns nothing. **ErsatzTV does
+  not populate the Lucene `year` field for music videos**, so any range clause
+  on it empties the result regardless of what the sidecars say. The `<year>` in
+  the NFO reaches ErsatzTV's *metadata* — the guide prints it as `<date>` on
+  1,428 of The Beat's airings — but never reaches the *search index*. Metadata
+  and index are different stores, and only one of them answers a query.
+
+  This is worth stating as a rule, because it generalises past music videos:
+  **a field visible in the guide is not evidence that the field is queryable.**
+  The reorganisation was validated by reading `<date>` out of XMLTV, which
+  confirmed the wrong store.
 
   There is **no read API to ask with** — `/api/search` and `/graphql` both serve
   the SPA shell (re-probed 2026-09-07, including a POST, which 400s identically
   for an invented path), and `api.add_search` schedules items without reporting a
-  count. So no probe tool can settle this; only a build can.
+  count. A build was the only instrument available, and it was the one that
+  should have been used in the first place.
 
-  **The experiment that decides it.** Set the key to bare `type:"music_video"`,
-  rebuild Totally 80s, read the guide. Videos appear → the type is right and
-  `year:` is unindexed for music videos, and the fix is to select the decade some
-  other way. Nothing appears → the type token is wrong, and every `music_video`
-  key in the repo is dead.
+  **The fix is still open.** There is no decade facet on these files: genre
+  splits the 35 in-window videos as Oldies 19, none 10, Rock 5, Hip-Hop 1, and
+  `Oldies` is only 19-of-27 in window. Options worth testing, cheapest first —
+  whether a `<tag>` in a music video NFO reaches `tag`/`tag_full` (the fallback
+  provider sets `Tags = []`, but an NFO may still populate it); whether `artist:`
+  is indexed, which would allow an explicit artist list; or an ErsatzTV
+  collection built by hand, which sidesteps the index entirely. Each is one
+  build to settle.
 
   **Genre is not the escape hatch.** Cross-tabulating the pool, the 35 in-window
   videos are Oldies 19, no genre 10, Rock 5, Hip-Hop 1 — and `Oldies` itself is
   only 19-of-27 in window. There is no decade facet on these files, so the
   `<tag>80s</tag>` fix the old entry proposed does not exist either.
 
-  **Why nothing caught it, still.** `key_census` reads the two TSV manifests,
-  which hold shows and films only — `music_video` keys are not in them at all.
-  The simulator's mock returns content for any key. `validate_schedule` sees a
-  structurally fine block. And now `continuity_check` passes too, because the
-  fallback fills the hole. **Four checkers, all green, on a block that has never
-  played.** The gap this leaves is a live-guide check that a *scheduled key
-  actually aired* — not that the channel is continuous.
+  **Why nothing caught it — and the checker that now does.** `key_census` reads
+  the two TSV manifests, which hold shows and films only. The simulator's mock
+  returns content for any key. `validate_schedule` sees a structurally fine
+  block. And `continuity_check` passes because the fallback fills the hole. Five
+  checkers, all green, on a block that has never played.
+
+  **`scripts/testing/key_airing_check.py`** (2026-09-07) closes it. It reads the
+  live guide and asks, of every key a channel schedules, whether anything
+  attributable to it aired. The design problem is that absence is not death — a
+  guide covers days and a deep rotation will not surface in it — so a key is
+  called DEAD only on positive evidence: either the manifests confirm the library
+  holds nothing for it, or a declared *witness* channel airs its pool while the
+  scheduling channel airs none of it. The music video key is the witness case:
+  The Beat airs 176 titles from the pool and Totally 80s airs zero.
+
+  On the current lineup it reports **1 DEAD, 3 UNWITNESSED, 33 ABSENT, 172 OK,
+  124 POOL** over 333 scheduled keys. The three UNWITNESSED are the UK and
+  general commercial spots — no tool in the repository verifies those either,
+  and `--list-unwitnessed` names them.
 
 ### 2026-09-07 — measured with `continuity_check` against the live guide
 
