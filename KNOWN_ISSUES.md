@@ -458,6 +458,19 @@ Organising the collection made the key *work*; it could never have made it *fill
   out of XMLTV confirmed the wrong store, which is the whole reason this
   survived as long as it did.
 
+  **Verified on air 2026-09-07**, after the deploy and a reset. Totally 80s now
+  carries **149 music video airings over 27 distinct videos**, every one of them
+  inside the window — years aired run 1976–1988 with **zero out-of-window**, so
+  the `release_date:` bound is precise as well as working. The Video Jukebox
+  slot reads Boston (1976), The Rolling Stones (1981), Michael Jackson (1979),
+  AC-DC (1980), Cyndi Lauper (1986) where it read Knight Rider and Magnum P.I.
+  the day before. `key_airing_check` went **1 DEAD → 0**, which is the first
+  time this key has ever been confirmed by anything other than an assumption.
+
+  27 of the 35 surface in a 12-day guide, which is ordinary rotation depth and
+  not a shortfall. The block opened no gaps: the channel's only remaining dead
+  air is 2 minutes at 13:57 on 11 Sep, in the middle of the day and unrelated.
+
   Regression-tested by `key_airing_check`, which keeps The Beat as the declared
   witness for this key. *Original entry below.* Totally 80s airs **zero** music videos. Measured 2026-09-07 on a
   freshly reset playout: the channel's 185 programmes span 51 distinct titles and

@@ -177,7 +177,8 @@ SKETCH_HOUR = RandomCollection([
 # ran on the block's fallback -- which is why the guide stayed continuous and
 # nobody noticed for months. Fixed 2026-09-07 to `release_date:`, the field
 # every other era filter in this repo already used. Reorganising the library
-# fixed the metadata and could never have fixed the query.
+# fixed the metadata and could never have fixed the query. Verified on air the
+# same day: 149 airings over 27 distinct videos, 1976-1988, none out of window.
 # See KNOWN_ISSUES, 2026-09-07.
 LATE_NIGHT_MUSIC = "eighties_music_videos"
 
