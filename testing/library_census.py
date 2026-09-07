@@ -91,13 +91,32 @@ def read_movies(media_root):
     return movies
 
 
-def read_shows(media_root):
-    root = os.path.join(media_root, "tv")
-    if not os.path.isdir(root):
-        raise SystemExit(f"Missing {root}")
+# Every tree under the media root that ErsatzTV indexes as a *show* library.
+# `tv/` was the only one for as long as it was the only one, and that stopped
+# being true when `youtube/shows/` was added: 637 episodes across six series
+# were on disk, in ErsatzTV, and invisible to every offline tool here, so
+# `key_census` reported live keys as EMPTY and `same_show_check` could not see
+# a collision involving them. A scanner that knows about fewer libraries than
+# the server does reports absence as certainty. Added 2026-09-07.
+SHOW_ROOTS = ("tv", os.path.join("youtube", "shows"))
 
+
+def show_folders(media_root):
+    """(root, folder) for every show directory across all show libraries."""
+    first = os.path.join(media_root, SHOW_ROOTS[0])
+    if not os.path.isdir(first):
+        raise SystemExit(f"Missing {first}")
+    for name in SHOW_ROOTS:
+        root = os.path.join(media_root, name)
+        if not os.path.isdir(root):
+            continue
+        for folder in sorted(os.listdir(root)):
+            yield root, folder
+
+
+def read_shows(media_root):
     shows = []
-    for folder in sorted(os.listdir(root)):
+    for root, folder in show_folders(media_root):
         path = os.path.join(root, folder)
         if not os.path.isdir(path):
             continue

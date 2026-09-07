@@ -16,6 +16,7 @@ from . import nick
 from . import nightmare_theatre
 from . import scifi
 from . import sitcoms
+from . import travelers_table
 
 __all__ = [
     'be_kind_rewind',
@@ -31,5 +32,6 @@ __all__ = [
     'nick',
     'nightmare_theatre',
     'scifi',
-    'sitcoms'
+    'sitcoms',
+    'travelers_table'
 ]

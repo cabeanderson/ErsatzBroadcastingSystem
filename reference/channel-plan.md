@@ -39,7 +39,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 164 | Japanorama | anime — **the Japanese broadcast day** | yes — **built** 2026-09-03 |
 | 180 | Totally 80s | 80s TV — **stays 80s** | yes — **designed** 2026-09-01 |
 | 190 | Good Times | **the studio audience** — multi-camera network sitcom, 1951–1999 | yes — **rebuilt** 2026-09-01 |
-| 240 | Travelers Table | cooking — **+ nature docs** | no |
+| 240 | Travelers Table | **the day of meals** — food, travel, and one nature night | yes — **built** 2026-09-07 |
 | 241 | Makers Corner | DIY & craft | no |
 | 242 | Corncob TV | **comedy after the laugh track** — single-camera, cable, streaming, sketch and alt | yes — **built** 2026-09-01 |
 | 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
@@ -783,8 +783,138 @@ Saturday Night Sketch is the thinnest named night at five shows, and the
 channel has no variety register at all. See
 acquisitions.md, which now opens with a ranked shortlist.
 
-### Travelers Table
-Gains the nature documentaries: Planet Earth I–III, Blue Planet II, Seven Worlds One Planet, Prehistoric Planet, Cosmos, Life (2009). Plus 236 episodes of Japanese Food Noodles from `youtube/`.
+### Travelers Table — built 2026-09-07
+
+*Somewhere else, and something to eat.* A day of meals, and the world the food
+comes from. **Axis: the clock, as a day of eating** — the morning is
+instruction, the midday is the professional kitchen, the afternoon is the bake,
+and from five the channel leaves the building.
+
+| | | |
+|---|---|---|
+| 00:00–06:00 | **The Overnight** | the day again — announced, not smuggled |
+| 06:00–09:00 | **Breakfast** | Good Eats |
+| 09:00–12:00 | **The Morning Kitchen** | Japanese Food Noodles `youtube/` |
+| 12:00–14:00 | **The Lunch Counter** | Bon Appétit: On the Line `youtube/` · Iron Chef |
+| 14:00–17:00 | **The Afternoon Bake** | The Great British Bake Off |
+| 17:00–19:00 | **Prep** | No Reservations |
+| 19:00–21:00 | **Dinner Service** | Mon *Alone* · Tue *The Road* · else Bourdain |
+| 21:00–23:00 | **Night Service** | Parts Unknown |
+| 23:00–24:00 | **Last Call** | Cosmos, Mon/Wed/Fri |
+| Sat 19:00–24:00 | **Out There** | natural history — the one nature night |
+
+**The arithmetic is this channel's real constraint, and it is the finding worth
+carrying forward.** The whole shelf is 545 hours. Twenty-four hours a day for
+twenty-one days is 504. No grid fixes a number that close to the F6 floor —
+only content does. Two structural decisions came out of it:
+
+* **00:00–06:00 is a rebroadcast and says so.** The first-run day is
+  06:00–24:00, eighteen hours, and that is what the cycle is measured against.
+* **The Great British Bake Off had to come in.** Without its 98.6 hours the two
+  Bourdains carried 86 of 168 hours a week — a **13-day cycle on the channel's
+  marquee**, which is exactly the failure F6 exists to catch. With it, Prep and
+  Night Service sit at 21 days and the afternoon has a block of its own.
+
+Every pool now lands at or near 21 days. Two sit under and both are deliberate:
+Japanese Food Noodles at 18.6 (236 *different* noodle shops — not the repeat F6
+is about) and Parts Unknown at 19.3 (inside the rounding).
+
+**Counts taken off disk, and three of them contradicted the manifest (V4).**
+Good Eats is **195, not 305** — seasons 12–14 are empty directories and 54
+files are under `extras/`. Alone is **13, not 25** — Season 01 is an empty
+directory, which is the difference between a strip and a Monday night. Bake Off
+is 102 at a 58-minute median.
+
+**Two hours rules, both against Across the Pond, both structural (C3).** That
+channel holds both shared titles: Bake Off is its Breakfast 06:00–09:00 on all
+seven day-arms, and the BBC natural history is its Sunday prime 20:00–23:00.
+Travelers Table's 06:00–09:00 is Good Eats on every arm, and its nature block
+is **Saturday** — which is the whole reason it is Saturday. Sunday at eight on
+BBC One belongs to the other channel, so this one moves a day rather than
+negotiating an hour. Nothing was taken from Across the Pond; its grid and keys
+are untouched.
+
+**Verified.** 365 days and again over three years: **zero gaps, zero overlaps,
+zero fallback plays, zero hours-rule violations**, 17,520 and 52,560 programme
+plays, all 13 keys carrying load. Every named night airs on its own weekday and
+nowhere else — Alone only Monday, The Road only Tuesday, Out There only
+Saturday, Cosmos only Monday/Wednesday/Friday. `same_show_check` over 30 days
+across all 15 channels: **the channel adds no same-title collision to the
+lineup**, and the total is unchanged at 10,458. `collision_report` section 2 is
+clean. All 48 unit tests green.
+
+**What the build found.**
+
+* **`bbc_natural_history_tv` is the worst G10 trap on the lineup.**
+  `show_title:"Life"` is a phrase match on one very common word: unbounded it
+  reaches **Homicide: Life on the Street (123), Rocko's Modern Life (101) and
+  The Moaning of Life (11)** — 235 episodes of crime drama, Nickelodeon
+  animation and Ricky Gervais in a natural-history block. It is bounded by a
+  **top-level** studio clause, not a nested one, because `key_census` splits on
+  top-level `AND` only and scored the key at six shows instead of seven when
+  the bound sat inside the `OR`. Same reasoning as the unparenthesised
+  `NOT_ANIMATED` in `queries.py`.
+* **Across the Pond had the same bug — fixed 2026-09-07.** Its `Life` item was
+  `show_title:"Life" AND show_studio:BBC`, and bare `BBC` also matches BBC Two,
+  so **Life's Too Short (20 episodes of Ricky Gervais) was airing in its Sunday
+  natural-history block.** Now bounded to `show_studio:"BBC One"`.
+* **`same_show_check.py` carried a hardcoded channel list — fixed 2026-09-07.**
+  Same defect `visualize_week.py` had after it hid nick and disney, and this
+  time it hid Travelers Table: the channel passed every other checker while
+  being absent from the only tool that measures C1 on the television side. It
+  discovers channels now, the way `collision_report.py` does.
+* **Tag injection is off, and measured rather than assumed.** **34 of Good
+  Eats' 251 episode NFOs carry any `<tag>` at all**, 21 of 141 for No
+  Reservations, 14 of 102 for Bake Off, and none are seasonal — an injected key
+  resolves to nothing. That costs more here than elsewhere because six of ten
+  blocks hold a single show (G3), so there is no next item to yield to. G12's
+  principle applied to a feature rather than to filler.
+
+**Shapes that failed.**
+
+* **Nature as a nightly late block (23:00–02:00).** The first design. It gives
+  the shared BBC shelf a 29-day cycle and reads well, but the operator's call
+  was an accent, not a daypart — and one night a week is also the only shape
+  that makes the Across the Pond rule structural instead of remembered.
+* **Five named nights at Dinner Service.** The shelf holds two. Alone (13),
+  James May (6) and Conan (4) are the only runs too short to strip, and
+  spreading them over five nights burns one in a fortnight (G6). Iron Chef
+  cannot hold a night at all — ten 24-minute episodes is four hours — so it
+  went to the Lunch Counter behind On the Line at a 0.15 weight.
+* **A documentary film shelf.** Seventeen titles were counted — Free Solo,
+  Meru, the Qatsi trilogy, My Octopus Teacher, The Silent World. Fourteen sit
+  inside Be Kind Rewind's 1980+ range and three inside Cabes Classic Cinema's,
+  both of which run film most of the day. A channel with 545 hours of
+  television does not need to add seventeen titles of C1 exposure to a lineup
+  that already has a 48-pair backlog. Left off deliberately (F5).
+* **Good Eats in The Overnight.** It is the only pool held out of the
+  rebroadcast. 65 hours carries 21 a week and no more; adding it to the
+  overnight took it from a 21.7-day cycle to 15.3.
+
+**What left the channel.** The unscripted version aired six shows and three
+belong elsewhere: **Laid-Back Camp** and **both Midnight Diners** are
+Japanorama's — its 06:00–08:00 Morning Cast and its Deep Night, where Midnight
+Diner is the only live-action series and deliberately so. Eviction (C2 rung 4);
+the claim there is unambiguous. **Considered and left off:** Old Enough! (20
+episodes, 14-minute median — Japanese and charming, but neither food, travel
+nor nature) and How It's Made (416 episodes, unclaimed, and Makers Corner's
+register).
+
+**`youtube/` went live the same day.** Both blocks that read it — 09:00–12:00
+and the Lunch Counter — are first-run, not falling to the bed. The tree was
+also taught to the offline tooling (`library_census.SHOW_ROOTS`), so the
+manifests now carry all six of its series and **the registry has zero EMPTY
+keys for the first time**: `japanese_food_noodles_tv` scores 236 episodes and
+`bon_appetit_on_the_line_tv` 80. Four of the six are unclaimed and available —
+Best of the Worst (154) and Historia Civilis (88) for Corncob, Timothy Wilmots
+(51) and Pedulla Studio (28) for Makers Corner.
+
+**No filler and no marathons.** `filler/bumpers/` holds two trees and both are
+Cartoon Network's; there is no food or travel branding on disk, and borrowing
+someone else's is the mistake G12 was written for. Ships silent. Marathons are
+off because every date-anchored idea the channel had wants content it does not
+own, and `find_active_marathon` returns nothing during a holiday season anyway
+(G9) — which is exactly when a food channel would want one.
 
 ### The Beat
 Music videos only — no Daria, no Jersey Shore, and *The Beatles: Get Back* is a documentary, not a music video. 64 artist folders, currently unstructured. Decide the organizing axis before foldering, because the folder tree becomes the tag schema. MTV's own rotation blocks are the obvious model: morning mix, afternoon countdown, late-night alternative.

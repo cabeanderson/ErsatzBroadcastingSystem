@@ -45,18 +45,38 @@ import collections
 import contextlib
 import importlib
 import io
+import pkgutil
 import re
 from datetime import datetime, timedelta
 
 from scripts.testing import key_census as kc
 from scripts.library.sources import MASTER_SOURCES
 
-# Every channel with a module in scripts/channels, minus the harness fixtures.
-CHANNELS = [
-    "be_kind_rewind", "british", "cartoon_network", "classic_movies", "corncob",
-    "detective", "disney", "eighties", "high_noon", "japanorama", "nick",
-    "nightmare_theatre", "scifi", "sitcoms",
-]
+SKIP_CHANNELS = {"example_channel", "test_channel"}
+
+
+def discover_channels():
+    """Every channel with a `build_playout`, found by import rather than by a
+    hardcoded list.
+
+    This used to be a literal list and it went stale twice: `visualize_week`
+    dropped its own hardcoded table after nick and disney had been built and
+    never added to it, and this file then hid **travelers_table** the same way
+    on 2026-09-07 -- the channel passed every other checker while being absent
+    from the one tool that measures C1 on the television side. A list that has
+    to be edited by hand to stay correct is a checker that quietly stops
+    checking. Same shape as `collision_report.discover_channels`.
+    """
+    import scripts.channels as channels_pkg
+
+    found = []
+    for mod in pkgutil.iter_modules(channels_pkg.__path__):
+        if mod.name.startswith("_") or mod.name in SKIP_CHANNELS:
+            continue
+        module = importlib.import_module(f"scripts.channels.{mod.name}")
+        if hasattr(module, "build_playout"):
+            found.append(mod.name)
+    return sorted(found)
 
 START = datetime(2026, 1, 1)
 _FILMS, _SHOWS = None, None
@@ -155,7 +175,7 @@ def main():
     global DAYS
     DAYS = args.days
 
-    names = CHANNELS
+    names = discover_channels()
     if args.channel and args.channel not in names:
         ap.error(f"unknown channel {args.channel!r}; known: {', '.join(names)}")
 

@@ -999,6 +999,132 @@ JAPANORAMA_REGISTRY = {
 }
 
 # ============================================================================
+# 3d. TRAVELERS TABLE
+# ============================================================================
+#
+# Channel 240. Two of these keys are shared and the rest are the channel's own.
+#
+# `bake_off_tv` and `bbc_natural_history_tv` both belong to Across the Pond as
+# well, under an hours rule written at the resolution that channel's grid
+# actually has (C2 rung 2): Bake Off is its Breakfast, 06:00-09:00 every day,
+# and the natural history is its Sunday prime, 20:00-23:00. Travelers Table
+# reaches neither hour -- 06:00-09:00 is Good Eats on every day-arm, and the
+# nature block is Saturday. The rule is kept by the grid's shape rather than by
+# the grid remembering (C3): there is no day-arm on this channel in which
+# either key can resolve inside the other channel's window.
+#
+# Two keys read from `youtube/`, a separate tree from `tv/`. Both were EMPTY to
+# every offline checker until 2026-09-07, when the tree became an ErsatzTV
+# library and `library_census.SHOW_ROOTS` was taught to scan it. They score
+# now: 236 episodes and 80.
+
+TRAVELERS_TABLE_REGISTRY = {
+    # --- BREAKFAST --------------------------------------------------------
+    # 195 episodes, not the 305 the manifest reports: seasons 12-14 are empty
+    # directories and 54 files sit under `extras/` (V4). At 20 minutes it is
+    # the only half-hour show on the channel, which is why it owns the three
+    # hours before nine and appears nowhere else -- 65 hours of shelf carries
+    # exactly 21 a week and no more (F6).
+    "good_eats_tv": show_by_title("Good Eats"),
+
+    # --- THE MORNING KITCHEN ---------------------------------------------
+    # `youtube/` -- 236 episodes, median 27 minutes, all filed under one
+    # Season 2025. The largest single pool on the channel.
+    "japanese_food_noodles_tv": show_by_title("Japanese Food Noodles"),
+
+    # --- THE LUNCH COUNTER ------------------------------------------------
+    # `youtube/` -- 80 episodes. The show is filed two ways: `tvshow.nfo`
+    # carries "Bon Appetit: On the Line" while every episode's `showtitle` is
+    # bare "Bon Appetit", so both are named rather than guessed at. The
+    # manifest resolves it under the `tvshow.nfo` form; the second arm is kept
+    # because it costs nothing and ErsatzTV reads the tree itself.
+    "bon_appetit_on_the_line_tv":
+        'type:episode AND (show_title:"Bon App\u00e9tit: On the Line"'
+        ' OR show_title:"Bon App\u00e9tit")',
+    "iron_chef_tv": show_by_title("Iron Chef"),
+
+    # --- THE AFTERNOON BAKE -----------------------------------------------
+    # Shared with Across the Pond's Breakfast (06:00-09:00 daily). 102
+    # episodes at a 58-minute median -- 98.6 hours, the second-largest pool
+    # here, and the one that took Bourdain off a 13-day cycle.
+    "bake_off_tv": show_by_title("The Great British Bake Off"),
+
+    # --- THE EVENING ------------------------------------------------------
+    # The two Bourdains are two keys, never one. They carry the channel's
+    # three evening blocks between them and G4 is the reason each block draws
+    # only one of them: Prep is No Reservations, Night Service is Parts
+    # Unknown, and only Dinner Service reaches for both.
+    "bourdain_no_reservations_tv":
+        show_by_title("Anthony Bourdain: No Reservations"),
+    "bourdain_parts_unknown_tv":
+        show_by_title("Anthony Bourdain: Parts Unknown"),
+
+    # --- DINNER SERVICE: the two named nights ------------------------------
+    # 13 episodes, not 25 -- Season 01 is an empty directory (V4). Too short
+    # to strip and too good to shuffle into a wheel, so it is Monday night,
+    # chronological, and loops (G6).
+    "alone_tv": playback_order(
+        'type:episode AND show_title:"Alone" AND show_studio:History',
+        force="Chronological"),
+    # Tuesday. Six episodes and four episodes: neither could hold a night
+    # alone, and together they are ten and a 3.8-week cycle.
+    "james_may_tv": show_by_title("James May: Our Man In..."),
+    "conan_must_go_tv": show_by_title("Conan O'Brien Must Go"),
+
+    # --- LAST CALL --------------------------------------------------------
+    # Thirteen hour-long episodes, in order, three nights a week. A nightly
+    # hour would cycle them in twelve days; three nights is thirty (F6).
+    "cosmos_tv": playback_order(
+        'type:episode AND show_title:"Cosmos" AND show_studio:PBS',
+        force="Chronological"),
+
+    # --- OUT THERE: Saturday ----------------------------------------------
+    # The seven BBC natural-history titles, shared with Across the Pond's
+    # Sunday prime. Named explicitly rather than reached through a genre
+    # (G11) and listed one by one rather than left to the phrase match, which
+    # would fold Planet Earth II and III into the 2006 run (G10).
+    # `Life` needs the studio bound or it also returns Life's Too Short --
+    # the same fix `library/british.py` uses.
+    # The studio bound is not optional and it is not decoration. `Life` is a
+    # phrase match on one very common word: unbounded it reaches **Homicide:
+    # Life on the Street (123), Rocko's Modern Life (101) and The Moaning of
+    # Life (11)** -- 235 episodes of crime drama, Nickelodeon animation and
+    # Ricky Gervais in a Saturday natural-history block. It is the G10 trap in
+    # its worst form on this lineup.
+    #
+    # It is hoisted to a top-level clause rather than tucked inside the OR
+    # because `key_census` splits a query on top-level AND only; nested, the
+    # clause read as unevaluable and the key scored six shows instead of seven.
+    # Same reasoning as the unparenthesised `NOT_ANIMATED` in `queries.py` --
+    # write the query so the checker can still score it. `"BBC One"` rather
+    # than bare `BBC`, because bare BBC also reaches BBC Two and Life's Too
+    # Short.
+    "bbc_natural_history_tv":
+        'type:episode AND ('
+        'show_title:"Planet Earth" OR show_title:"Planet Earth II"'
+        ' OR show_title:"Planet Earth III" OR show_title:"Blue Planet II"'
+        ' OR show_title:"Seven Worlds, One Planet"'
+        ' OR show_title:"Prehistoric Planet" OR show_title:"Life")'
+        ' AND (show_studio:"BBC One" OR show_studio:"Apple TV+")',
+    # Six episodes riding Saturday's wheel behind 59 -- the Rawhide pattern
+    # (G6). The channel's own; Across the Pond does not carry it.
+    "crocodile_hunter_tv":
+        show_by_title("The Crocodile Hunter: Best of Steve Irwin"),
+
+    # --- THE BED ----------------------------------------------------------
+    # Owned content only. A stall can fire in any slot, so a bed built from
+    # `bake_off_tv` or `bbc_natural_history_tv` would be the one thing on this
+    # channel able to reach Across the Pond's hours (C3). It is also what
+    # held the 09:00-12:00 and 12:00-13:00 blocks up while `youtube/` was
+    # unindexed, which is why Good Eats is in it despite being budgeted to the
+    # hour elsewhere. That interim ended 2026-09-07; the bed is now a bed.
+    "travelers_table_vault_tv":
+        'type:episode AND (show_title:"Anthony Bourdain: No Reservations"'
+        ' OR show_title:"Anthony Bourdain: Parts Unknown"'
+        ' OR show_title:"Good Eats")',
+}
+
+# ============================================================================
 # 3b. NICKELODEON
 # ============================================================================
 
@@ -1419,6 +1545,7 @@ MASTER_SOURCES = {
     **TV_REGISTRY,
     **ANIMATED_REGISTRY,
     **JAPANORAMA_REGISTRY,
+    **TRAVELERS_TABLE_REGISTRY,
     **NICK_REGISTRY,
     **DISNEY_REGISTRY,
     **CARTOON_NETWORK_REGISTRY,

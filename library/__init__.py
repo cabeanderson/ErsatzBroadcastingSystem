@@ -21,5 +21,6 @@ from . import movies
 from . import modern_movies
 from . import eighties
 from . import british
+from . import travel
 
-__all__ = ['sources', 'branding', 'marathons', 'common', 'comedy', 'detective', 'disney', 'animation', 'anime', 'nickelodeon', 'scifi', 'fantasy', 'horror', 'sitcoms', 'movies', 'modern_movies', 'eighties', 'british']
+__all__ = ['sources', 'branding', 'marathons', 'common', 'comedy', 'detective', 'disney', 'animation', 'anime', 'nickelodeon', 'scifi', 'fantasy', 'horror', 'sitcoms', 'movies', 'modern_movies', 'eighties', 'british', 'travel']

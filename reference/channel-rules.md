@@ -228,6 +228,24 @@ eight sequels and the remake; `title:"Gladiator"` returns Gladiator II.
 Unbounded, an ordered marathon becomes a shuffle of the whole series. Same fix
 `library/scifi.py` uses for Star Trek 1966.
 
+**It bites television harder than film, because show titles are shorter.**
+`show_title:"Life"` — the BBC 2009 natural-history series — also reaches
+**Homicide: Life on the Street (123 episodes), Rocko's Modern Life (101) and
+The Moaning of Life (11)**: 235 episodes of crime drama, Nickelodeon animation
+and Ricky Gervais, in a block meant to be Attenborough. Travelers Table found
+it in 2026-09-07 and bounds the key with a studio clause.
+
+Two corollaries, both paid for by that key:
+
+* **Bound to the exact studio, not a prefix.** `show_studio:BBC` also matches
+  BBC Two, which is why Across the Pond's own `Life` item still carries Life's
+  Too Short. `show_studio:"BBC One"` is the fix.
+* **Put the bound at the top level, not inside an `OR`.** `key_census` splits a
+  query on top-level `AND` only, so a clause nested inside a bracketed group
+  reads as unevaluable and the checker silently stops scoring it — the key read
+  as six shows instead of seven. Same reason `NOT_ANIMATED` in `queries.py` is
+  left unparenthesised: **write the query so the checker can still score it.**
+
 ### G11 · Genre tags are not genres
 
 Breaking Bad, Westworld and Cowboy Bebop all carry a Western tag, which is why
@@ -419,7 +437,21 @@ python3 -m scripts.testing.collision_report            # section 2 is the number
 
 All four read the manifests in `reference/`, so they run with no ErsatzTV. A
 stale manifest makes them wrong in the direction of false alarms — regenerate
-when the library changes.
+when the library changes:
+
+```bash
+ETV_MEDIA_ROOT=$HOME/hdpool/data/media \
+  python3 -m scripts.testing.library_census --out-dir scripts/reference
+```
+
+**And a manifest can be stale by a whole library, not just by a few titles.**
+The scanners read the roots named in `library_census.SHOW_ROOTS`, and that was
+`tv/` alone until 2026-09-07 — so `youtube/`, 637 episodes across six series
+that ErsatzTV could see perfectly well, was invisible to every checker here.
+`key_census` reported live keys as EMPTY and `same_show_check` could not have
+found a collision involving them. **A scanner that knows about fewer libraries
+than the server does reports absence as certainty.** When a new tree is added
+to ErsatzTV, add it to `SHOW_ROOTS` in the same pass.
 
 ### V4 · Count episodes off disk
 
@@ -457,7 +489,7 @@ Rules the framework cannot check, and where they can bite:
 
 | Rule | Status |
 |---|---|
-| C1 same-title | Partially tooled — `same_title_check.py` covers **film keys only**; TV collisions are still convention |
+| C1 same-title | Tooled on both sides — `same_title_check.py` for film keys, `same_show_check.py` for television. Both discover channels by import as of 2026-09-07; the hardcoded list `same_show_check` used to carry had already hidden Travelers Table once |
 | G5 appointment gating | Only visible by simulating and reading the output |
 | G4 blocks drawing the same keys | Requires counting airings per key, which no checker does automatically |
 | F6 airtime vs pool size | Hand arithmetic every time |

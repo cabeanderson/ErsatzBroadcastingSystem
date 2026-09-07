@@ -285,7 +285,14 @@ PRIME_SUNDAY_NATURAL_HISTORY = Block(
         {"title": "Blue Planet II", "query": show_by_title("Blue Planet II")},
         {"title": "Seven Worlds, One Planet", "query": show_by_title("Seven Worlds, One Planet")},
         {"title": "Prehistoric Planet", "query": show_by_title("Prehistoric Planet")},
-        {"title": "Life", "query": 'type:episode AND show_title:"Life" AND show_studio:BBC'},
+        # `show_studio:BBC` is a prefix, not the studio: it also matches BBC
+        # Two, which put **Life's Too Short -- 20 episodes of Ricky Gervais --
+        # into Attenborough's Sunday night**. Bounded to the exact studio
+        # 2026-09-07, found while Travelers Table was built against the same
+        # shelf. The wider trap is in channel-rules.md G10: on television the
+        # titles are short enough that a bare phrase match on "Life" also
+        # reaches Homicide: Life on the Street and Rocko's Modern Life.
+        {"title": "Life", "query": 'type:episode AND show_title:"Life" AND show_studio:"BBC One"'},
     ]),
 )
 
