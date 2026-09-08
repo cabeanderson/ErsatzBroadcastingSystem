@@ -468,25 +468,37 @@ five, because a window opened over episodes that resolve to nothing stalls the
 block.
 
 **And a file the scanner cannot see is not on disk, whatever `ls` says.** Ten
-of The New Yankee Workshop's twenty-one seasons are `.divx` files — AVI
-containers (`ffprobe` says `format_name=avi`) behind an extension that
-`library_census.VIDEO_EXTENSIONS` does not list, so **130 episodes and 49.8
-hours of the show's early run are invisible to every checker here**, and the
-show was budgeted as the smallest shelf on its channel because of it.
+of The New Yankee Workshop's twenty-one seasons are `.divx` files, and `.divx`
+was not in `library_census.VIDEO_EXTENSIONS`, so **130 episodes and 49.8 hours
+were invisible to every checker here** and the show was budgeted as the
+smallest shelf on its channel — 63.9 hours against the 113.7 it actually has.
+ErsatzTV had indexed all 281 the whole time. This is V3's SHOW_ROOTS lesson one
+level down: there a scanner knew about fewer *libraries* than the server, here
+about fewer *extensions*, and both report absence as certainty.
 
-**The corollary bit immediately, in the note that recorded the finding.** That
-note also said ErsatzTV could not see the files, on the grounds that the
-manifest and the folder agreed at 151 — but the manifest *is* `library_census`
-output, so it was the allowlist agreeing with itself. **A scanner's own report
-is not evidence about a different scanner.** What the server indexes is a
-question only the server answers; until it does, budget the conservative number
-and say which one you used. This is V3's SHOW_ROOTS lesson one level down — there, a scanner
-knew about fewer *libraries* than the server; here it knows about fewer
-*extensions*. Both report absence as certainty. When a count looks low, list the
-folder's extensions before believing it:
+**Two corollaries, and the second cost more than the first.**
+
+*A scanner's own report is not evidence about a different scanner.* The note
+that first recorded this finding also claimed ErsatzTV could not see the files,
+on the grounds that the manifest and the folder agreed at 151 — but the
+manifest *is* `library_census` output, so it was the allowlist agreeing with
+itself. The server said 281 the moment anyone asked it. **"What does the
+manifest say" and "what does the thing that actually plays the files think" are
+different questions, and only one of them is evidence.**
+
+*A blind spot is never one show.* This surfaced on one channel, and a sweep of
+every extension in the library found **Magnum, P.I.'s entire season 7 in
+`.divx` as well** — 138 episodes read against 160, in every pool key reaching
+that show on two other channels, for as long as the manifests have existed.
+`.webm` was a second gap. **Extension blind spots are silent, library-wide, and
+invisible to every other check in this file**, because nothing downstream can
+tell "this show has 138 episodes" from "this show has 138 episodes I can see".
+Sweep after acquisitions, and keep `VIDEO_EXTENSIONS` at least as wide as
+ErsatzTV's own list:
 
 ```bash
-find "<show folder>" -type f | sed 's/.*\.//' | sort | uniq -c | sort -rn
+find tv movies youtube -type f | sed 's/.*\.//' | tr 'A-Z' 'a-z' \
+  | sort | uniq -c | sort -rn
 ```
 
 The same applies to genre pools:

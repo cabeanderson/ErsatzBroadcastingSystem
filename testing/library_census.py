@@ -34,8 +34,20 @@ from scripts import config
 
 MEDIA_ROOT = str(config.MEDIA_ROOT)
 
+# Extensions the scanners count as an episode. Keep this at least as wide as
+# ErsatzTV's own list: a scanner that knows fewer extensions than the server
+# reports absence as certainty, and the manifest it writes is then quoted back
+# as evidence about the server (V4).
+#
+# `.divx` and `.webm` were added 2026-09-08 after Makers Corner was budgeted
+# against a New Yankee Workshop that looked like 151 episodes and is 281.
+# ErsatzTV indexes both perfectly well -- they are ordinary AVI and WebM
+# containers -- and the only thing that could not see them was this set. The
+# cost was not one channel: **Magnum, P.I.'s entire season 7 is `.divx`**, so
+# the show read 138 episodes against 158 on disk in every pool key that
+# reaches it.
 VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mpg", ".mpeg",
-                    ".wmv", ".mov"}
+                    ".wmv", ".mov", ".divx", ".webm"}
 
 FOLDER_YEAR = re.compile(r"\((\d{4})\)\s*$")
 

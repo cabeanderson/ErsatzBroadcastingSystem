@@ -1158,18 +1158,16 @@ MAKERS_CORNER_REGISTRY = {
         'type:episode AND show_title:"The Woodwright\'s Shop"'
         ' AND show_studio:PBS',
 
-    # 151 episodes, not 281 (V4). Ten of the twenty-one seasons are `.divx`
-    # files -- AVI containers holding the same mpeg4/mp3 streams as the 151
-    # that do index, behind an extension `library_census.VIDEO_EXTENSIONS` does
-    # not list. Those 130 episodes and 49.8 hours are certainly invisible to
-    # the offline checkers; whether ErsatzTV skips them too is **unconfirmed**
-    # -- the manifest's 151 is the census's own allowlist talking, not the
-    # server's. Budgeted at 151 because that is the conservative number. See
-    # acquisitions.md; the fix, if it is needed, is a rename, not a re-rip.
+    # 281 episodes, 113.7 hours -- and this channel was designed believing it
+    # was 151. Ten of the twenty-one seasons are `.divx`, which ErsatzTV indexes
+    # and `library_census.VIDEO_EXTENSIONS` did not list until 2026-09-08, so
+    # the blind spot was entirely in the offline tooling. Confirmed on the box
+    # and fixed by widening the set; nothing was renamed.
     #
-    # At 63.9 hours this is the smallest television shelf on the channel and
-    # the one that sets the ceiling, which is why it gets one strip and a small
-    # share of the overnight rather than a daypart.
+    # The show is now the fourth-largest shelf on the channel rather than the
+    # smallest, and its cycle is 45.7 days rather than 25.4. It still gets one
+    # strip and a small share of the overnight, on the design grounds in
+    # `THE_SHOP`, and the spare hours are the channel's reserve.
     "new_yankee_workshop_tv":
         'type:episode AND show_title:"The New Yankee Workshop"'
         ' AND show_studio:PBS',

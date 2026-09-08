@@ -56,35 +56,41 @@ Episode counts are video files outside `extras/`; medians are
     The Joy of Painting     1983  403 eps  27.2m  180.6 h  PBS
     How It's Made           2001  416 eps  21.5m  148.4 h  Science Channel
     This Old House          1979  234 eps  28.7m  112.3 h  PBS
-    The New Yankee Workshop 1989  151 eps  25.1m   63.9 h  PBS
+    The New Yankee Workshop 1989  281 eps  23.8m  113.7 h  PBS
     Pedulla Studio                 28 eps  19.6m   10.6 h  [youtube/]
     Timothy Wilmots                51 eps   6.8m    6.1 h  [youtube/]
                                  -----            -------
-                                2,084             950.7 h
+                                2,214           1,000.5 h
 
-**951 hours is 39.6 days at 24 hours a day, against F6's 21-day floor.** That
-is worth saying plainly because it is the opposite of the channel built the
-day before: Travelers Table has 545 hours and sits on the floor, which is why
-six of its twenty-four hours are an announced rebroadcast. Makers Corner needs
-no rebroadcast. Every hour of this grid is first-run and the whole channel is
-running at about 53% of what F6 would permit.
+**A thousand hours is 41.7 days at 24 hours a day, against F6's 21-day
+floor.** That is worth saying plainly because it is the opposite of the channel
+built the day before: Travelers Table has 545 hours and sits on the floor,
+which is why six of its twenty-four hours are an announced rebroadcast. Makers
+Corner needs no rebroadcast. Every hour of this grid is first-run and the whole
+channel is running at about **half** of what F6 would permit.
 
-**The New Yankee Workshop is 151 episodes, not 281.** Ten of its twenty-one
-seasons -- 1-4, 10, 12-14, 18-19 -- are `.divx` files. They are AVI containers
-(`ffprobe` says `format_name=avi`, mpeg4 video, mp3 or ac3 audio), and 129 of
-the 151 `.avi` episodes that *do* index are the same container and codec, so
-the content is not the problem -- the extension is. `.divx` is not in
-`library_census.VIDEO_EXTENSIONS`, so **130 episodes and 49.8 hours are
-certainly invisible to every offline checker in this repo.**
+**The New Yankee Workshop is 281 episodes, and this channel was designed
+believing it was 151.** Ten of its twenty-one seasons -- 1-4, 10, 12-14, 18-19
+-- are `.divx` files, and `.divx` was not in
+`library_census.VIDEO_EXTENSIONS`. **ErsatzTV indexes them perfectly well**;
+the only thing that could not see 130 episodes and 49.8 hours was the offline
+tooling, and the manifest it wrote was then quoted as evidence about the
+server. Confirmed on the box 2026-09-08 and fixed by adding `.divx` and
+`.webm` to the set; nothing was renamed, because nothing needed renaming.
 
-**Whether ErsatzTV also skips them is unconfirmed**, and the first version of
-this note said otherwise on circular evidence: the manifest reads 151 because
-`library_census` produced it under its own allowlist, which says nothing about
-the server's. The budget below is written against 151 because that is the
-conservative number -- if ErsatzTV sees all 281, this key has more slack than
-the table claims (45 days rather than 25), which is a pleasant error rather
-than a broken one. Check the show's episode count on the box before renaming
-anything; see acquisitions.md.
+**It cost more than this channel.** The same sweep found **Magnum, P.I.'s
+entire season 7** in `.divx` -- the show read 138 episodes against 160 -- so
+every pool key that reaches it on Totally 80s and Mystery Theatre had been
+sized against a library 22 episodes short. See V4 in
+channel-rules.md, which now carries the general
+form of this.
+
+**What it changes here: nothing in the grid, and one line of the reasoning.**
+Norm Abram was the smallest shelf on the channel at 63.9 hours and is now the
+fourth largest at 113.7, so the F6 ceiling he used to set is gone; The Shop
+still gets exactly one strip, on the design grounds in section 5 rather than on
+arithmetic. His cycle went from 25.4 days to 45.7. He is now the channel's
+second-largest reserve after MythBusters if a future block ever needs hours.
 
 --------------------------------------------------------------------------
 THE ARITHMETIC (F6)
@@ -92,22 +98,25 @@ THE ARITHMETIC (F6)
 
 At 168 hours a week, and with the Saturday arm counted:
 
-    Joy of Painting        180.6 h   37.0 h/wk   34.2 d
-    Woodwright's Shop      218.3 h   26.4 h/wk   58.0 d
-    New Yankee Workshop     63.9 h   17.6 h/wk   25.4 d
-    How It's Made          148.4 h   31.8 h/wk   32.7 d
-    This Old House         112.3 h   29.3 h/wk   26.9 d
-    MythBusters            210.5 h   21.0 h/wk   70.2 d
-    Pedulla Studio          10.6 h    3.2 h/wk   23.3 d
-    Timothy Wilmots          6.1 h    1.8 h/wk   23.3 d
+    Joy of Painting        180.6 h   37.8 h/wk   33.5 d
+    Woodwright's Shop      218.3 h   26.4 h/wk   57.8 d
+    New Yankee Workshop    113.7 h   17.4 h/wk   45.7 d
+    How It's Made          148.4 h   31.5 h/wk   33.0 d
+    This Old House         112.3 h   29.4 h/wk   26.7 d
+    MythBusters            210.5 h   21.4 h/wk   69.0 d
+    Pedulla Studio          10.6 h    2.6 h/wk   28.9 d
+    Timothy Wilmots          6.1 h    1.6 h/wk   27.0 d
                                     ---------
                                      168.0 h/wk
 
-**All eight clear 21 days**, and the two tightest are the two YouTube shows at
-23.3 -- which is the point of the ratio in THE_SMALL_SHOP and the reason that
-block is weekdays only. MythBusters at 70 days is deliberately slack: 272
-episodes surfacing once a fortnight each is what keeps prime feeling like the
-marquee, and it is the show with the most headroom if the grid ever needs it.
+Those are **measured** over 365 simulated days, not planned. **All eight clear
+21 days and the tightest is This Old House at 26.7**, which is the channel's
+real ceiling now that Norm Abram's shelf has doubled. The two YouTube shows
+come in slacker than designed -- 28.9 and 27.0 against a 23.3 target -- because
+a 60-minute slot does not pack perfectly with 19.6- and 6.8-minute items, and
+slack is the right direction for that error. MythBusters at 69 days is
+deliberate: 272 episodes surfacing once every ten weeks is what keeps prime
+feeling like the marquee.
 
 **The real constraint on this channel is not the television, it is the 16.7
 hours of `youtube/`.** Two shows, 79 videos. At F6's floor that shelf supports
@@ -248,9 +257,17 @@ THE_HAND_TOOL = Block(
 # ==============================================================================
 
 # Norm Abram and a room full of machines: the same craft as eight o'clock with
-# the power turned on, which is why it follows it. One strip and no more --
-# 63.9 hours is the smallest television shelf here, and a second daypart would
-# take it under three weeks (F6).
+# the power turned on, which is why it follows it.
+#
+# One strip and no more, and the reason is now design rather than arithmetic.
+# This was written when the shelf looked like 63.9 hours -- the smallest on the
+# channel -- and a second daypart genuinely would have taken it under three
+# weeks. The shelf is 113.7 hours (see the `.divx` note in the module
+# docstring) and would now carry 37.9 h/wk against the 17.4 it gets. It keeps
+# one strip anyway: the day climbs from hand tools to machines to a factory to
+# a house, and giving Norm two dayparts flattens the middle of that. The
+# headroom is real and is the channel's reserve, not an argument for spending
+# it here.
 THE_SHOP = Block(
     name="The Shop",
     items=RandomCollection(["new_yankee_workshop_tv"]),

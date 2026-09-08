@@ -940,8 +940,8 @@ The channel had a name, content and no designed grid.
 | **SAT 08–15** | The Weekend Project | the PBS Saturday-morning block reassembled |
 | **SAT 15–19** | The Factory Floor | How It's Made takes the afternoon instead |
 
-Eight shows, 2,084 episodes, **951 hours** — 39.6 days at 24 h/day against
-F6's 21-day floor, so the channel runs at about **53% of what F6 permits**.
+Eight shows, 2,214 episodes, **1,000 hours** — 41.7 days at 24 h/day against
+F6's 21-day floor, so the channel runs at about **half of what F6 permits**.
 That is the opposite of Travelers Table, built the day before, which sits on
 the floor and gives six hours a day to an announced rebroadcast. **Makers
 Corner needs no rebroadcast; every hour of the grid is first-run.**
@@ -955,13 +955,16 @@ three years to prove. Measured airtime against the F6 plan, per key:
 | Show | Shelf | h/wk planned | h/wk measured | Cycle |
 |---|---:|---:|---:|---:|
 | The Joy of Painting | 180.6 h | 37.0 | 37.8 | 33.5 d |
-| How It's Made | 148.4 h | 31.8 | 31.4 | 33.1 d |
-| This Old House | 112.3 h | 29.3 | 29.4 | 26.8 d |
-| The Woodwright's Shop | 218.3 h | 26.4 | 26.4 | 58.0 d |
-| MythBusters | 210.5 h | 21.0 | 21.3 | 69.1 d |
-| The New Yankee Workshop | 63.9 h | 17.6 | 17.6 | 25.4 d |
-| Pedulla Studio | 10.6 h | 3.2 | 2.6 | 28.4 d |
-| Timothy Wilmots | 6.1 h | 1.8 | 1.6 | 26.7 d |
+| How It's Made | 148.4 h | 31.8 | 31.5 | 33.0 d |
+| This Old House | 112.3 h | 29.3 | 29.4 | **26.7 d** |
+| The Woodwright's Shop | 218.3 h | 26.4 | 26.4 | 57.8 d |
+| MythBusters | 210.5 h | 21.0 | 21.4 | 69.0 d |
+| The New Yankee Workshop | 113.7 h | 17.6 | 17.4 | 45.7 d |
+| Pedulla Studio | 10.6 h | 3.2 | 2.6 | 28.9 d |
+| Timothy Wilmots | 6.1 h | 1.8 | 1.6 | 27.0 d |
+
+This Old House is the channel's ceiling at 26.7 days. It was The New Yankee
+Workshop at 25.4 until the `.divx` finding below doubled that shelf.
 
 **No appointments, no marathons, no filler, no injections** — and each one is a
 measurement, not a preference. Nothing on the shelf is too short to strip (the
@@ -1031,22 +1034,42 @@ minutes. G2's reason is that mixing strands the tail of the slot — here the
 mixing is what fills it. A simulated Monday runs a Pedulla build, three Wilmots
 shorts and another Pedulla, and closes the hour clean.
 
-**The New Yankee Workshop is 151 episodes on air and 281 on disk (V4).** Ten of
-its twenty-one seasons — 1–4, 10, 12–14, 18–19 — are `.divx` files. `ffprobe`
-says `format_name=avi`, mpeg4 video, mp3 or ac3 audio — and **129 of the 151
-`.avi` episodes that do index are the same container and codec**, so the files
-are not the problem, the extension is. `.divx` is not in
-`library_census.VIDEO_EXTENSIONS`, so those 130 episodes and 49.8 hours are
-certainly invisible to every offline checker here.
+**The channel was designed against a New Yankee Workshop that does not exist,
+and the error was entirely in this repo's tooling.** Ten of its twenty-one
+seasons — 1–4, 10, 12–14, 18–19 — are `.divx`, and `.divx` was not in
+`library_census.VIDEO_EXTENSIONS`. **ErsatzTV indexes them perfectly well**
+(confirmed on the box, 2026-09-08); the only thing that could not see 130
+episodes and 49.8 hours was the offline scanner, and the manifest it wrote was
+then quoted back as evidence about the server. Fixed by adding `.divx` and
+`.webm` to the set and regenerating. **Nothing was renamed, because nothing
+needed renaming.**
 
-**Whether ErsatzTV also skips them is unconfirmed, and the first version of this
-note claimed it did on circular evidence** — the manifest reads 151 because
-`library_census` generated it under its own allowlist, which says nothing about
-the server's. The budget above uses 151 because it is the conservative number:
-if ErsatzTV sees all 281, `new_yankee_workshop_tv` has 45 days of cycle rather
-than 25, and nothing else moves. **Check the show's episode count on the box
-before renaming anything** — if it reads 281, the only thing that needs fixing
-is `VIDEO_EXTENSIONS`. See acquisitions.md.
+**The blast radius was larger than this channel.** A sweep of every extension
+under `tv/`, `movies/` and `youtube/` found **Magnum, P.I.'s entire season 7**
+in `.divx` — the show read 138 episodes against 160 — so every pool key
+reaching it on Totally 80s and Mystery Theatre had been sized against a library
+22 episodes short, and `eighties_action_tv` is one of them. `.webm` was the
+other gap: *Too Many Cooks* is the only file in its folder and 12 files across
+the library carry it. The general form is now V4 in
+channel-rules.md.
+
+**It also surfaced one new C1 pair, which is the point of regenerating.**
+`same_title_check` went from 48 confirmed to 49 (stable across runs):
+Nightmare Theatre's `horror_comedy_movie` and Other Worlds' `modern_scifi_movie`
+both reach **Too Many Cooks (2014)**, four airings a fortnight. It is left
+shared and this line is the reason it counts as deliberate rather than
+unmeasured (C6) — a twelve-minute Adult Swim short that is genuinely both a
+horror comedy and science fiction, and neither channel has the better claim.
+The finding is really about the tooling: a collision cannot be measured on a
+film the manifest cannot see.
+
+**What it changed here: nothing in the grid, one line of the reasoning.** Norm
+Abram went from the smallest shelf on the channel (63.9 h) to the fourth
+largest (113.7 h), so the F6 ceiling he set is gone and This Old House inherits
+it. The Shop still gets exactly one strip — on the design grounds that the day
+climbs from hand tools to machines to a factory to a house, and two dayparts of
+Norm flattens the middle of that — and his spare 20 h/wk is the channel's
+reserve alongside MythBusters'.
 
 ### The Beat
 Music videos only — no Daria, no Jersey Shore, and *The Beatles: Get Back* is a documentary, not a music video. 64 artist folders, currently unstructured. Decide the organizing axis before foldering, because the folder tree becomes the tag schema. MTV's own rotation blocks are the obvious model: morning mix, afternoon countdown, late-night alternative.
