@@ -12,6 +12,16 @@ NO_COMEDY = "NOT genre:comedy"
 NO_BBC = "NOT studio:bbc"
 NO_HORROR = "NOT genre:horror"
 NO_WESTERN = "NOT genre:western"
+# Genre tags are not genres (G11), and on the television side the worst
+# offender is `action`. **The New Yankee Workshop is tagged
+# `Action; Documentary`** and is a 1989 show, so `eighties_action_tv` --
+# 1980s + genre:action -- returned Norm Abram alongside The A-Team, Knight
+# Rider and Magnum P.I. Totally 80s had been airing a PBS woodworking show
+# in its action block for as long as the key existed; it only became
+# visible when Makers Corner claimed the show on 2026-09-07 and
+# `same_show_check` reported the pair. Excluding documentary is the
+# surgical fix: it leaves all six real action shows in the key.
+NO_DOCUMENTARY = "NOT genre:documentary"
 SHORT = "minutes:[* TO 40]"
 
 # --- MOVIE ERAS ---

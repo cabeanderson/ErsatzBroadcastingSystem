@@ -250,7 +250,13 @@ Two corollaries, both paid for by that key:
 
 Breaking Bad, Westworld and Cowboy Bebop all carry a Western tag, which is why
 `western_tv` returns all three and why High Noon names its five shows explicitly
-instead. Tales from the Crypt — the only pre-1990 horror show on disk — is
+instead. **The New Yankee Workshop is tagged `Action; Documentary`**, so
+`eighties_action_tv` — 1980s plus `genre:action` — had been returning a PBS
+woodworking show alongside The A-Team, Knight Rider and Magnum P.I. for as long
+as the key existed. Nobody saw it until Makers Corner claimed the show on
+2026-09-07 and `same_show_check` reported the pair: **a genre key that quietly
+holds the wrong show looks exactly like a genre key that works, until a second
+channel wants that show.** Fixed with `NO_DOCUMENTARY`. Tales from the Crypt — the only pre-1990 horror show on disk — is
 tagged *Comedy; Crime; Mystery; Science Fiction* and never Horror. When the tag
 lies, name the titles.
 
@@ -461,6 +467,22 @@ against the disk. Yellowstone declares the two seasons that exist rather than
 five, because a window opened over episodes that resolve to nothing stalls the
 block.
 
+**And a file the scanner cannot see is not on disk, whatever `ls` says.** Ten
+of The New Yankee Workshop's twenty-one seasons are `.divx` files — AVI
+containers (`ffprobe` says `format_name=avi`) with an extension that is in
+nobody's allowlist: not `library_census.VIDEO_EXTENSIONS`, and, since the
+manifest and the folder agree at exactly 151 episodes, not ErsatzTV's either.
+**130 episodes and 49.8 hours of the show's early run are invisible to the
+whole stack**, and the show was budgeted as the smallest shelf on its channel
+because of it. This is V3's SHOW_ROOTS lesson one level down — there, a scanner
+knew about fewer *libraries* than the server; here it knows about fewer
+*extensions*. Both report absence as certainty. When a count looks low, list the
+folder's extensions before believing it:
+
+```bash
+find "<show folder>" -type f | sed 's/.*\.//' | sort | uniq -c | sort -rn
+```
+
 The same applies to genre pools:
 library-analysis.md answers *is there enough content for
 a channel*, registry-inventory.md answers *can the
@@ -489,7 +511,7 @@ Rules the framework cannot check, and where they can bite:
 
 | Rule | Status |
 |---|---|
-| C1 same-title | Tooled on both sides — `same_title_check.py` for film keys, `same_show_check.py` for television. Both discover channels by import as of 2026-09-07; the hardcoded list `same_show_check` used to carry had already hidden Travelers Table once |
+| C1 same-title | Tooled on both sides — `same_title_check.py` for film keys, `same_show_check.py` for television. Both discover channels by import as of 2026-09-07; the hardcoded list `same_show_check` used to carry had already hidden Travelers Table once. **It over-reported until 2026-09-07 too**: an inline `{"title": ...}` item is resolved to an `auto_gen_*` key whose query the checker cannot read, so it guessed from the key name by substring — and matched `house` inside *This Old House*, putting a collision that does not exist in the CONFIRMED section. Exact title now wins over the substring sweep; the 30-day confirmed count fell from 10,468 to 10,145. **A checker that over-reports gets ignored exactly as fast as one that under-reports.** |
 | G5 appointment gating | Only visible by simulating and reading the output |
 | G4 blocks drawing the same keys | Requires counting airings per key, which no checker does automatically |
 | F6 airtime vs pool size | Hand arithmetic every time |

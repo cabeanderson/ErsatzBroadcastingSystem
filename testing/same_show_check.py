@@ -124,8 +124,29 @@ def titles_for(key):
         match = re.match(r"^_*auto_(?:gen_)?(.+?)(?:_s\d+)?(?:_[0-9a-f]{6})?$", base)
         if match:
             guess = kc._phrase(match.group(1).replace("_", " "))
-            titles = {s["title"] for s in shows if guess in kc._phrase(s["title"])}
-            titles |= {f["title"] for f in films if guess in kc._phrase(f["title"])}
+            records = [r for r in shows] + [r for r in films]
+            # Exact title first, substring only if nothing matches exactly.
+            #
+            # The substring sweep is what finds `Agatha Christie's Poirot` from
+            # `auto_gen_agatha_christie_s_poirot_da84d2`, and it has to stay --
+            # but on its own it also reads a *short* title inside a longer one
+            # as the same show. Detective's House key is year-bounded to 2004
+            # and resolves to exactly one show; the sweep matched it against
+            # **This Old House** and reported Makers Corner as colliding with
+            # Detective, in the CONFIRMED section, on 2026-09-07.
+            #
+            # The real query is registered by the resolver and is correct on
+            # the server (`register_dynamic_query(generated_key, query, order)`
+            # in `logic/resolution/resolver.py`); only this fallback could not
+            # see it. Preferring an exact title keeps Poirot and drops the
+            # false pair, because a key generated from the title "House" has a
+            # show titled exactly "House" to land on.
+            exact = {r["title"] for r in records if guess == kc._phrase(r["title"])}
+            if exact:
+                titles = exact
+            else:
+                titles = {r["title"] for r in records
+                          if guess in kc._phrase(r["title"])}
             result = (titles, True)
 
     _CACHE[key] = result

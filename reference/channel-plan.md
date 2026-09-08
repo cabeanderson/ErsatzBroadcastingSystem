@@ -40,7 +40,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 180 | Totally 80s | 80s TV — **stays 80s** | yes — **designed** 2026-09-01 |
 | 190 | Good Times | **the studio audience** — multi-camera network sitcom, 1951–1999 | yes — **rebuilt** 2026-09-01 |
 | 240 | Travelers Table | **the day of meals** — food, travel, and one nature night | yes — **built** 2026-09-07 |
-| 241 | Makers Corner | DIY & craft | no |
+| 241 | Makers Corner | **the workshop day** — a day in a shop, sized by the thing being made | yes — **built** 2026-09-07 |
 | 242 | Corncob TV | **comedy after the laugh track** — single-camera, cable, streaming, sketch and alt | yes — **built** 2026-09-01 |
 | 243 | High Noon | westerns | yes — **built**. The TV is the spine: 946 episodes, five B&W shows |
 | 244 | Nightmare Theatre | horror, TV + film | yes — **built**. The film is the spine: 242 features, 17 h/day |
@@ -915,6 +915,131 @@ someone else's is the mistake G12 was written for. Ships silent. Marathons are
 off because every date-anchored idea the channel had wants content it does not
 own, and `find_active_marathon` returns nothing during a holiday season anyway
 (G9) — which is exactly when a food channel would want one.
+
+### Makers Corner — built 2026-09-07
+`scripts/channels/makers_corner.py` · `scripts/library/makers.py`
+
+*Somebody is building something, and you can see how.* Axis: **the clock, sized
+by the thing being made** — the day starts on a canvas and ends on a workbench,
+and in between it climbs. A dovetail at eight, a cabinet at ten, a production
+line at noon, a whole house at three, and at seven two men blow something up.
+The channel had a name, content and no designed grid.
+
+| Hours | Block | Content |
+|---|---|---|
+| 00–02 | Lights Out | The Joy of Painting |
+| 02–06 | The Long Bench | the four workshop shows, weighted |
+| 06–08 | Sign-On | The Joy of Painting |
+| 08–10 | The Hand Tool | The Woodwright's Shop |
+| 10–12 | The Shop | The New Yankee Workshop |
+| 12–15 | The Factory Floor | How It's Made |
+| 15–19 | The House | This Old House |
+| 19–22 | The Experiment | MythBusters |
+| 22–23 | The Small Shop | Pedulla Studio + Timothy Wilmots — **Mon–Fri** |
+| 23–24 | Lights Out | The Joy of Painting |
+| **SAT 08–15** | The Weekend Project | the PBS Saturday-morning block reassembled |
+| **SAT 15–19** | The Factory Floor | How It's Made takes the afternoon instead |
+
+Eight shows, 2,084 episodes, **951 hours** — 39.6 days at 24 h/day against
+F6's 21-day floor, so the channel runs at about **53% of what F6 permits**.
+That is the opposite of Travelers Table, built the day before, which sits on
+the floor and gives six hours a day to an announced rebroadcast. **Makers
+Corner needs no rebroadcast; every hour of the grid is first-run.**
+
+Simulated over 365 continuous days: **19,903 programme plays, no gaps, no
+overlaps, no circuit breakers, no unresolved programs.** Re-run over three
+years for stability (59,666 plays, same result) — not because V2 requires it,
+but because this channel has no appointments at all, so there was nothing for
+three years to prove. Measured airtime against the F6 plan, per key:
+
+| Show | Shelf | h/wk planned | h/wk measured | Cycle |
+|---|---:|---:|---:|---:|
+| The Joy of Painting | 180.6 h | 37.0 | 37.8 | 33.5 d |
+| How It's Made | 148.4 h | 31.8 | 31.4 | 33.1 d |
+| This Old House | 112.3 h | 29.3 | 29.4 | 26.8 d |
+| The Woodwright's Shop | 218.3 h | 26.4 | 26.4 | 58.0 d |
+| MythBusters | 210.5 h | 21.0 | 21.3 | 69.1 d |
+| The New Yankee Workshop | 63.9 h | 17.6 | 17.6 | 25.4 d |
+| Pedulla Studio | 10.6 h | 3.2 | 2.6 | 28.4 d |
+| Timothy Wilmots | 6.1 h | 1.8 | 1.6 | 26.7 d |
+
+**No appointments, no marathons, no filler, no injections** — and each one is a
+measurement, not a preference. Nothing on the shelf is too short to strip (the
+smallest television pool is 151 episodes), so there is no run to make a Thursday
+night out of, and a channel with no appointment cannot have a G5 gating bug.
+`filler/bumpers/` holds one tree and it is `cartoon network` (G12). Marathons
+address film series by title and this channel has no film. And injection was
+measured rather than assumed: **337 of 2,164 episode NFOs carry any `<tag>` at
+all**, two-thirds of those being `season premiere`/`season finale`, and the word
+`christmas` appears **three times in the whole 951-hour shelf**.
+
+**Zero C1 exposure, and it is the only channel on the lineup with it.** All
+eight shows were unclaimed — no hours rule, no era split, no eviction, no shared
+bed. That made the two collisions the checkers *did* report especially worth
+chasing, because neither was a sharing decision:
+
+* **`eighties_action_tv` was returning The New Yankee Workshop** — 8 airings
+  against Totally 80s over 30 days. The show is tagged `Action; Documentary`
+  and dated 1989, so an "80s + genre:action" key had been putting Norm Abram
+  next to The A-Team and Knight Rider **for as long as the key existed**. G11
+  in its television form, and it stayed invisible until a second channel
+  claimed the show. Fixed with `NO_DOCUMENTARY` in `filters.py`; the key now
+  returns the six real action shows.
+* **`same_show_check` reported a collision with Detective that does not
+  exist.** Detective's House key is year-bounded to 2004 and resolves to one
+  show, but it is an inline dict, so the checker cannot see its query and falls
+  back to guessing from the generated key name — and the substring sweep
+  matched `house` inside **This Old House**, in the CONFIRMED section. Fixed by
+  preferring an exact title match before the substring sweep, which keeps
+  `auto_gen_agatha_christie_s_poirot_da84d2` working. **It was over-reporting
+  across the whole lineup, not just here: the 30-day confirmed count fell from
+  10,468 to 10,145.**
+
+**The Red Green Show was considered and deliberately left with Corncob TV.**
+301 episodes of a Canadian man duct-taping a boat to a car is the obvious ninth
+show, and it is a scripted sketch sitcom wearing a DIY show's clothes — Corncob
+built two blocks on it in the 2026-09-01 rebuild, and Handyman Corner is a joke
+*about* this channel rather than an episode of it. Taking it would have
+converted a channel with zero C1 exposure into one with an hours rule, to gain
+hours the channel does not need. The cheapest fix is the one you do not make.
+
+**Three shapes that were tried and dropped:**
+
+1. **A rebroadcast overnight**, copied from Travelers Table and Japanorama. It
+   is the right answer at 545 hours and the wrong one at 951 — the arithmetic
+   simply does not ask for it, and replaying the day would have been borrowing
+   another channel's constraint. 02:00–06:00 is first-run.
+2. **How It's Made in two blocks, noon and evening.** That is G4's exact
+   failure — two blocks are only two blocks if they draw different keys — and
+   the G8 dodge of registering it twice with different playback orders does not
+   apply, because the show is not serialized and a chronological run of it
+   means nothing. Resolved by giving This Old House the whole 15:00–19:00
+   stretch and moving How It's Made to Saturday afternoon instead.
+3. **A Sunday arm.** Two variants were drafted (a longer Bob Ross morning; a
+   "Sunday build" block) and both wanted hours some pool could not afford, or
+   put Ross in a third block — the Cabes Classic Cinema mistake. The shelf has
+   eight shows and no seventh idea in it. Sunday runs the weekday grid, stated
+   rather than left to look like an oversight.
+
+**The one real constraint is `youtube/`, and it is small.** The whole maker
+shelf on that tree is **two shows, 79 videos, 16.7 hours** — 5.6 h/wk at F6's
+floor, which buys one hour a night for five nights and is exactly why The Small
+Shop is weekday-only. It is also the one block on the channel that deliberately
+mixes running times, which G2 exists to prevent: Pedulla's median is 19.6
+minutes, Wilmots' is **6.8**, and 15 of Wilmots' 51 videos are under five
+minutes. G2's reason is that mixing strands the tail of the slot — here the
+mixing is what fills it. A simulated Monday runs a Pedulla build, three Wilmots
+shorts and another Pedulla, and closes the hour clean.
+
+**The New Yankee Workshop is 151 episodes on air and 281 on disk (V4).** Ten of
+its twenty-one seasons — 1–4, 10, 12–14, 18–19 — are `.divx` files. `ffprobe`
+says `format_name=avi`; the extension is simply in nobody's allowlist, not
+`library_census.VIDEO_EXTENSIONS` and, on the evidence that the manifest and the
+folder agree at exactly 151, not ErsatzTV's either. **130 episodes and 49.8
+hours — the show's entire early run — are invisible to the whole stack.** The
+budget above is written against the 151 that index, which is why Norm Abram has
+the smallest shelf on the channel and sets its ceiling. The fix is a rename and
+it is on acquisitions.md.
 
 ### The Beat
 Music videos only — no Daria, no Jersey Shore, and *The Beatles: Get Back* is a documentary, not a music video. 64 artist folders, currently unstructured. Decide the organizing axis before foldering, because the folder tree becomes the tag schema. MTV's own rotation blocks are the obvious model: morning mix, afternoon countdown, late-night alternative.

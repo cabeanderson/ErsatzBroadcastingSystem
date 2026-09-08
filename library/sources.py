@@ -19,7 +19,7 @@ from .filters import (
     NINETIES, EIGHTIES, STREAMING_ERA, CLASSIC_ERA,
     WINTER_TAGS, SUMMER_TAGS,
     FALL_TAGS, SPRING_TAGS, SILENT_ERA, GOLDEN_AGE, SEVENTIES, Y2K_ERA, TENS, TWENTIES,
-    SHORT, NO_COMEDY, NO_HORROR,
+    SHORT, NO_COMEDY, NO_HORROR, NO_DOCUMENTARY,
     TV_CLASSIC, TV_GOLDEN_AGE, TV_HD, TV_VINTAGE,
     NO_FANTASY, NO_SITCOM, NO_BBC, NO_SCIFI, NO_WESTERN, MODERN_FILM_ERA, PRE_EIGHTIES_ERA,
     POST_EIGHTIES_ERA, RECENT_ERA, NEW_RELEASE_ERA,
@@ -687,7 +687,11 @@ TV_REGISTRY = {
     "eighties_cartoons_transformers": show_by_title("The Transformers"),
     "eighties_cartoons_smurfs": show_by_title("The Smurfs"),
     "eighties_cartoons_thundercats": show_by_title("ThunderCats"),
-    "eighties_action_tv": show_source(genre="action", era=EIGHTIES),
+    # `NOT genre:documentary` is not decoration -- without it this key
+    # returns **The New Yankee Workshop**, which is tagged `Action;
+    # Documentary` and dated 1989. See NO_DOCUMENTARY in `filters.py`.
+    "eighties_action_tv": show_source(genre="action", era=EIGHTIES,
+                                      extra=NO_DOCUMENTARY),
     "eighties_drama_tv": show_source(genre="drama", era=EIGHTIES),
     "eighties_daytime_movie": movie_source(era=EIGHTIES, extra=NO_HORROR),
     "eighties_crime_tv": show_source(genre="crime", era=EIGHTIES),
@@ -1125,6 +1129,112 @@ TRAVELERS_TABLE_REGISTRY = {
 }
 
 # ============================================================================
+# 3a-2. MAKERS CORNER
+# ============================================================================
+#
+# Nine keys, and **not one of them is shared with another channel**. Makers
+# Corner is the only channel on the lineup that can say that: all eight shows
+# were unclaimed when it was built, so C1 is satisfied by construction rather
+# than by an hours rule, and the bed cannot reach anyone else's shelf (C3).
+#
+# Two G10 notes, both latent rather than live. `show_title:` is a phrase match,
+# so `"This Old House"` would also return **Ask This Old House** and
+# `"How It's Made"` would also return **How It's Made: Dream Cars** -- the two
+# real spinoffs of the two most generic phrases here. Neither is on disk today
+# and the studio bound does not help, because both spinoffs carry the same
+# studio as their parent. If either is acquired, the fix is an explicit
+# `AND NOT show_title:"Ask This Old House"` on this key, not a studio clause.
+# The bounds below are still worth carrying: `PBS` and `Science Channel` are
+# exact, unique studio values in this library (checked -- unlike `BBC`, which
+# also matches BBC Two), and "this old house" is three very common words.
+
+MAKERS_CORNER_REGISTRY = {
+    # --- THE BENCH: the three PBS workshop strips ---------------------------
+    # 479 episodes at a 26.8-minute median, 218 hours -- the largest single
+    # shelf on the channel and its 08:00 strip. Roy Underhill, hand tools, no
+    # electricity. One show per strip, so the hour reads as *The Woodwright's
+    # Shop is on at eight* rather than *woodworking is on* (G3).
+    "woodwrights_shop_tv":
+        'type:episode AND show_title:"The Woodwright\'s Shop"'
+        ' AND show_studio:PBS',
+
+    # 151 episodes, not 281 (V4). Ten of the twenty-one seasons are `.divx`
+    # files -- AVI containers with an extension no scanner in this stack knows,
+    # so 130 episodes and 49.8 hours are invisible to ErsatzTV and to
+    # `library_census.VIDEO_EXTENSIONS` alike. The budget below is written
+    # against the 151 `.avi` episodes that actually index. See
+    # acquisitions.md; the fix is a rename, not a re-rip.
+    #
+    # At 63.9 hours this is the smallest television shelf on the channel and
+    # the one that sets the ceiling, which is why it gets one strip and a small
+    # share of the overnight rather than a daypart.
+    "new_yankee_workshop_tv":
+        'type:episode AND show_title:"The New Yankee Workshop"'
+        ' AND show_studio:PBS',
+
+    # 234 episodes, 112 hours. The largest thing anybody on this channel makes,
+    # which is why it holds 15:00-19:00 -- the four hours when the audience is
+    # coming home to a house of its own.
+    "this_old_house_tv":
+        'type:episode AND show_title:"This Old House" AND show_studio:PBS',
+
+    # --- THE FACTORY FLOOR --------------------------------------------------
+    # 416 episodes at a 21.5-minute median -- the shortest show on the channel
+    # and the only one with no presenter at all. It holds the middle of the day
+    # because it is the one block here you can walk in and out of.
+    "how_its_made_tv":
+        'type:episode AND show_title:"How It\'s Made"'
+        ' AND show_studio:"Science Channel"',
+
+    # --- SIGN-ON AND LIGHTS OUT ---------------------------------------------
+    # 403 episodes, 180 hours. Bob Ross opens the channel at six and closes it
+    # at eleven, and those are the only two places he appears: the quiet show
+    # is the frame around the working day, not part of it.
+    "joy_of_painting_tv":
+        'type:episode AND show_title:"The Joy of Painting" AND show_studio:PBS',
+
+    # --- THE EXPERIMENT: prime ----------------------------------------------
+    # The only hour-long show on the channel -- 43.6-minute median against 21
+    # to 29 for everything else -- which is the whole reason prime is three
+    # hours and every other strip is two (G2). 272 episodes, 210 hours, and it
+    # appears in exactly one block: a channel whose 02:00 wheel plays its 19:00
+    # marquee has no prime.
+    "mythbusters_tv": show_by_title("MythBusters"),
+
+    # --- THE SMALL SHOP: the `youtube/` tree --------------------------------
+    # 28 videos, 10.6 hours, 19.6-minute median -- one person building
+    # furniture, long-form.
+    "pedulla_studio_tv": show_by_title("Pedulla Studio"),
+
+    # 51 videos, 6.1 hours, **6.8-minute median** -- 15 of the 51 are under
+    # five minutes and five are under two. This is the shortest pool on the
+    # lineup and the only one that behaves like interstitial material, which is
+    # exactly why it can hold the tail of an hour that Pedulla's long builds
+    # leave (see THE_SMALL_SHOP in `library/makers.py`).
+    #
+    # **The indexed title is `Timothy Wilmots`, not the folder name.** The
+    # folder is `Timothy Wilmots Woodworking` and `tvshow.nfo` says
+    # `Timothy Wilmots`; ErsatzTV takes the NFO. Same trap Travelers Table hit
+    # with `Bon Appetit: On the Line`, and the reason to read the NFO rather
+    # than `ls` before writing a key against this tree.
+    "timothy_wilmots_tv": show_by_title("Timothy Wilmots"),
+
+    # --- THE BED ------------------------------------------------------------
+    # The four half-hour workshop shows: what the channel is, in one key. A
+    # stall can fire in any slot, so this deliberately excludes MythBusters --
+    # the marquee should not turn up because something failed -- and Joy of
+    # Painting, whose hours are budgeted to the two blocks that bookend the
+    # night. Every title in it is owned outright, so unlike Japanorama's
+    # overnight this bed cannot reach another channel's hours (C3).
+    "makers_corner_vault_tv":
+        'type:episode AND (show_title:"The Woodwright\'s Shop"'
+        ' OR show_title:"The New Yankee Workshop"'
+        ' OR show_title:"This Old House"'
+        ' OR show_title:"How It\'s Made")',
+}
+
+
+# ============================================================================
 # 3b. NICKELODEON
 # ============================================================================
 
@@ -1546,6 +1656,7 @@ MASTER_SOURCES = {
     **ANIMATED_REGISTRY,
     **JAPANORAMA_REGISTRY,
     **TRAVELERS_TABLE_REGISTRY,
+    **MAKERS_CORNER_REGISTRY,
     **NICK_REGISTRY,
     **DISNEY_REGISTRY,
     **CARTOON_NETWORK_REGISTRY,
