@@ -66,7 +66,12 @@ import os
 import re
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+# Run as a module, not a loose script:
+#     python3 -m scripts.testing.key_census
+# The package is importable from the project root, which is what makes
+# `scripts.*` resolve. A sys.path.insert here used to paper over being
+# run from anywhere, at the cost of the package being importable two
+# different ways -- the same cleanup filler/ and nfo/ had on 2026-09-07.
 
 from scripts.testing import install_mocks
 

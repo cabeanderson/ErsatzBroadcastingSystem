@@ -4,17 +4,23 @@ Example Channel Configuration
 This file demonstrates every major feature of the ErsatzTV Scheduling Framework.
 It serves as a reference for creating your own channels.
 
-To run this channel:
-1. Ensure you have content keys defined in library/sources.py
-2. Run from project root: python3 -m channels.example_channel
+To simulate this channel, from the project root:
+
+    python3 -m scripts.testing.run_example
+
+Always as a module (`-m`), never as a loose script -- the package resolves from
+the project root, and that is what makes every `scripts.*` import below work.
+
+`python3 -m scripts.channels.example_channel` works only where a real
+`etv_client` exists (i.e. inside ErsatzTV). On a dev machine the import of
+`scripts.channels` pulls in every channel before this module's code runs, and
+several of them import `etv_client` at module level -- so the mock has to be
+installed *before* the package is touched, which a module inside that package
+cannot do for itself. `run_example` is that one line of ordering.
 """
 
-import os
 import sys
 from datetime import datetime
-
-# Add project root to path if running directly
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scripts.scheduling import run_daily_schedule, ScheduleConfig
 from scripts.scheduling.pre_registration import pre_register_all_content

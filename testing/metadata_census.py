@@ -56,7 +56,12 @@ from collections import Counter, defaultdict
 
 from scripts import config
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+# Run as a module, not a loose script:
+#     python3 -m scripts.testing.metadata_census
+# The package is importable from the project root, which is what makes
+# `scripts.*` resolve. A sys.path.insert here used to paper over being
+# run from anywhere, at the cost of the package being importable two
+# different ways -- the same cleanup filler/ and nfo/ had on 2026-09-07.
 
 MEDIA_ROOT = str(config.MEDIA_ROOT)
 REFERENCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "reference")

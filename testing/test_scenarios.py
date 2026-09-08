@@ -4,16 +4,18 @@ Scenario-based tests for ErsatzTV Scheduling Framework.
 Covers Smoke Tests, Edge Cases, and Feature Toggles.
 """
 
-import sys
-import os
 import io
 import contextlib
 import unittest
 from datetime import datetime, date, timedelta
 from unittest.mock import MagicMock, patch
 
-# Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+# Run as a module, not a loose script:
+#     python3 -m scripts.testing.test_scenarios
+# The package is importable from the project root, which is what makes
+# `scripts.*` resolve. A sys.path.insert here used to paper over being
+# run from anywhere, at the cost of the package being importable two
+# different ways -- the same cleanup filler/ and nfo/ had on 2026-09-07.
 
 # Install mocks
 from scripts.testing import install_mocks
@@ -841,6 +843,101 @@ class TestSilentConfigFailures(unittest.TestCase):
                         bad.append(f"{mod.__name__}.{name} ({type(value.items).__name__})")
         self.assertEqual(bad, [], f"blocks that can never play: {bad}")
         print("✅ every Block in the lineup has iterable items")
+
+
+class TestFrequencyGatesTheAiring(unittest.TestCase):
+    """
+    `frequency` used to pace an appointment without gating it.
+
+    `_find_active_episode` returned the current episode for any date inside
+    the season window, so a show declared `frequency=["FRIDAY"]` inside a
+    block that ran seven nights aired the same episode all seven -- a
+    premiere that premieres every night.
+    """
+
+    def _friday_show(self, **kw):
+        from scripts.logic.factories import annual_show
+        return annual_show(
+            episodes_per_season=[10], show_title="Friday Thing",
+            start_date=date(2026, 3, 6), frequency=["FRIDAY"],
+            reruns="some_rerun_bed", **kw)
+
+    def test_off_frequency_days_resolve_to_nothing(self):
+        from scripts.logic.resolution.pipeline import resolve_scheduled_content
+        show = self._friday_show()
+        # 2026-03-06 is a Friday; walk the week after it.
+        aired = {}
+        for offset in range(7):
+            day = date(2026, 3, 6) + timedelta(days=offset)
+            aired[day.strftime("%A")] = resolve_scheduled_content(show, day)
+
+        self.assertIsNotNone(aired["Friday"], "the show must air on its own day")
+        for name, result in aired.items():
+            if name != "Friday":
+                self.assertIsNone(result, f"aired off-frequency on {name}")
+        print("✅ an appointment airs only on the days it declares")
+
+    def test_the_episode_does_not_advance_on_skipped_days(self):
+        """Gating must not also break pacing: consecutive Fridays step by one."""
+        from scripts.logic.resolution.pipeline import resolve_scheduled_content
+        show = self._friday_show()
+        episodes = [resolve_scheduled_content(show, date(2026, 3, 6) + timedelta(weeks=w))[2]
+                    for w in range(4)]
+        self.assertEqual(episodes, [1, 2, 3, 4], episodes)
+
+    def test_looping_does_not_drop_a_day_the_show_really_airs(self):
+        """
+        The regression this fix nearly introduced.
+
+        `_apply_schedule_looping` rewrites the date into the season window,
+        and the rewritten date lands on an arbitrary weekday. Gating on *that*
+        date instead of the real one dropped Rurouni Kenshin from Toonami's
+        Thursday -- a day it plainly declares. Caught by diffing 14 days of
+        every channel before and after, not by a unit test, which is why the
+        diff is worth doing.
+        """
+        from scripts.logic.factories import annual_show
+        from scripts.logic.resolution.pipeline import resolve_scheduled_content
+        days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"]
+        strip = annual_show(
+            episodes_per_season=[27, 35, 33], show_title="Rurouni Kenshin",
+            start_date=date(2026, 1, 29), frequency=days,
+            reruns="toonami_vault_tv", loop=True, loop_restart_season=False)
+
+        # Well past the end of the run, so looping is certainly active.
+        probe = date(2027, 9, 6)
+        for offset, name in enumerate(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"]):
+            self.assertIsNotNone(
+                resolve_scheduled_content(strip, probe + timedelta(days=offset)),
+                f"looped strip lost {name}, a day it declares")
+        for offset, name in enumerate(["FRIDAY", "SATURDAY", "SUNDAY"], start=4):
+            self.assertIsNone(
+                resolve_scheduled_content(strip, probe + timedelta(days=offset)),
+                f"looped strip aired on {name}, which it does not declare")
+        print("✅ frequency gating survives a looped schedule")
+
+    def test_a_contiguous_strip_does_not_go_dark_waiting_for_autumn(self):
+        """
+        `loop_restart_season` defaulted to the season half of `premiere_season`
+        -- "FALL" -- even in Contiguous Mode, where the caller passed
+        `start_date` and named no premiere season. A weekday strip finishing in
+        June then resolved to nothing until mid-September.
+        """
+        from scripts.logic.factories import annual_show
+        from scripts.logic.resolution.pipeline import resolve_scheduled_content
+        weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+        strip = annual_show(
+            episodes_per_season=[20], show_title="Some Strip",
+            start_date=date(2026, 3, 2), frequency=weekdays, loop=True)
+
+        self.assertIs(strip.scheduling["loop_restart_season"], False,
+                      "a contiguous strip has no premiere season to restart in")
+        # Every weekday of a summer week, long after the 20 episodes ran out.
+        for offset in range(5):
+            day = date(2026, 7, 20) + timedelta(days=offset)
+            self.assertIsNotNone(resolve_scheduled_content(strip, day),
+                                 f"strip went dark on {day}")
+        print("✅ a contiguous strip loops instead of waiting for autumn")
 
 
 class TestLogCaptureAcrossDays(unittest.TestCase):

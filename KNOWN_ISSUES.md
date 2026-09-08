@@ -470,6 +470,35 @@ built channels — 112 channel-days — with zero errors and zero warnings. That
 sweep is also the first one worth trusting, because the logger fix in this
 batch is what makes a multi-day capture real rather than day one repeated.
 
+### 2026-09-08 (later) — the appointment scheduler, and the loose-script hack
+
+Four more closed. Two were real scheduling defects that every channel in the
+lineup was quietly working around by hand:
+
+- **`frequency` paced an appointment without gating it**, so a show declared
+  `["FRIDAY"]` in a seven-night block aired the same episode all seven nights.
+  Six Toonami strips and a Friday-only block variant existed to route around
+  this. It now gates.
+
+- **A Contiguous-Mode strip took `"FALL"` as its loop restart** from a
+  `premiere_season` the caller never set, and went dark from June to September.
+
+**The method mattered more than either fix.** The frequency gate looked right,
+passed all 48 tests, and was wrong: it tested the date *after* looping had
+rewritten it into the season window, which dropped Rurouni Kenshin from
+Toonami's Thursday. What caught it was snapshotting 14 days of all 16 channels
+before and after and diffing item by item — two changed channel-days out of
+224, both a show vanishing from a day it declares. **For a change inside a
+resolver, diff the schedule.** The unit tests only cover what you already
+thought of; the diff covers what you did not. After the correction the same
+diff reads 0 of 224, which is the proof that the entry's claim — every
+appointment was saved by its day-gated block — was true.
+
+The other two were hygiene with a sting: the eleven `sys.path.insert` lines
+are gone, and the shipped example turned out to be broken in *both* directions
+rather than merely teaching a bad habit. See that entry for why a module
+inside a package cannot fix its own package's import order.
+
 ### 2026-09-07 — the music video key never resolved, and the "fixed" note was wrong
 
 - [x] ~~🔴 **`eighties_music_videos` still matches nothing on the server, and the
@@ -1260,7 +1289,36 @@ and the channel aired something. What it aired was wrong.
 
 ### 🟠 Correctness / robustness
 
-- [ ] **`frequency` paces an appointment, it does not gate the airing.**
+- [x] ~~**`frequency` paces an appointment, it does not gate the airing.**~~
+  **Fixed 2026-09-08 in the resolver**, which was the first of the two options
+  this entry offered. `_find_active_episode` now returns `None` when the
+  airing date's weekday is not in an explicitly declared `frequency` list, so
+  the slot falls to the program's `reruns` bed — where a rerun belongs — and
+  the day-gated block variants become belt-and-braces rather than load-bearing.
+
+  **Gated on an explicit list only.** `"weekly"` infers its day from the season
+  window start, which in Broadcast Mode is a seasonal *peak date* the caller
+  never chose; gating on that would silently confine a show to whatever weekday
+  the ramp table happened to land on — the same class of silent failure this
+  change exists to remove. `"daily"` normalises to every day, so gating it is a
+  no-op. All 26 appointments in the library declare explicit day lists.
+
+  > **The trap, worth writing down.** The first version gated on the date
+  > `_find_active_episode` receives — which `_apply_schedule_looping` has
+  > already rewritten into the season window, landing on an arbitrary weekday.
+  > That dropped Rurouni Kenshin from Toonami's **Thursday**, a day it plainly
+  > declares. The real airing date now travels separately as `airing_date`.
+  > **Nothing caught this but the diff**: 48 unit tests stayed green, and it
+  > surfaced only because 14 days of all 16 channels were snapshotted before
+  > and after and compared item by item. For a behaviour change in a resolver,
+  > diff the schedule — the tests cover what you thought of.
+
+  Verified a no-op on the current lineup: **0 changed channel-days out of 224**
+  after the correction, which confirms this entry's claim that every
+  appointment was already saved by its block. Regression-tested by
+  `TestFrequencyGatesTheAiring` — off-frequency days resolve to nothing, the
+  episode index still steps by one across consecutive airings (gating must not
+  break pacing), and a *looped* strip keeps every day it declares.
   `_find_active_episode` returns the current episode for *any* date inside the
   season window; `frequency` only controls how fast the episode index advances.
   So an `annual_show()` with `frequency=["FRIDAY"]` sitting in a block that runs
@@ -1296,7 +1354,15 @@ and the channel aired something. What it aired was wrong.
   end: resolve in the breaker, or make `ScheduleConfig` reject a non-key
   fallback at construction rather than at the worst possible moment.
 
-- [ ] **A Contiguous-Mode strip goes dark waiting for autumn.**
+- [x] ~~**A Contiguous-Mode strip goes dark waiting for autumn.**~~ **Fixed
+  2026-09-08**, exactly as this entry proposed: `loop_restart_season` now
+  defaults to `False` whenever `start_date` was used. A contiguous strip has no
+  premiere season to restart in — the caller passed a date and never named
+  one, so the old default took `premiere_season`'s untouched `"FALL"`.
+  Confirmed against the failure: a weekday strip of 20 episodes from 2026-03-02
+  resolved to nothing on 10 Jun, 20 Jul and 5 Aug under the old default and
+  stays on air under the new one. Cartoon Network's six Toonami strips pass
+  `loop_restart_season=False` by hand and are unaffected.
   `annual_show()` defaults `loop_restart_season` to the season half of
   `premiere_season`, which is `"FALL"` — including in Contiguous Mode, where the
   caller passed `start_date` and never named a premiere season at all. A weekday
@@ -1345,7 +1411,11 @@ and the channel aired something. What it aired was wrong.
   restrict the tier to referenced collections or label dead ones. Related:
   `CYBERPUNK_SPOTLIGHT`, `TIME_TRAVEL_SPOTLIGHT` and `ALIEN_INVASION_SPOTLIGHT`
   in `library/movies.py` are all defined and used by nothing.
-- [ ] **`test_imports.py` is broken, and is not in the repository.** It does
+- [x] ~~**`test_imports.py` is broken, and is not in the repository.**~~
+  **Deleted 2026-09-08.** All four of its import paths were dead, not just the
+  first — `channels`, `scripts.schedule`, `scripts.engines.run_marathon` and
+  `scripts.resolvers`. `scripts.testing.test_refactor` covers what it was for.
+  *Original entry below.* It does
   `from channels import cartoon_network`, which has not been the module path
   since the `scripts/` package reorganisation — confirmed 2026-09-07,
   `ModuleNotFoundError: No module named 'channels'`. Corrected detail: it sits
@@ -1362,7 +1432,26 @@ and the channel aired something. What it aired was wrong.
   (`dispatcher.play_schedule_slot` imports `play_block`; `calendar/assembly.py`
   locally imports `ContentResolver`) indicate `logic`↔`engines` coupling that the
   layering claims to forbid.
-- [ ] **`sys.path` manipulation in `testing/` and `example_channel.py`.** Eleven
+- [x] ~~**`sys.path` manipulation in `testing/` and `example_channel.py`.**~~
+  **Fixed 2026-09-08.** All eleven `sys.path.insert` lines are gone, along with
+  the nine `import os` and three `import sys` that existed only to serve them.
+  Everything under `testing/` runs as `python3 -m scripts.testing.<tool>`, which
+  the README already documented; verified by running each one (`same_title_check`
+  exits 1 on findings, which is its gate behaviour, not a failure).
+
+  > **The shipped example was worse than this entry recorded.** It did not just
+  > *teach* the hack, it shipped a broken one: its insert pointed at `scripts/`
+  > (`'..'`) rather than the project root (`'../..'`), so running it as a loose
+  > script raised `No module named 'scripts'` — the very error the line was
+  > there to prevent. And `-m scripts.channels.example_channel` cannot work off
+  > a real `etv_client` either, because `channels/__init__.py` imports all 16
+  > channels eagerly and several import `etv_client` at module level, so the
+  > package chain runs before the example can install a mock. A module inside a
+  > package cannot fix its own package's import order. **`scripts/testing/run_example.py`**
+  > is that one line of ordering, and the example's docstring now points at a
+  > command that actually runs.
+
+  *Original entry below.* Eleven
   modules under `scripts/testing/` and `channels/example_channel.py` open with
   `sys.path.insert(0, .../'..')` so they can be run as loose scripts. It works,
   but it means the package can be imported two different ways and the shipped

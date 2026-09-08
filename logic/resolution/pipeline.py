@@ -419,9 +419,18 @@ def _apply_schedule_looping(current_date: date, season_windows: List[Tuple[date,
             
     return current_date
 
-def _find_active_episode(current_date: date, season_windows: List[Tuple[date, date, str, int]], episodes_per_slot: int, frequency: str) -> Optional[Tuple[str, int, int]]:
-    """Locates the specific episode for the adjusted date, respecting frequency."""
+def _find_active_episode(current_date: date, season_windows: List[Tuple[date, date, str, int]], episodes_per_slot: int, frequency: str, airing_date: Optional[date] = None) -> Optional[Tuple[str, int, int]]:
+    """Locates the specific episode for the adjusted date, respecting frequency.
+
+    `current_date` is the index date -- possibly rewritten by looping, so its
+    weekday is meaningless. `airing_date` is the real broadcast date and is
+    what the frequency gate must test; passing the looped date instead drops
+    a strip on days it genuinely airs. Defaults to `current_date` for callers
+    that never loop.
+    """
     weekday_map = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+    if airing_date is None:
+        airing_date = current_date
 
     for start, end, key, count in season_windows:
         if start <= current_date < end:
@@ -436,6 +445,29 @@ def _find_active_episode(current_date: date, season_windows: List[Tuple[date, da
             elif frequency == "weekly":
                 # Assume it airs on the same day of the week as the premiere
                 freq_list = [weekday_map[start.weekday()]]
+
+            # Gate, then pace. `frequency` used only to control how fast the
+            # episode index advanced, never whether the show aired at all --
+            # so an appointment sitting in a block that runs seven nights
+            # aired the *same* episode all seven of them: a premiere that
+            # premieres every night. Off-frequency now resolves to nothing,
+            # which sends the slot to the program's `reruns` bed, where a
+            # rerun belongs.
+            #
+            # Every appointment in the library escaped this only because its
+            # block happened to be day-gated: Disney's Saturday events sit in
+            # a Saturday-only slot, and Attack on Titan Junior High needed a
+            # Friday-only block variant to say what `frequency=["FRIDAY"]`
+            # already said.
+            # Gate only on an explicit day list -- the case where the caller
+            # actually named the days. `"weekly"` infers its day from the
+            # season window start, which in Broadcast Mode is a seasonal peak
+            # date the caller never chose; gating on that would silently
+            # confine a show to whatever weekday the ramp table happens to
+            # land on. `"daily"` normalizes to every day, so gating it is a
+            # no-op either way.
+            if isinstance(frequency, list) and weekday_map[airing_date.weekday()] not in frequency:
+                return None
 
             if freq_list:
                 d = start
@@ -503,9 +535,12 @@ def resolve_scheduled_content(program: Program, current_date: date) -> Optional[
         return None
         
     # 2. Handle Looping Logic
+    airing_date = current_date
     current_date = _apply_schedule_looping(current_date, season_windows, loop, loop_restart_season)
     if current_date is None:
         return None
 
-    # 3. Find Active Episode
-    return _find_active_episode(current_date, season_windows, episodes_per_slot, frequency)
+    # 3. Find Active Episode. Looping rewrites `current_date` into the season
+    # window, which lands on an arbitrary weekday -- so the real date has to
+    # travel separately for the frequency gate to mean anything.
+    return _find_active_episode(current_date, season_windows, episodes_per_slot, frequency, airing_date=airing_date)

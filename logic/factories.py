@@ -54,8 +54,17 @@ def annual_show(
 
     # Default: loop restarts in same season as premiere. Only the season half
     # matters -- `frequency` already carries the day of the week.
+    #
+    # Contiguous Mode has no premiere season to restart in. The caller passed
+    # `start_date` and never named one, so `premiere_season` is still sitting
+    # at its "FALL" default -- and taking it meant a weekday strip that
+    # finished its run in June resolved to nothing until mid-September: the
+    # block skips the item, time does not advance, and the slot falls through
+    # to the circuit breaker. A contiguous strip loops immediately, which is
+    # what `start_date` means. Cartoon Network's six Toonami strips pass
+    # `loop_restart_season=False` by hand today for exactly this reason.
     if loop and loop_restart_season is None:
-        loop_restart_season = states.season_label(premiere_season)
+        loop_restart_season = False if start_date else states.season_label(premiere_season)
 
     season_list = []
     generated_queries = {}
