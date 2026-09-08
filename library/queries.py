@@ -46,8 +46,12 @@ def playback_order(query, force=None):
 
 # 3. BUILDER FUNCTIONS
 
-def _escape_quotes(text: str) -> str:
-    """Escape double quotes in text for Lucene queries."""
+def escape_quotes(text: str) -> str:
+    """Escape double quotes in text for Lucene queries.
+
+    Public because the dispatcher builds a `tag_full:` phrase for smart
+    bumpers and needs the same treatment; every builder below already used it.
+    """
     # Escape backslashes first to avoid double-escaping, then escape quotes
     return text.replace('\\', '\\\\').replace('"', '\\"')
 
@@ -105,17 +109,17 @@ def show_source(
 
 def show_by_title(title: str) -> str:
     """Build a TV show search by exact title (returns Episodes)."""
-    safe_title = _escape_quotes(title)
+    safe_title = escape_quotes(title)
     return f'type:episode AND show_title:"{safe_title}"'
 
 def show_container_by_title(title: str) -> str:
     """Build a TV show search by exact title (returns Show Container)."""
-    safe_title = _escape_quotes(title)
+    safe_title = escape_quotes(title)
     return f'type:show AND title:"{safe_title}"'
 
 def movie_by_title(title: str) -> str:
     """Build a movie search by exact title."""
-    safe_title = _escape_quotes(title)
+    safe_title = escape_quotes(title)
     return f'type:movie AND title:"{safe_title}"'
 
 def movie_by_title_year(title: str, year: Union[str, int]) -> str:

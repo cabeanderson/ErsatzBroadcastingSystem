@@ -58,13 +58,30 @@ def _extract_metadata_from_data(data: Any, default_query: Optional[str] = None) 
 def create_marathon_item(raw_item: Any) -> MarathonItem:
     return RegistryItem(raw_item) if isinstance(raw_item, str) else DirectItem(raw_item)
 
+def _resolve_marathon_collection(marathon: Marathon, boss: "DayDirector") -> Any:
+    """Pick the day's content out of whatever shape a Marathon declares.
+
+    Four shapes, in precedence order: a collection picks for itself, a
+    MarathonSequence is passed through whole because its order *is* the
+    marathon, a plain list is picked from deterministically by date, and
+    anything else is already the content.
+    """
+    if hasattr(marathon.collection, "pick"):
+        return marathon.collection.pick(boss)
+    if isinstance(marathon.collection, MarathonSequence):
+        return marathon.collection
+    if isinstance(marathon.collection, list):
+        return boss.pick(f"marathon_{marathon.name}", marathon.collection)
+    return marathon.collection
+
+
 def find_active_marathon(config: "ScheduleConfig", boss: "DayDirector", holiday_ctx: "HolidayContext") -> Tuple[Optional[Marathon], Any, Optional[Tuple[int, int]]]:
     from scripts.library.sources import MASTER_SOURCES
     if not config.enable_marathons or holiday_ctx.is_holiday_season: return None, None, None
     for m in sorted(config.marathons, key=lambda x: x.priority, reverse=True):
         if m.trigger(boss):
             hours = m.hours or (8, 24)
-            collection = m.collection.pick(boss) if hasattr(m.collection, "pick") else (m.collection if isinstance(m.collection, MarathonSequence) else (boss.pick(f"marathon_{m.name}", m.collection) if isinstance(m.collection, list) else m.collection))
+            collection = _resolve_marathon_collection(m, boss)
             if isinstance(collection, str) and (source_data := MASTER_SOURCES.get(collection)) and isinstance(source_data, MarathonDefinition) and source_data.start_hour is not None:
                 hours = (source_data.start_hour, hours[1])
             config.logger.info(f"  {m.name} ACTIVE TODAY")

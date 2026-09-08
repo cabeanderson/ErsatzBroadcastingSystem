@@ -245,6 +245,26 @@ class Block:
         if self.fill_strategy == "fill" and not self.filler:
             raise ValueError(f"Block '{self.name}': fill_strategy='fill' requires 'filler' content.")
 
+        # A bare content key is the one shape the engine cannot iterate.
+        # `_get_next_block_item` accepts a collection (anything with `.pick`)
+        # or a list and returns None for everything else, so `items="key"`
+        # reports "0 items played", never advances time, and falls through to
+        # the circuit breaker -- with no warning, because the block is
+        # otherwise well-formed and the key itself resolves. Three single-key
+        # blocks built this way took out 19:00-23:00 on Japanorama and read as
+        # a content problem for a week. Raise here instead: a config error at
+        # import time is cheap, and the caller wants a collection anyway --
+        # a one-item list resolves once and exhausts the rest of the slot,
+        # while a one-item collection keeps handing the key back, which is
+        # what a strip is for.
+        if isinstance(self.items, str):
+            raise ValueError(
+                f"Configuration Error: Block '{self.name}' was given a bare content "
+                f"key ('{self.items}') as its items. A block iterates a list or a "
+                f"collection, never a string. Use OrderedCollection([\"{self.items}\"]) "
+                f"to repeat the key for the whole slot, or [\"{self.items}\"] to play it once."
+            )
+
         # Validate against nested blocks to prevent recursion crashes
         items_to_check = self.items
         # Unpack items if passed as a Collection object

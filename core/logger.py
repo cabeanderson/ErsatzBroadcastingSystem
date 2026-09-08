@@ -6,6 +6,38 @@ import logging.handlers
 import sys
 from scripts.settings import VERBOSE_LOGGING, LOG_DIR, LOG_LEVEL, LOG_BACKUP_RUNS
 
+class _StdoutHandler(logging.StreamHandler):
+    """A StreamHandler that resolves `sys.stdout` at emit time, not at build time.
+
+    `logging.StreamHandler` stores the stream object it is handed. Because a
+    logger is created once per channel name and then reused, that bound the
+    console handler to whatever `sys.stdout` happened to be during the *first*
+    construction -- so a validation loop shaped like
+
+        for d in dates:
+            with redirect_stdout(buf):
+                sim.simulate_day(d)
+
+    captured day one only: day one built the logger while the redirect was
+    active, and every later day wrote into that first, long-discarded buffer
+    while the caller read an empty one. A 365-day error scan was a one-day
+    scan, and it reported clean because it saw nothing.
+
+    Looking the stream up per emit costs nothing and makes `redirect_stdout`
+    behave the way every caller already assumed it did.
+    """
+
+    @property
+    def stream(self):
+        return sys.stdout
+
+    @stream.setter
+    def stream(self, _value):
+        # StreamHandler.__init__ and setStream() both assign here. Swallow it:
+        # the whole point is that the stream is never captured.
+        pass
+
+
 class ChannelLogger:
     """Standardized logger for channel events."""
     def __init__(self, prefix: str = "[TV]", verbose: bool = VERBOSE_LOGGING):
@@ -32,7 +64,7 @@ class ChannelLogger:
         # Avoid adding duplicate handlers if re-initialized
         if not self._log.handlers:
             # Console Handler (stdout) - Matches original format
-            c_handler = logging.StreamHandler(sys.stdout)
+            c_handler = _StdoutHandler()
             c_format = logging.Formatter(f'{prefix} %(message)s')
             c_handler.setFormatter(c_format)
             self._log.addHandler(c_handler)
@@ -50,6 +82,7 @@ class ChannelLogger:
             # so `pond.log` is always the current run and `pond.log.1` the one
             # before it.
             try:
+                LOG_DIR.mkdir(parents=True, exist_ok=True)
                 log_file = LOG_DIR / f"{clean_name}.log"
                 f_handler = logging.handlers.RotatingFileHandler(
                     log_file, maxBytes=0, backupCount=LOG_BACKUP_RUNS

@@ -41,6 +41,16 @@ class PlayoutSession:
     holiday_ctx: "HolidayContext"
     config: "ScheduleConfig"
 
+def _block_items_are_iterable(block: Block) -> bool:
+    """True when `block.items` is a shape `_get_next_block_item` can walk.
+
+    Anything else yields None on the first call, which the loop reads as
+    "exhausted" -- indistinguishable from an empty list and therefore silent.
+    `Block.__post_init__` rejects the common case (a bare content key) at
+    construction; this is the guard for a block mutated after it.
+    """
+    return hasattr(block.items, "pick") or isinstance(block.items, list)
+
 def _get_next_block_item(block: Block, items_played: int, boss: "DayDirector") -> Optional[Any]:
     """Selects the next item from a block's iterator, handling collections and lists."""
     iterator = block.items
@@ -95,6 +105,13 @@ def _play_block_internal(session: PlayoutSession, block: Block, start_hour: int,
         strict_window = True
 
     boundary_dt = calculate_boundary_dt(session.context, start_hour, effective_end_hour)
+
+    if not _block_items_are_iterable(block):
+        session.logger.error(
+            f"❌ Block '{block.name}' has items of type "
+            f"{type(block.items).__name__}, which cannot be iterated -- the block "
+            f"will play nothing. Use a list or a collection."
+        )
 
     items_played = 0
     epg_name = block.name if block.use_epg_group else None

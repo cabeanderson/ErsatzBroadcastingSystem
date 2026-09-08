@@ -164,14 +164,28 @@ def wait_until_time(api: Any, build_id: str, context: Any, logger: ChannelLogger
     Args:
         api: ErsatzTV API instance
         build_id: Build UUID
-        context: Current playout context (unused but kept for signature consistency)
-        logger: ChannelLogger instance (unused but kept for signature consistency)
+        context: Current playout context. Read only to measure the jump; the
+            parameter also keeps this interchangeable with `fill_until_time`,
+            which falls through to it and is called from the same dispatch.
+        logger: ChannelLogger instance
         target_dt: Absolute datetime to jump to
         rewind_on_reset: Allow the build clock to move backward during a reset
 
     Returns:
         Updated context
     """
+    # Say how much dead air this is. Every gap the checkers have ever found was
+    # a wait that nobody saw being issued -- the build log recorded the block
+    # that ended, never the hole after it. Debug, because a boundary wait of a
+    # few seconds is routine; a run's worth of these is what a gap looks like
+    # before it reaches the guide.
+    current = getattr(context, "current_time", None)
+    if current is not None and target_dt > current:
+        minutes = (target_dt - current).total_seconds() / 60
+        logger.debug(
+            f"⏳ Dead air: {minutes:.0f} min to {target_dt.strftime('%H:%M')}"
+        )
+
     return api.wait_until_exact(build_id, ControlWaitUntilExact(
         when=target_dt,
         rewind_on_reset=rewind_on_reset

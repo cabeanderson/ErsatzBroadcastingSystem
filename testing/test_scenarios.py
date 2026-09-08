@@ -26,7 +26,7 @@ from scripts.core.logger import ChannelLogger
 from scripts.core import DayDirector
 from scripts.logic.calendar.holidays import HolidayContext, get_holiday_target
 from scripts.scheduling.config import ScheduleConfig
-from scripts.logic.structures import Program, Block, DailyOrderedCollection, RandomCollection
+from scripts.logic.structures import Program, Block, DailyOrderedCollection, RandomCollection, OrderedCollection
 from scripts.logic.models import Fallback
 from scripts.logic.resolution.config_utils import resolve_feature
 from scripts.logic.resolution.playback import hour_in_window, calculate_boundary_dt
@@ -683,11 +683,27 @@ class TestFallbackResolution(unittest.TestCase):
         self.assertIsInstance(key, str)
         self.assertIn(key, tuple(movies.GOLDEN_AGE_CINEMA.items))
 
+    def test_block_fallback_is_rejected_at_construction(self):
+        """The guard that fires first: a Block never becomes a config at all."""
+        from scripts.library import disney
+        with self.assertRaises(ValueError) as caught:
+            ScheduleConfig(schedules={"WEEKDAY": {}},
+                           fallback_content=disney.THE_DISNEY_AFTERNOON)
+        self.assertIn("cannot be a Block", str(caught.exception))
+
     def test_block_never_leaks_through_as_a_key(self):
-        """The actual regression: a Block must yield None, not a stringified Block."""
+        """The actual regression: a Block must yield None, not a stringified Block.
+
+        `ScheduleConfig` now refuses a Block outright, so this reaches the
+        runtime guard the only way left -- assigning past the constructor. The
+        defence is kept because the two guards fail differently: the
+        constructor stops a channel being written wrong, this one stops a
+        stringified Block reaching ErsatzTV if it ever gets set another way.
+        """
         from scripts.engines.dispatcher import resolve_fallback_key
         from scripts.library import disney
-        session, last = self._session(disney.THE_DISNEY_AFTERNOON)
+        session, last = self._session("procedural_tv")
+        session.config.fallback_content = disney.THE_DISNEY_AFTERNOON
         key = resolve_fallback_key(session, last)
         self.assertIsNone(key)
 
@@ -769,6 +785,86 @@ class TestCallEfficiency(unittest.TestCase):
         self.assertEqual(api.call_count, 1,
                          "play_item should cost one round trip, not two")
         print("✅ play_item costs one round trip")
+
+
+class TestSilentConfigFailures(unittest.TestCase):
+    """
+    Three shapes that used to resolve fine and then play nothing.
+
+    Each was invisible for the same reason: the config was well-formed, the
+    content key was real, and the only symptom was a slot that quietly
+    produced no items. All three are now refused where they are written.
+    """
+
+    def test_block_rejects_a_bare_content_key(self):
+        """`items="key"` played nothing and warned nothing. Japanorama, 19:00-23:00."""
+        with self.assertRaises(ValueError) as caught:
+            Block(name="Frieren Night", items="frieren_tv")
+        message = str(caught.exception)
+        self.assertIn("bare content", message)
+        self.assertIn('OrderedCollection(["frieren_tv"])', message,
+                      "the error must name the fix, not just the fault")
+
+    def test_block_accepts_the_shapes_the_engine_can_walk(self):
+        self.assertEqual(Block(name="a", items=["k"]).name, "a")
+        self.assertEqual(Block(name="b", items=OrderedCollection(["k"])).name, "b")
+
+    def test_fallback_rejects_a_wrapper_on_either_side(self):
+        """A Collection here stringifies to an object repr and matches nothing."""
+        for side in ("primary", "secondary"):
+            kwargs = {"primary": "a", "secondary": "b", side: RandomCollection(["x"])}
+            with self.assertRaises(ValueError, msg=side) as caught:
+                Fallback(**kwargs)
+            self.assertIn(side, str(caught.exception))
+
+    def test_fallback_accepts_two_keys(self):
+        self.assertEqual(Fallback(primary="a", secondary="b").secondary, "b")
+
+    def test_every_block_in_the_lineup_is_iterable(self):
+        """
+        Repo-wide invariant, not just the one channel that was caught.
+
+        A block whose items the engine cannot walk reports "0 items played"
+        and falls through to the circuit breaker, so it never shows up as an
+        error -- only as a slot that is somehow always fallback.
+        """
+        import importlib, pkgutil
+        from scripts.engines.blocks import _block_items_are_iterable
+        import scripts.channels, scripts.library
+
+        bad = []
+        for pkg in (scripts.channels, scripts.library):
+            for mod_info in pkgutil.iter_modules(pkg.__path__):
+                mod = importlib.import_module(f"{pkg.__name__}.{mod_info.name}")
+                for name, value in vars(mod).items():
+                    if isinstance(value, Block) and not _block_items_are_iterable(value):
+                        bad.append(f"{mod.__name__}.{name} ({type(value.items).__name__})")
+        self.assertEqual(bad, [], f"blocks that can never play: {bad}")
+        print("✅ every Block in the lineup has iterable items")
+
+
+class TestLogCaptureAcrossDays(unittest.TestCase):
+    """
+    The logger bound `sys.stdout` once, so a multi-day scan captured day one.
+
+    This is the bug that reported "0 errors over 365 days" from a single day
+    of log -- a clean result produced by seeing nothing.
+    """
+
+    def test_each_redirect_captures_its_own_day(self):
+        captured = []
+        for day in range(3):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                # Day one constructs the logger while the redirect is active,
+                # which is precisely what used to bind the stream.
+                ChannelLogger("[POND]", verbose=False).info(f"day {day}")
+            captured.append(buf.getvalue())
+
+        for day, text in enumerate(captured):
+            self.assertIn(f"day {day}", text,
+                          f"day {day} wrote into an earlier day's buffer")
+        print("✅ log capture follows redirect_stdout across days")
 
 
 if __name__ == "__main__":

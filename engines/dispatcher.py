@@ -24,6 +24,7 @@ from scripts.logic.resolution.playback import (
 from scripts.logic.resolution.config_utils import (
     resolve_filler_content
 )
+from scripts.library.queries import escape_quotes, extract_title_from_query
 from scripts.settings import MAX_BUMPERS_PER_BREAK
 
 if TYPE_CHECKING:
@@ -242,8 +243,12 @@ def play_smart_bumper(
             continue # Skip API call, we know it fails
 
         # 2. Prepare Query
-        tag_queries = [f'tag_full:"{t.lower()}"' for t in tags]
-        bumper_query = f'type:"other_video" AND tag_full:"{title.lower()}" AND {" AND ".join(tag_queries)}'
+        # Escaped like every builder in queries.py. A title carrying a double
+        # quote -- "Weird Al" Yankovic is the obvious one -- closes the phrase
+        # early and the rest of the query becomes syntax, so the lookup misses
+        # silently and the show loses its bumper.
+        tag_queries = [f'tag_full:"{escape_quotes(t.lower())}"' for t in tags]
+        bumper_query = f'type:"other_video" AND tag_full:"{escape_quotes(title.lower())}" AND {" AND ".join(tag_queries)}'
 
         tags_suffix = "_".join(tags).lower().replace(" ", "")
         bumper_key = f"auto_bumper_{safe_title}_{tags_suffix}"
@@ -325,7 +330,6 @@ def play_bumper(
         query = data.query
     
     if query:
-        from scripts.library.queries import extract_title_from_query
         title = extract_title_from_query(query)
     
     played_smart = False

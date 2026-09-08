@@ -428,6 +428,48 @@ Organising the collection made the key *work*; it could never have made it *fill
 
 ## Open
 
+### 2026-09-08 — the guards moved to where the mistake is made
+
+Nine items closed in one pass. **Three are the same bug wearing different
+clothes: a configuration that resolves correctly and then plays nothing.**
+`Block(items="key")`, a `Fallback` holding a Collection, a `Block` handed to
+`fallback_content` — each one type-checks, names a real content key, survives
+every offline checker, and produces an empty slot that the circuit breaker
+quietly papers over.
+
+Two more are the same *kind* of failure from further away: a logger that made
+a 365-day scan report clean by capturing one day, and an unescaped title that
+dropped a show's bumper without a miss being recorded anywhere. The remaining
+four are hygiene — an import that wrote to disk, two dead parameters, a
+duplicated helper and a six-branch ternary.
+
+The pattern in the fixes is that **the guard belongs where the mistake is
+made, not where it finally hurts.** All three now raise at construction, in
+the channel file, with the correction named in the message. That is a
+different thing from validating at build time: a build-time warning still
+needs someone to read a log, and this repo's whole history is of failures that
+produced no log to read.
+
+Two second-order results worth keeping:
+
+- **A repo-wide invariant beats a fix.** Rather than correct the one bad
+  block, `test_scenarios` now walks every `Block` in `channels/` and
+  `library/` and asserts the engine could iterate it. The Japanorama bug was
+  found by building Japanorama; the test finds the next one on a channel
+  nobody is looking at.
+
+- **Two of the nine were misdiagnosed in this file**, and both misdiagnoses
+  were the same shape as the bugs — a plausible claim nobody re-checked
+  against the code. `circuit_breaker` had already been fixed at both call
+  sites, and the `inject_tag` half of the escaping item would have broken every
+  seasonal injection if "fixed" as written. **Re-read the code before
+  believing this file**, including this entry.
+
+Measured after: 48 unit tests green, and a 7-day simulation across all 16
+built channels — 112 channel-days — with zero errors and zero warnings. That
+sweep is also the first one worth trusting, because the logger fix in this
+batch is what makes a multi-day capture real rather than day one repeated.
+
 ### 2026-09-07 — the music video key never resolved, and the "fixed" note was wrong
 
 - [x] ~~🔴 **`eighties_music_videos` still matches nothing on the server, and the
@@ -598,8 +640,21 @@ Organising the collection made the key *work*; it could never have made it *fill
   over a comparable window. Two minutes across twelve days is the residue of
   whole-item placement and is not worth closing.
 
-- [ ] 🟠 **`Block(items="some_key")` silently plays nothing, and
-  `example_channel.py` documents it as the way to do it.**
+- [x] ~~🟠 **`Block(items="some_key")` silently plays nothing, and
+  `example_channel.py` documents it as the way to do it.**~~ **Fixed
+  2026-09-08.** `Block.__post_init__` now refuses a bare string and names the
+  fix in the message (`OrderedCollection(["key"])` to repeat it for the slot,
+  `["key"]` to play it once), so the failure lands at import time instead of
+  as an empty slot three hours into a build. `engines/blocks.py` keeps a
+  second guard — `_block_items_are_iterable`, logged as an error before the
+  loop — for a block mutated after construction, because the two fail
+  differently: the constructor stops a channel being *written* wrong, the
+  engine stops one *playing* wrong. A repo-wide test
+  (`TestSilentConfigFailures.test_every_block_in_the_lineup_is_iterable`)
+  walks every `Block` in `channels/` and `library/` so this cannot come back
+  on a channel nobody was looking at. All 18 channels import clean and a
+  7-day sweep of the lineup runs 112 channel-days with zero errors.
+  *Original entry below.*
   `engines/blocks.py::_get_next_block_item` accepts a collection (anything with
   `.pick`) or a `list`, and returns `None` for everything else — so a bare
   content-key string makes the block report `0 items played`, time does not
@@ -651,7 +706,13 @@ Organising the collection made the key *work*; it could never have made it *fill
   survive a rescan *and* a rebuild, it is the second case, and the fix is to key
   the block off `<tag>80s</tag>` instead of the year range.
 
-- [ ] 🟡 **A `Fallback` secondary must be a bare content key, never a wrapper.**
+- [x] ~~🟡 **A `Fallback` secondary must be a bare content key, never a
+  wrapper.**~~ **Fixed 2026-09-08.** `Fallback.__post_init__` now rejects a
+  non-string on *either* side — primary had the same hole and no one had
+  looked. The lineup's only live `Fallback` (The Video Jukebox) and the one
+  `pipeline.py` builds internally both already passed keys, so nothing needed
+  changing at the call sites; the point is that the next one cannot be written
+  wrong. *Original entry below.*
   `play_with_fallback` hands the secondary straight to `play_item`, which does not
   resolve wrappers — a `RandomCollection` there is stringified into
   `"<RandomCollection object at 0x...>"`, matches nothing, and still reports
@@ -1003,8 +1064,19 @@ and the channel aired something. What it aired was wrong.
   old wire; only Home Movies was scheduled anywhere. Covered by
   `TestSimulatorDurationGuess`.
 
-- [ ] 🟠 **`ChannelLogger` binds `sys.stdout` at handler construction, which
-  silently breaks multi-day log capture.** `__init__` builds
+- [x] ~~🟠 **`ChannelLogger` binds `sys.stdout` at handler construction, which
+  silently breaks multi-day log capture.**~~ **Fixed 2026-09-08.** The console
+  handler is now `_StdoutHandler`, a `StreamHandler` whose `stream` is a
+  property returning `sys.stdout` at emit time and whose setter discards what
+  `__init__`/`setStream()` try to store. `redirect_stdout` therefore behaves
+  the way every caller already assumed, and the documented workaround --
+  attaching a handler by lowercased prefix after a throwaway `simulate_day` --
+  is no longer needed. Regression-tested by `TestLogCaptureAcrossDays`, which
+  constructs the logger *inside* the first redirect (the exact shape that
+  bound the stream) and asserts each of three days lands in its own buffer.
+  The 7-day, 16-channel sweep on 2026-09-08 is the first multi-day scan in
+  this repo that is trustworthy for the reason it claims to be.
+  *Original entry below.* `__init__` builds
   `logging.StreamHandler(sys.stdout)` behind `if not self._log.handlers`, so the
   handler is created once per channel name and keeps whatever `sys.stdout` was
   bound to at that moment. Any validation loop shaped like
@@ -1201,7 +1273,20 @@ and the channel aired something. What it aired was wrong.
   should return `None` off-frequency, or `annual_show()` should refuse a
   frequency the caller cannot honour. Found in the CN restructure.
 
-- [ ] **`circuit_breaker` never resolves `fallback_content`.**
+- [x] ~~**`circuit_breaker` never resolves `fallback_content`.**~~ **Closed
+  2026-09-08.** Two halves, and only one was still open. **The resolution half
+  was already done** -- `dispatcher.resolve_fallback_key` exists and *both*
+  call sites (`engines/dispatcher.py` and `engines/blocks.py`) route through
+  it. **The entry's claim that "nick, disney, detective and sitcoms all still
+  pass Blocks or Collections" was stale**: every channel in the lineup passes
+  a bare key except Corncob and Good Times, which pass a `RandomCollection` --
+  and a Collection is *valid*, since `resolve_fallback_key` resolves it to a
+  key. Only a `Block` cannot. So the fix taken is the other one the entry
+  proposed: **`ScheduleConfig` now rejects a `Block` fallback at
+  construction**, the guard that fires before a channel ever runs. The runtime
+  defence stays, and `test_scenarios` covers both -- the constructor raising,
+  and `resolve_fallback_key` still returning `None` if a Block is assigned
+  past it. *Original entry below.*
   `playout.circuit_breaker` hands `config.fallback_content` straight to
   `play_item`, which requires a string key — so a `Block` or a Collection logs
   "play_item received non-string content", advances nothing, and the breaker
@@ -1231,11 +1316,22 @@ and the channel aired something. What it aired was wrong.
 
 ### 🟡 Quality / maintainability
 
-- [ ] **Unescaped title interpolation.** `dispatcher.play_smart_bumper` builds
-  `tag:"{title}"` and `pipeline`/`queries.inject_tag` concatenate `tag_query`
-  directly, unlike the `queries.py` builders which use `_escape_quotes`. A title
-  containing a quote breaks the query. (Operator-authored input, so robustness —
-  not security.)
+- [x] ~~**Unescaped title interpolation.**~~ **Fixed 2026-09-08, and the entry
+  was half wrong.** `play_smart_bumper` did interpolate an unescaped title into
+  a `tag_full:` phrase, so a title carrying a double quote (`"Weird Al"
+  Yankovic`) closed the phrase early and the show lost its bumper silently.
+  That half is fixed: the helper is now public as `queries.escape_quotes` and
+  the dispatcher uses it for both the title and the tag values.
+
+  > **Correction.** The `inject_tag` half was a misdiagnosis. `tag_query` there
+  > is not a value to be escaped — it is a hand-authored Lucene *expression*
+  > (`"tag:Christmas"`, and the OR-chains in `SEASONAL_TAG_QUERIES`). Escaping
+  > it would break every seasonal injection in the library. The distinction is
+  > the general one: escape values, never expressions.
+
+  Two function-level imports went with it — `escape_quotes` and
+  `extract_title_from_query` are now module-level in `dispatcher.py`, which is
+  safe because `library/queries.py` imports nothing but `settings`.
 - [ ] **Doc reconciliation (partial).** `ARCHITECTURE.md` structure + determinism
   sections are current, but the "Key Files Deep Dive", "Data Flow Examples", and
   "Configuration Objects" prose still use historical names
@@ -1276,12 +1372,35 @@ and the channel aired something. What it aired was wrong.
 - [ ] **`Any` overuse.** `api`, `context`, and `boss` are typed `Any` in most
   helpers, erasing the value of the otherwise-good hints. Consider a `Protocol`
   for the ErsatzTV API and concrete `DayDirector` hints.
-- [ ] **Duplication.** `ContentResolver.resolve` repeats the
+- [x] ~~**Duplication.** `ContentResolver.resolve` repeats the
   `auto_gen_<title>_<hash>` key-generation block across its `ContentItem` and
-  `dict` branches — unify into one helper.
-- [ ] **Dead params.** `playout.wait_until_time` takes `context`/`logger` "for
-  signature consistency" but ignores them.
-- [ ] **Readability.** `calendar/assembly.py:find_active_marathon` resolves the
-  collection in one ~6-branch nested ternary — expand to an `if/elif` ladder.
-- [ ] **Import side effect.** `settings.py` runs `os.makedirs(LOG_DIR)` at import
-  time; it will raise on a read-only filesystem. Defer to first log write.
+  `dict` branches — unify into one helper.~~ **Fixed 2026-09-08**: both
+  branches call `_auto_gen_key(title, query)`. Verified behaviour-preserving —
+  a `ContentItem` and a `dict` naming the same show still produce the same key
+  (`auto_gen_magnum__p_i__af2418`), and two queries under one title still
+  produce different ones.
+- [x] ~~**Dead params.** `playout.wait_until_time` takes `context`/`logger` "for
+  signature consistency" but ignores them.~~ **Closed 2026-09-08 by making
+  them real, not by deleting them.** The signature parity turned out to be
+  load-bearing: `fill_until_time` has the identical shape, *falls through to*
+  `wait_until_time`, and the dispatcher picks between them by fill strategy —
+  dropping the parameters would have broken that. Instead both now do
+  something. `wait_until_time` logs the dead air it is about to create
+  (`⏳ Dead air: N min to HH:MM`, at debug), measured from `context`. That is
+  the one event this framework has repeatedly failed to notice: every gap the
+  checkers ever found was a wait nobody saw being issued, because the build
+  log recorded the block that ended and never the hole after it.
+- [x] ~~**Readability.** `calendar/assembly.py:find_active_marathon` resolves the
+  collection in one ~6-branch nested ternary — expand to an `if/elif` ladder.~~
+  **Fixed 2026-09-08**: extracted as `_resolve_marathon_collection`, a four-case
+  ladder with the precedence written down (collection picks for itself,
+  MarathonSequence passes through whole because its order *is* the marathon,
+  list is picked deterministically by date, anything else is already content).
+- [x] ~~**Import side effect.** `settings.py` runs `os.makedirs(LOG_DIR)` at import
+  time; it will raise on a read-only filesystem. Defer to first log write.~~
+  **Fixed 2026-09-08.** `core/logger.py` is the only consumer of `LOG_DIR`, so
+  the `mkdir` moved there, inside the `try/except` that already handles an
+  unusable log path. Importing `scripts.settings` — which sits under every
+  module in the framework — no longer touches the disk at all, and the now-unused
+  `import os` went with it. Verified both directions: a missing nested log
+  directory is still created on the first write.

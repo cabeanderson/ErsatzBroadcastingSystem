@@ -16,6 +16,19 @@ from scripts.core.logger import ChannelLogger
 from scripts.logic.models import MarathonDefinition
 from scripts.logic.models import ContentItem
 
+def _auto_gen_key(title: str, query: str) -> str:
+    """Name for an anonymous, on-the-fly content definition.
+
+    The hash is over the query, not just the title, so two definitions that
+    share a title but search differently do not collide onto one key. Shared
+    by the `ContentItem` and `dict` branches of `resolve` -- they had drifted
+    into two copies of the same three lines.
+    """
+    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
+    query_hash = hashlib.md5(query.encode('utf-8')).hexdigest()[:6]
+    return f"auto_gen_{safe_title}_{query_hash}"
+
+
 class ContentResolver:
     def __init__(self, api: Any, build_id: str, registry: Dict[str, Any], logger: ChannelLogger, global_filter: Optional[str] = None):
         self.api: Any = api
@@ -140,12 +153,8 @@ class ContentResolver:
             title = key.title
             order = key.order
             query = key.query if key.query else show_by_title(title)
-            
-            # Generate unique key based on title AND query to prevent collisions
-            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
-            query_hash = hashlib.md5(query.encode('utf-8')).hexdigest()[:6]
-            generated_key = f"auto_gen_{safe_title}_{query_hash}"
-            
+            generated_key = _auto_gen_key(title, query)
+
             # Cache on the object itself
             key._cached_generated_key = generated_key
             key._cached_query = query
@@ -158,17 +167,9 @@ class ContentResolver:
             # Generate a key and query
             title = key["title"]
             order = key.get("order", "Shuffle")
-            
-            if "query" in key:
-                query = key["query"]
-            else:
-                query = show_by_title(title)
-            
-            # Generate unique key based on title AND query
-            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).lower()
-            query_hash = hashlib.md5(query.encode('utf-8')).hexdigest()[:6]
-            generated_key = f"auto_gen_{safe_title}_{query_hash}"
-            
+            query = key["query"] if "query" in key else show_by_title(title)
+            generated_key = _auto_gen_key(title, query)
+
             self.register_dynamic_query(generated_key, query, order)
             return generated_key
             

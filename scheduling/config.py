@@ -11,6 +11,7 @@ from scripts.logic.calendar.timeslots import (
 from scripts.logic.models import (
     Marathon
 )
+from scripts.logic.structures import Block
 from scripts.logic.profiles import HOLIDAY_PROFILES
 from scripts.settings import (
     ENABLE_HOLIDAY_INJECTION, ENABLE_COMMERCIALS,
@@ -78,6 +79,19 @@ class ScheduleConfig:
         self.filler_content = filler_content
         self.bumpers = bumpers
         self.logger = logger or ChannelLogger() # Default to a basic logger
+        # A Block cannot be a fallback. `dispatcher.resolve_fallback_key`
+        # resolves a key or a Collection down to a content key, but a Block is
+        # a container of slots with no single key to reach -- it resolves to
+        # itself, the breaker skips ahead instead of playing it, and the
+        # channel has a fallback that can never fire. Caught here so the error
+        # lands at channel definition rather than at the moment the schedule is
+        # already stalled.
+        if isinstance(fallback_content, Block):
+            raise ValueError(
+                f"Configuration Error: fallback_content cannot be a Block "
+                f"('{fallback_content.name}'). The circuit breaker plays a single "
+                f"content key; pass a key or a Collection instead."
+            )
         self.fallback_content = fallback_content
         # Support both old and new naming, prefer new
         self.commercial_duration = commercial_duration

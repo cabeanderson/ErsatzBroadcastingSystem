@@ -1,7 +1,6 @@
 """
 Configuration settings for the ErsatzTV Scheduling Framework.
 """
-import os
 from pathlib import Path
 from datetime import date
 
@@ -13,11 +12,14 @@ from datetime import date
 # scripts/settings.py -> scripts/ -> project_root/
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Directory for logs
+# Directory for logs.
+#
+# Not created here. `import scripts.settings` sits under every module in the
+# framework, so making a directory at import time meant merely importing the
+# package wrote to disk -- and raised on a read-only filesystem, where nothing
+# was going to log anyway. `core.logger` creates it when it actually opens a
+# log file, inside the try/except that already handles a log path it cannot use.
 LOG_DIR = BASE_DIR / "logs"
-
-# Ensure directories exist
-os.makedirs(LOG_DIR, exist_ok=True)
 
 # ==========================================
 # FRAMEWORK BEHAVIOR

@@ -119,9 +119,26 @@ class Fallback:
     Represents a content choice with a fallback option.
     The scheduler will try to play `primary`. If it's empty or fails,
     it will immediately play `secondary`.
+
+    Both sides must be bare content keys. `playout.play_with_fallback` hands
+    them straight to `play_item`, which resolves nothing -- a Collection here
+    is stringified into "<RandomCollection object at 0x...>", matches no
+    content, and still reports success, so the slot fills with a repeated
+    object repr. That failure is invisible from the guide, which is why it is
+    caught here at definition time instead.
     """
     primary: Any
     secondary: Any
+
+    def __post_init__(self):
+        for side in ("primary", "secondary"):
+            value = getattr(self, side)
+            if not isinstance(value, str):
+                raise ValueError(
+                    f"Configuration Error: Fallback {side} must be a content key "
+                    f"(a string), got {type(value).__name__}. Wrappers are not "
+                    f"resolved here -- name the key directly."
+                )
 
 @dataclass
 class Swap:
