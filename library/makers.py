@@ -71,14 +71,20 @@ running at about 53% of what F6 would permit.
 
 **The New Yankee Workshop is 151 episodes, not 281.** Ten of its twenty-one
 seasons -- 1-4, 10, 12-14, 18-19 -- are `.divx` files. They are AVI containers
-(`ffprobe` says `format_name=avi`) with an extension that is in nobody's
-allowlist: not `library_census.VIDEO_EXTENSIONS`, and, on the evidence that the
-manifest and the folder agree at exactly 151, not ErsatzTV's either. **130
-episodes and 49.8 hours of the show's entire early run are invisible to the
-whole stack.** The budget below is written against the 151 that index. The fix
-is a rename and it is on acquisitions.md; until
-it happens, Norm Abram is the smallest shelf on the channel and sets its
-ceiling.
+(`ffprobe` says `format_name=avi`, mpeg4 video, mp3 or ac3 audio), and 129 of
+the 151 `.avi` episodes that *do* index are the same container and codec, so
+the content is not the problem -- the extension is. `.divx` is not in
+`library_census.VIDEO_EXTENSIONS`, so **130 episodes and 49.8 hours are
+certainly invisible to every offline checker in this repo.**
+
+**Whether ErsatzTV also skips them is unconfirmed**, and the first version of
+this note said otherwise on circular evidence: the manifest reads 151 because
+`library_census` produced it under its own allowlist, which says nothing about
+the server's. The budget below is written against 151 because that is the
+conservative number -- if ErsatzTV sees all 281, this key has more slack than
+the table claims (45 days rather than 25), which is a pleasant error rather
+than a broken one. Check the show's episode count on the box before renaming
+anything; see acquisitions.md.
 
 --------------------------------------------------------------------------
 THE ARITHMETIC (F6)

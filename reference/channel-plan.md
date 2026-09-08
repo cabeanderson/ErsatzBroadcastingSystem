@@ -1033,13 +1033,20 @@ shorts and another Pedulla, and closes the hour clean.
 
 **The New Yankee Workshop is 151 episodes on air and 281 on disk (V4).** Ten of
 its twenty-one seasons — 1–4, 10, 12–14, 18–19 — are `.divx` files. `ffprobe`
-says `format_name=avi`; the extension is simply in nobody's allowlist, not
-`library_census.VIDEO_EXTENSIONS` and, on the evidence that the manifest and the
-folder agree at exactly 151, not ErsatzTV's either. **130 episodes and 49.8
-hours — the show's entire early run — are invisible to the whole stack.** The
-budget above is written against the 151 that index, which is why Norm Abram has
-the smallest shelf on the channel and sets its ceiling. The fix is a rename and
-it is on acquisitions.md.
+says `format_name=avi`, mpeg4 video, mp3 or ac3 audio — and **129 of the 151
+`.avi` episodes that do index are the same container and codec**, so the files
+are not the problem, the extension is. `.divx` is not in
+`library_census.VIDEO_EXTENSIONS`, so those 130 episodes and 49.8 hours are
+certainly invisible to every offline checker here.
+
+**Whether ErsatzTV also skips them is unconfirmed, and the first version of this
+note claimed it did on circular evidence** — the manifest reads 151 because
+`library_census` generated it under its own allowlist, which says nothing about
+the server's. The budget above uses 151 because it is the conservative number:
+if ErsatzTV sees all 281, `new_yankee_workshop_tv` has 45 days of cycle rather
+than 25, and nothing else moves. **Check the show's episode count on the box
+before renaming anything** — if it reads 281, the only thing that needs fixing
+is `VIDEO_EXTENSIONS`. See acquisitions.md.
 
 ### The Beat
 Music videos only — no Daria, no Jersey Shore, and *The Beatles: Get Back* is a documentary, not a music video. 64 artist folders, currently unstructured. Decide the organizing axis before foldering, because the folder tree becomes the tag schema. MTV's own rotation blocks are the obvious model: morning mix, afternoon countdown, late-night alternative.

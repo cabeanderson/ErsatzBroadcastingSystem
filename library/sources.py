@@ -1159,11 +1159,13 @@ MAKERS_CORNER_REGISTRY = {
         ' AND show_studio:PBS',
 
     # 151 episodes, not 281 (V4). Ten of the twenty-one seasons are `.divx`
-    # files -- AVI containers with an extension no scanner in this stack knows,
-    # so 130 episodes and 49.8 hours are invisible to ErsatzTV and to
-    # `library_census.VIDEO_EXTENSIONS` alike. The budget below is written
-    # against the 151 `.avi` episodes that actually index. See
-    # acquisitions.md; the fix is a rename, not a re-rip.
+    # files -- AVI containers holding the same mpeg4/mp3 streams as the 151
+    # that do index, behind an extension `library_census.VIDEO_EXTENSIONS` does
+    # not list. Those 130 episodes and 49.8 hours are certainly invisible to
+    # the offline checkers; whether ErsatzTV skips them too is **unconfirmed**
+    # -- the manifest's 151 is the census's own allowlist talking, not the
+    # server's. Budgeted at 151 because that is the conservative number. See
+    # acquisitions.md; the fix, if it is needed, is a rename, not a re-rip.
     #
     # At 63.9 hours this is the smallest television shelf on the channel and
     # the one that sets the ceiling, which is why it gets one strip and a small

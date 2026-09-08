@@ -469,12 +469,18 @@ block.
 
 **And a file the scanner cannot see is not on disk, whatever `ls` says.** Ten
 of The New Yankee Workshop's twenty-one seasons are `.divx` files — AVI
-containers (`ffprobe` says `format_name=avi`) with an extension that is in
-nobody's allowlist: not `library_census.VIDEO_EXTENSIONS`, and, since the
-manifest and the folder agree at exactly 151 episodes, not ErsatzTV's either.
-**130 episodes and 49.8 hours of the show's early run are invisible to the
-whole stack**, and the show was budgeted as the smallest shelf on its channel
-because of it. This is V3's SHOW_ROOTS lesson one level down — there, a scanner
+containers (`ffprobe` says `format_name=avi`) behind an extension that
+`library_census.VIDEO_EXTENSIONS` does not list, so **130 episodes and 49.8
+hours of the show's early run are invisible to every checker here**, and the
+show was budgeted as the smallest shelf on its channel because of it.
+
+**The corollary bit immediately, in the note that recorded the finding.** That
+note also said ErsatzTV could not see the files, on the grounds that the
+manifest and the folder agreed at 151 — but the manifest *is* `library_census`
+output, so it was the allowlist agreeing with itself. **A scanner's own report
+is not evidence about a different scanner.** What the server indexes is a
+question only the server answers; until it does, budget the conservative number
+and say which one you used. This is V3's SHOW_ROOTS lesson one level down — there, a scanner
 knew about fewer *libraries* than the server; here it knows about fewer
 *extensions*. Both report absence as certainty. When a count looks low, list the
 folder's extensions before believing it:
