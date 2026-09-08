@@ -48,6 +48,12 @@ jobs:
       - name: Unit tests
         run: python -m unittest scripts.testing.test_scenarios -v
 
+      # Prose has no test, which is how IMPORTS.md came to document a module
+      # layout that had not existed for months. This imports every documented
+      # import line and looks up every documented symbol.
+      - name: Docs match the code
+        run: python -m scripts.testing.doc_audit
+
   hygiene:
     name: Publish hygiene
     runs-on: ubuntu-latest

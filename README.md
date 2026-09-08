@@ -133,7 +133,37 @@ The bundled test scripts already do this and are a good smoke check:
 ```bash
 python3 -m scripts.testing.test_refactor     # imports + resolution
 python3 -m unittest scripts.testing.test_scenarios
+python3 -m scripts.testing.run_example       # simulate the example channel
 ```
+
+> **Always `-m`, from the project root.** Every tool imports as `scripts.*`, so
+> running one as a loose script (`python3 scripts/testing/key_census.py`) fails
+> with `No module named 'scripts'`.
+
+### Checkers
+
+Two families, and the difference matters. **Offline** checkers ask "can the
+library satisfy this schedule" and run anywhere. **Live** checkers read the
+running server's XMLTV export and ask "is the right thing actually on the air"
+— the question the offline ones cannot answer, and the one that has caught most
+real faults. A stale playout and a bad config look identical from offline.
+
+```bash
+# Offline -- simulate and inspect
+python3 -m scripts.testing.visualize_week      # one channel, a week, as a grid
+python3 -m scripts.testing.collision_report    # cross-channel lineup overlaps
+python3 -m scripts.testing.same_title_check    # same title, same hour, two channels
+python3 -m scripts.testing.same_show_check     # same show via different keys
+python3 -m scripts.testing.key_census          # every registry key resolves
+python3 -m scripts.testing.validate_titles     # every scheduled title resolves
+python3 -m scripts.testing.doc_audit           # the docs still match the code
+
+# Live -- read the server's guide
+python3 -m scripts.testing.continuity_check --future-only   # dead air / gaps
+python3 -m scripts.testing.key_airing_check                 # keys that never air
+```
+
+Checkers exit non-zero when they find something, so they can gate a pipeline.
 
 ### Deployment
 

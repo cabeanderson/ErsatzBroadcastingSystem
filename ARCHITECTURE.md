@@ -64,25 +64,51 @@ scripts/
 │   ├── detective.py         # Mystery/detective programming
 │   └── sitcoms, scifi, eighties, british, classic_movies, ...
 │
-└── testing/
-    ├── simulator.py         # Mock API + ChannelSimulator (auto-installs etv_client mock)
-    ├── visualize_week.py    # CLI weekly schedule visualizer (one channel)
-    ├── collision_report.py  # CLI cross-channel lineup report (all channels)
-    ├── same_title_check.py   # CLI same-title-at-the-same-hour check (all channels)
-    ├── validate_titles.py    # CLI check that every scheduled title resolves
-    ├── key_census.py         # CLI check that every registry key resolves (offline)
-    ├── library_census.py    # CLI census of the media on disk -> reference/library-*
-    ├── media_inventory.py   # CLI registry inventory -> reference/registry-inventory.md
-    ├── scan_library.py      # CLI media source scanner
-    └── test_*.py            # Smoke / scenario / refactor tests
+├── testing/                 # Simulator and checkers. All run as
+│   │                        #   python3 -m scripts.testing.<tool>
+│   ├── simulator.py         # Mock API + ChannelSimulator (auto-installs etv_client mock)
+│   ├── run_example.py       # Simulate channels/example_channel.py (import ordering)
+│   ├── visualize_week.py    # CLI weekly schedule visualizer (one channel)
+│   ├── collision_report.py  # CLI cross-channel lineup report (all channels)
+│   ├── same_title_check.py  # CLI same-title-at-the-same-hour check (all channels)
+│   ├── same_show_check.py   # CLI same-show check, incl. different keys for one show
+│   ├── validate_titles.py   # CLI check that every scheduled title resolves
+│   ├── key_census.py        # CLI check that every registry key resolves (offline)
+│   ├── key_airing_check.py  # CLI check that a scheduled key actually airs (live guide)
+│   ├── continuity_check.py  # CLI dead-air/gap finder against the live XMLTV export
+│   ├── library_census.py    # CLI census of the media on disk -> reference/library-*
+│   ├── media_inventory.py   # CLI registry inventory -> reference/registry-inventory.md
+│   ├── metadata_census.py   # CLI metadata coverage census
+│   ├── list_content.py      # CLI content key lister
+│   ├── scan_library.py      # CLI media source scanner
+│   └── test_*.py            # Smoke / scenario / refactor tests
+│
+├── filler/                  # WORKSTATION TOOLS - acquire, cut and tag interstitials.
+│   │                        #   Not imported by the scheduler; needs ffmpeg/ffprobe.
+│   │                        #   python3 -m scripts.filler.<tool>
+│   ├── scout_archive.py     # Find candidate reels
+│   ├── fetch_archive.py     # Download them
+│   ├── split_reels.py       # Cut a reel into segments
+│   ├── split_promos.py      # Cut promos out of a segment
+│   ├── analyze_spots.py     # Transcribe + classify spots (faster-whisper)
+│   ├── transcript_gate.py   # Filter on transcript content
+│   ├── dedupe_bumpers.py    # Perceptual-hash de-duplication
+│   ├── contact_sheet.py     # Visual review sheets
+│   ├── file_us_commercials.py, recategorize_commercials.py
+│   ├── sort_bumper_positions.py, sync_interstitials.py
+│   └── generate_filler_nfo.py
+│
+└── nfo/                     # Sidecar metadata tools (needs lxml)
+    └── normalize_tag_case.py
 ```
 
-> **Note:** `schedule.py` is now `scheduling/runner.py` (class `ScheduleRunner`,
-> entry point `run_daily_schedule`). The old flat `logic/*.py` files moved under
-> `logic/calendar/` and `logic/resolution/`; the marathon and sequential engines
-> were folded into `engines/blocks.py`. Some prose further below may still use the
-> historical names — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for the
-> doc-reconciliation item.
+> **Naming note.** `schedule.py` is now `scheduling/runner.py` (class
+> `ScheduleRunner`, entry point `run_daily_schedule`). The old flat `logic/*.py`
+> files moved under `logic/calendar/` and `logic/resolution/`, and the marathon
+> and sequential engines were folded into `engines/blocks.py` — a marathon is
+> converted to an ordinary `Block` before it reaches an engine, and Appointment
+> TV is episode math in the resolution pipeline. The prose below was reconciled
+> to these names on 2026-09-08.
 
 ---
 
@@ -103,14 +129,17 @@ scripts/
 **Dependencies:** Core  
 **Principle:** "What should we do about it?"
 
-- `holidays.py` - Holiday detection and content overrides
-- `seasonal.py` - Seasonal content blending strategies
-- `timeslots.py` - Time block definitions and expansion
+- `calendar/holidays.py` - Holiday detection and content overrides
+- `calendar/seasonal.py` - Seasonal content blending strategies
+- `calendar/timeslots.py` - Time block definitions and expansion
+- `calendar/assembly.py` - Day shape: `assemble_day_schedule()` + marathon->Block
 - `profiles.py` - Universal holiday ramp profiles
 - `triggers.py` - Composable event trigger system
-- `resolution.py` - Content resolution pipeline (THE BRAIN)
-- `playback.py` - Playback strategies and utilities
-- `programming.py` - Dataclass definitions for config objects
+- `resolution/pipeline.py` - Content resolution pipeline (THE BRAIN)
+- `resolution/playback.py` - Playback strategies and utilities
+- `models.py` - Dataclass definitions for config objects
+- `structures.py` - Collections + the `Block`/`Program` containers
+- `factories.py` - `annual_show()` and friends
 
 ### Layer 3: Library (Content Organization)
 **Purpose:** Content definitions and resolution  
@@ -118,26 +147,38 @@ scripts/
 **Principle:** "What content exists and how do we access it?"
 
 - `sources.py` - All Lucene queries in MASTER_SOURCES dict
-- `collections.py` - Smart collection objects (Random, Ordered, etc.)
-- `structures.py` - Data definitions for complex scheduling blocks
-- `resolver.py` - Translates content keys to ErsatzTV registrations
+- `queries.py` - Query builders, tag injection, parsing utilities
+- `filters.py` - `SEASONAL_TAG_QUERIES`, `INJECTION_RULES`
+- `<genre>.py` - Blocks and collections per genre (sitcoms, horror, animation, ...)
+
+> Collections and `Block`/`Program` live in `logic/structures.py`, not here;
+> the resolver that registers keys with ErsatzTV is
+> `logic/resolution/resolver.py`.
 
 ### Layer 4: Engines (Complex Behaviors)
 **Purpose:** Specialized playback behaviors  
 **Dependencies:** Core, Logic, Library  
 **Principle:** "How do we execute complex programming?"
 
-- `marathon.py` - Sequential episode marathons with EPG grouping
-- `blocks.py` - Branded blocks with intro/outro/bumpers
-- `sequential.py` - Appointment TV and Series Relay execution
+- `blocks.py` - `PlayoutSession`, `play_block`, `play_program`. Branded blocks
+  with intro/outro/bumpers, and marathons -- which arrive here already converted
+  to ordinary Blocks, so there is no separate marathon engine.
+- `dispatcher.py` - `play_schedule_slot`, commercials, bumpers, fill/bridge
+
+> Appointment TV has no engine either: the episode math is
+> `logic/resolution/pipeline.py::resolve_scheduled_content` and `play_program`
+> executes it.
 
 ### Layer 5: Orchestration (Top Level)
 **Purpose:** Main execution loop  
 **Dependencies:** All layers  
 **Principle:** "Coordinate everything to build a schedule"
 
-- `schedule.py` - Main daily schedule loop
-- `playout.py` - API utilities and logging
+- `scheduling/runner.py` - `ScheduleRunner`, the main daily loop; entry point
+  `run_daily_schedule()`
+- `scheduling/config.py` - `ScheduleConfig`
+- `scheduling/pre_registration.py` - Pre-register all content before the loop
+- `playout.py` - API utilities, circuit breaker, EPG grouping
 
 ### Layer 6: Configuration (Channels)
 **Purpose:** Declarative channel definitions  
@@ -159,7 +200,7 @@ library/ │
   ↓      │
 engines/ ←┘
   ↓
-schedule.py
+scheduling/
   ↓
 channels/
 ```
@@ -176,8 +217,12 @@ channels/
 ## Key Files Deep Dive
 
 ### `scheduling/runner.py` - THE ARCHITECT
-**Responsibility:** Orchestrate daily schedule execution  
-**Key Functions:**
+**Responsibility:** Orchestrate daily schedule execution
+**Key API:**
+- `ScheduleRunner(api, context, build_id, config)` - the loop object
+- `ScheduleRunner.run()` - executes one build
+- `run_daily_schedule(api, context, build_id, config)` - the entry point a
+  channel's `build_playout()` calls; wraps the two above
 
 **Flow:**
 1. Detect day type (weekday/Saturday/Sunday)
@@ -190,13 +235,18 @@ channels/
    - Handle filler if needed
 
 
-### `logic/calendar/assembly.py` - THE INTERFACE
-**Responsibility:** Main temporal intelligence interface  
-**Note:** Previously `core/director.py`
+### `core/director.py` - THE INTERFACE
+**Responsibility:** Main temporal intelligence interface. `DayDirector` is the
+one object that answers "what day is it, and what does that imply" — every
+trigger and every probabilistic choice goes through it.
 **Key Methods:**
-- `DayDirector` class implementation
-- `build_context()` - Factory for creating directors
-- `pick(key, items)` - Deterministic daily selection
+- `DayDirector(context)` - constructed once per build from the playout context
+- `pick(key, items)` / `pick_weighted(key, items_with_weights)` - deterministic
+  daily selection (same date → same choice, across processes)
+- `roll(probability, key)` - deterministic dice
+- `has` / `has_any` / `has_all` / `had` - label tests
+- `window(event, before, after)`, `days_until`, `days_since`
+- `signal(event, window, hangover)` - the ramp strength curve
 - `season_vibe` - Current seasonal blend (WINTER/SPRING/SUMMER/FALL)
 
 **Labels Auto-Generated:**
@@ -210,9 +260,15 @@ channels/
 
 
 ### `logic/resolution/pipeline.py` - THE BRAIN
-**Responsibility:** Resolve schedule targets to final content keys  
-**Location:** `logic/resolution/pipeline.py`
- - `resolve_target()` - Full resolution pipeline
+**Responsibility:** Resolve schedule targets to final content keys
+**Key Functions:**
+- `resolve_content(target, boss, holiday_ctx, config, resolver, logger)` - the
+  full pipeline; returns a `ResolutionResult` carrying either a `key` or a
+  `wrapper` (Block/Program/Fallback) plus the `source` that won
+- `apply_injections(...)` - seasonal + thematic tag injection over a resolved key
+- `extract_primary_content(...)` - reach the underlying key through a wrapper
+- `resolve_scheduled_content(program, current_date)` - Appointment TV episode
+  math: which episode of a dated run airs today, or `None` off-frequency
 
 **Resolution Order (ENFORCED):**
 1. Inner dict resolution (day-of-week labels)
@@ -235,7 +291,8 @@ target = {
 }
 
 # Output: Final content key string
-final_key = resolve_target(target, boss, holiday_ctx, config, resolver, logger)
+result = resolve_content(target, boss, holiday_ctx, config, resolver, logger)
+final_key = result.resolved_content
 # → "halloween_tv" (if Halloween active)
 # → "movie_night_tv" (if Tuesday and no holiday)
 # → "cozy_tv" (if winter peak and not Tuesday)
@@ -270,12 +327,20 @@ MASTER_SOURCES = {
 
 ---
 
-### `library/collections.py` - THE ORGANIZERS
-**Responsibility:** Smart collection objects  
+### `logic/structures.py` - THE ORGANIZERS
+**Responsibility:** Smart collection objects, plus the `Block` and `Program`
+containers themselves.
 **Key Classes:**
 - `RandomCollection` - Random selection each time
 - `OrderedCollection` - Cycles through list in order
+- `DailyOrderedCollection` - Cycles, but resets to the top each day
 - `WeightedCollection` - Weighted random selection
+- `MarathonSequence` - An ordered run whose order *is* the marathon
+- `Block`, `Program` - the schedulable containers
+
+> `Block.items` must be a list or a collection, **never a bare content key**.
+> A string cannot be iterated, so `items="some_key"` plays nothing at all —
+> the constructor rejects it and names the fix.
 
 **Example:**
 ```python
@@ -292,10 +357,15 @@ DBZ_SAGAS = OrderedCollection([
 
 ---
 
-### `engines/marathon.py` - THE MARATHON RUNNER
-**Responsibility:** Execute multi-episode marathons  
-**Key Function:**
-- `run_marathon()` - Play episodes sequentially
+### `engines/blocks.py` - THE MARATHON RUNNER
+**Responsibility:** Execute multi-episode marathons. There is no separate
+marathon engine: `logic/calendar/assembly.py` converts an active `Marathon`
+into an ordinary `Block` of `Program`s (`_convert_marathon_to_block`), and
+`play_block` runs it like any other block.
+**Key Functions:**
+- `find_active_marathon(config, boss, holiday_ctx)` - which marathon, if any
+- `_convert_marathon_to_block(...)` - marathon → Block
+- `play_block(session, item, start_hour, end_hour, ...)` - runs it
 
 **Features:**
 - Auto-detects starting episode from query
@@ -316,11 +386,15 @@ DBZ_SAGAS = OrderedCollection([
 
 ---
 
-### `engines/sequential.py` - THE SCHEDULER
-**Responsibility:** Execute date-based sequential programming
+### Appointment TV - THE SCHEDULER
+**Responsibility:** Execute date-based sequential programming. Also has no
+engine of its own. A `Program` carries a `scheduling` dict (built by
+`logic/factories.py::annual_show`), `logic/resolution/pipeline.py::resolve_scheduled_content`
+works out which episode is due, and `engines/blocks.py::play_program` plays it.
 **Key Functions:**
-- `play_appointment_block()` - Absolute date scheduling (e.g. Lost S1 in 2026)
-- `play_series_relay()` - Relative sequential scheduling (Show A -> Show B)
+- `annual_show(...)` - builds the scheduled `Program` (Broadcast or Contiguous mode)
+- `resolve_scheduled_content(program, current_date)` - episode due today, or `None`
+- `play_program(...)` - plays it, falling back to the `reruns` bed when `None`
 
 **Features:**
 - Date-based season resolution
@@ -555,7 +629,46 @@ Appointment Blocks are **immune** to holiday overrides.
 - **Why?** Narrative continuity. You don't want a random "Halloween Special" interrupting the serialized plot of *Breaking Bad* or *Lost*.
 - **Implementation:** The `AppointmentBlock` engine bypasses the standard resolution pipeline where holiday injection happens.
 
-#### 4. Filler Drift
+#### 4. Frequency Gates the Airing, Not Just the Pace
+`frequency` says *which days the show airs*, and is enforced. On any other day
+`resolve_scheduled_content()` returns `None` and the slot falls through to the
+program's `reruns` bed.
+
+```python
+annual_show(
+    show_title="Yellowstone",
+    episodes_per_season=[9, 10, 10],
+    start_date=date(2026, 1, 5),
+    frequency=["FRIDAY"],       # airs Fridays -- and only Fridays
+    reruns="modern_western_tv", # every other night in this slot
+)
+```
+
+**This used to only pace, not gate.** `frequency` controlled how fast the
+episode index advanced, so a show declared `["FRIDAY"]` inside a block that
+ran seven nights aired the *same episode* all seven of them — a premiere that
+premieres every night. Channels worked around it by day-gating the block
+instead, which is no longer necessary (though it does no harm).
+
+Two details worth knowing:
+
+- **Only an explicit day list gates.** `"weekly"` infers its day from the
+  season window start, which in Broadcast Mode is a seasonal *peak date* the
+  caller never chose — gating on that would silently confine a show to
+  whatever weekday the ramp table landed on. `"daily"` means every day, so
+  gating it is a no-op.
+- **The gate reads the real broadcast date**, not the looped one. When a
+  looping schedule wraps, the date is rewritten back into the season window
+  and lands on an arbitrary weekday; testing *that* date drops a strip from
+  days it genuinely airs.
+
+#### 5. Loop Restart Depends on the Mode
+`loop_restart_season` defaults to the premiere season in Broadcast Mode, and to
+`False` — restart immediately — whenever `start_date` was used. A contiguous
+strip has no premiere season to wait for; taking one meant a weekday strip that
+finished its run in June went dark until mid-September.
+
+#### 6. Filler Drift
 When a show is off-season, the slot is filled by a `SeriesRelay` (a rotating list of filler shows).
 
 **Behavior:**

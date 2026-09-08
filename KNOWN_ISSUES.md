@@ -1398,11 +1398,39 @@ and the channel aired something. What it aired was wrong.
   Two function-level imports went with it — `escape_quotes` and
   `extract_title_from_query` are now module-level in `dispatcher.py`, which is
   safe because `library/queries.py` imports nothing but `settings`.
-- [ ] **Doc reconciliation (partial).** `ARCHITECTURE.md` structure + determinism
-  sections are current, but the "Key Files Deep Dive", "Data Flow Examples", and
-  "Configuration Objects" prose still use historical names
-  (`resolve_schedule_target`, `collections.py`, `run_marathon`, etc.).
-  `CONCEPTS.md` and `IMPORTS.md` likely drifted too — audit and update.
+- [x] ~~**Doc reconciliation (partial).**~~ **Done 2026-09-08**, and
+  `IMPORTS.md` had drifted worst of all — as the entry suspected.
+
+  **Audited by execution, not by reading.** A script walked every `` `file.py` ``
+  and `` `function()` `` reference in the five docs against the real module tree,
+  and imported every `from scripts... import ...` line to check the symbol
+  actually exists. That found **31 broken import lines in `IMPORTS.md`** — it
+  documented the whole pre-reorganisation layout (`scripts.schedule`,
+  `scripts.logic.holidays`, `scripts.library.collections`,
+  `scripts.library.resolver`, `scripts.logic.programming`) plus trigger helpers
+  that never existed (`with_probability`, `when_has`, `combine`). Its
+  "Re-Exports" section was inverted: it claimed `scripts.scheduling` re-exports
+  `SeasonalBlock` and `scripts.logic` re-exports `DayDirector`, and **neither
+  does**. That section now lists what the three packages really export.
+
+  `ARCHITECTURE.md`: the Architectural Layers, Dependency Graph and Key Files
+  sections named six modules that no longer exist (`resolution.py`,
+  `programming.py`, `collections.py`, `marathon.py`, `sequential.py`,
+  `schedule.py`). The two "engines" that were folded away are now described as
+  what they became — a marathon is converted to an ordinary `Block` before it
+  reaches an engine, and Appointment TV is episode math in the resolution
+  pipeline. The directory tree was missing `filler/` and `nfo/` **entirely**
+  (14 tools) and nine `testing/` checkers.
+
+  `CONCEPTS.md`: one stale name, plus a new **"Shapes That Are Refused"**
+  section covering the three construction-time guards added earlier today.
+  `ARCHITECTURE.md` gained the frequency-gating and loop-restart rules under
+  Appointment TV.
+
+  The audit script is the durable part — the reason this drifted for months is
+  that nothing could tell you it had. Re-run it after any module move. The one
+  remaining "stale" hit is deliberate: the naming note that explains
+  `schedule.py` → `scheduling/runner.py`.
 - [ ] **The collision report's SAME COLLECTION tier attributes through
   unscheduled collections.** `collection_membership()` maps keys to every named
   collection that lists them, including ones no channel airs, so findings read

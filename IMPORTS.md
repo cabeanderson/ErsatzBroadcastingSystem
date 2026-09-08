@@ -53,7 +53,7 @@ from scripts.core.signals import (
 
 ### Holiday System
 ```python
-from scripts.logic.holidays import (
+from scripts.logic.calendar.holidays import (
     HolidayContext,      # Main holiday detection class
     with_holidays,       # Helper for creating override blocks
     get_holiday_target   # Apply holiday overrides to target
@@ -66,15 +66,15 @@ if holiday_ctx.is_active("halloween"):
 
 # In schedules
 "prime": with_holidays(
-    collections.REGULAR_SHOWS,
-    halloween=collections.HALLOWEEN_EVENT,
-    christmas=collections.CHRISTMAS_EVENT
+    structures.REGULAR_SHOWS,
+    halloween=structures.HALLOWEEN_EVENT,
+    christmas=structures.CHRISTMAS_EVENT
 )
 ```
 
 ### Seasonal System
 ```python
-from scripts.logic.seasonal import (
+from scripts.logic.calendar.seasonal import (
     SeasonalBlock,           # Blends base + seasonal content
     get_seasonal_strength,   # Get 0.0-1.0 seasonal strength
     resolve_seasonal_block,  # Resolve block to content key
@@ -92,7 +92,7 @@ block = SeasonalBlock(
 
 ### Timeslots
 ```python
-from scripts.logic.timeslots import (
+from scripts.logic.calendar.timeslots import (
     DEFAULT_TIMESLOTS,   # Standard broadcast timeslots
     ALT_TIMESLOTS,       # Genre-specific presets
     hour_in_window,      # Check if hour in window (handles wraparound)
@@ -113,7 +113,7 @@ from scripts.logic.triggers import (
     LabelTrigger,          # Label-based
     CompositeTrigger,      # Combine triggers
     # Convenience factories:
-    with_probability,
+    chance,
     on_date_range,
     when_has,
     combine
@@ -122,16 +122,16 @@ from scripts.logic.triggers import (
 # Usage
 trigger = combine(
     when_has("SATURDAY"),
-    with_probability(0.25, "special")
+    chance(0.25, "special")
 )
 ```
 
 ### Resolution
 ```python
-from scripts.logic.resolution import resolve_schedule_target
+from scripts.logic.resolution.pipeline import resolve_content
 
 # Usage in schedule loop
-final_key = resolve_schedule_target(
+final_key = resolve_content(
     target, boss, holiday_ctx, config, resolver
 )
 ```
@@ -152,12 +152,12 @@ from scripts.engines.slots import (
 ```python
 from scripts.logic.models import (
     Marathon,           # Dataclass for marathon config
-    MultiDayEvent,      # Dataclass for multi-day events
+    Marathon,      # Dataclass for multi-day events
     BrandedBlock,       # Dataclass for branded blocks
     CommercialBreak     # Dataclass for commercial breaks
 )
 
-from scripts.library.structures import (
+from scripts.logic.structures import (
     AppointmentBlock,   # Absolute date scheduling
     SeriesRelay,        # Relative sequential scheduling
     annual_show,        # Helper for annual appointments
@@ -167,8 +167,8 @@ from scripts.library.structures import (
 # Usage
 marathon = Marathon(
     name="DBZ Marathon",
-    trigger=with_probability(0.05),
-    collection=collections.DBZ_SAGAS,
+    trigger=chance(0.05),
+    collection=structures.DBZ_SAGAS,
     hours=(10, 24)
 )
 ```
@@ -179,12 +179,12 @@ marathon = Marathon(
 
 ### Collections
 ```python
-from scripts.library import collections
+from scripts.logic import structures
 
 # Access collections
-collections.FOX_PRIMETIME
-collections.CLASSIC_CARTOONS
-collections.DBZ_SAGAS
+structures.FOX_PRIMETIME
+structures.CLASSIC_CARTOONS
+structures.DBZ_SAGAS
 ```
 
 ### Sources
@@ -198,7 +198,7 @@ MASTER_SOURCES["simpsons_tv"]
 
 ### Resolver
 ```python
-from scripts.library.resolver import (
+from scripts.logic.resolution.resolver import (
     ContentResolver,         # Main resolver class
     extract_episode_range,   # Extract season/episode from query
     count_episodes_in_range  # Count episodes in query range
@@ -215,7 +215,7 @@ key = resolver.resolve(target)
 
 ### Marathon
 ```python
-from scripts.engines import run_marathon
+from scripts.logic.calendar.assembly import find_active_marathon
 
 # Usage
 context = run_marathon(
@@ -239,7 +239,7 @@ from scripts.engines.blocks import (
 # Usage
 tgif = BrandedBlock(
     name="TGIF",
-    content=collections.FAMILY_SITCOMS,
+    content=structures.FAMILY_SITCOMS,
     intro="tgif_intro",
     bumpers="tgif_bumpers"
 )
@@ -247,18 +247,18 @@ tgif = BrandedBlock(
 
 ### Multi-Day Events
 ```python
-from scripts.engines.events import (
-    MultiDayEvent,        # Event configuration
+from scripts.engines.blocks import (
+    Marathon,        # Event configuration
     get_active_events,    # Check which events are active
     apply_event_overrides # Apply event overrides to target
 )
 
 # Usage
-shark_week = MultiDayEvent(
+shark_week = Marathon(
     name="Shark Week",
     trigger=on_date_range(7, 15, 7, 21),
     duration_days=7,
-    content=collections.SHARK_MOVIES
+    content=structures.SHARK_MOVIES
 )
 ```
 
@@ -268,10 +268,10 @@ shark_week = MultiDayEvent(
 
 ### Schedule
 ```python
-from scripts.schedule import (
+from scripts.scheduling import (
     run_daily_schedule,    # Main orchestration function
     ScheduleConfig,        # Configuration dataclass
-    SeasonalBlock          # Re-exported from logic.seasonal
+    ScheduleRunner         # The loop object run_daily_schedule wraps
 )
 
 # Usage
@@ -345,38 +345,40 @@ from etv_client.models import (
 
 ### Minimal Channel
 ```python
-from scripts.schedule import run_daily_schedule, ScheduleConfig
-from scripts.logic.holidays import with_holidays
-from scripts.library import collections
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
+from scripts.logic.calendar.holidays import with_holidays
+from scripts.logic import structures
 from etv_client.models import ControlWaitUntil
 ```
 
 ### Channel with Marathons
 ```python
-from scripts.schedule import run_daily_schedule, ScheduleConfig
-from scripts.logic.holidays import with_holidays
-from scripts.logic.triggers import with_probability
-from scripts.logic.programming import Marathon
-from scripts.library import collections
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
+from scripts.logic.calendar.holidays import with_holidays
+from scripts.logic.triggers import chance
+from scripts.logic.models import Marathon
+from scripts.logic import structures
 from etv_client.models import ControlWaitUntil
 ```
 
 ### Channel with Seasonal Blending
 ```python
-from scripts.schedule import run_daily_schedule, ScheduleConfig, SeasonalBlock
-from scripts.logic.holidays import with_holidays
-from scripts.library import collections
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
+from scripts.logic.calendar.seasonal import SeasonalBlock
+from scripts.logic.calendar.holidays import with_holidays
+from scripts.logic import structures
 from etv_client.models import ControlWaitUntil
 ```
 
 ### Full-Featured Channel
 ```python
-from scripts.schedule import run_daily_schedule, ScheduleConfig, SeasonalBlock
-from scripts.logic.holidays import with_holidays
-from scripts.logic.triggers import with_probability, when_has, combine
-from scripts.logic.programming import Marathon, MultiDayEvent
+from scripts.scheduling import run_daily_schedule, ScheduleConfig
+from scripts.logic.calendar.seasonal import SeasonalBlock
+from scripts.logic.calendar.holidays import with_holidays
+from scripts.logic.triggers import chance, has_label, any_of
+from scripts.logic.models import Marathon, Marathon
 from scripts.playout import ChannelLogger
-from scripts.library import collections
+from scripts.logic import structures
 from etv_client.models import ControlWaitUntil
 ```
 
@@ -384,15 +386,31 @@ from etv_client.models import ControlWaitUntil
 
 ## Re-Exports
 
-Some imports are re-exported for convenience:
-```python
-# These are equivalent:
-from scripts.schedule import SeasonalBlock
-from scripts.logic.seasonal import SeasonalBlock
+Only three packages re-export anything, and this is the complete list. Anything
+not named here must be imported from the module that defines it — in particular
+`SeasonalBlock` and `DayDirector` are **not** re-exported, despite what earlier
+revisions of this file claimed.
 
-# These are equivalent:
-from scripts.logic import DayDirector
-from scripts.core import DayDirector
+```python
+# scripts.core
+from scripts.core import DayDirector, stable_hash
+
+# scripts.logic
+from scripts.logic import (
+    with_holidays,
+    Marathon, Branding, Fallback, Swap, Feather, CommercialBreak,
+    ContentResolver,
+)
+
+# scripts.scheduling
+from scripts.scheduling import run_daily_schedule, ScheduleConfig, ScheduleRunner
+```
+
+Everything else comes from its defining module:
+```python
+from scripts.logic.calendar.seasonal import SeasonalBlock
+from scripts.logic.structures import Block, Program, OrderedCollection
+from scripts.core.logger import ChannelLogger
 ```
 
 ---
@@ -402,11 +420,12 @@ from scripts.core import DayDirector
 ### ❌ Don't Import Internal Functions
 ```python
 # Bad
-from scripts.schedule import _pre_register_all_content
-from scripts.logic.resolution import _resolve_inner_dict
+from scripts.logic.resolution.pipeline import _unwrap_nested_structure
+from scripts.logic.resolution.pipeline import _finalize_content_resolution
 
 # Good - use public APIs
-from scripts.schedule import run_daily_schedule
+from scripts.scheduling import run_daily_schedule
+from scripts.logic.resolution.pipeline import resolve_content
 ```
 
 ### ❌ Don't Import Across Layers
@@ -425,11 +444,11 @@ if boss.has("SATURDAY"):
 ### ❌ Don't Import *
 ```python
 # Bad
-from scripts.library.collections import *
+from scripts.logic.structures import *
 
 # Good
-from scripts.library import collections
-collections.FOX_PRIMETIME
+from scripts.logic import structures
+structures.FOX_PRIMETIME
 ```
 
 ---
@@ -454,9 +473,9 @@ Mark `scripts/` as "Sources Root"
 ## Type Hints Reference
 ```python
 from scripts.core import DayDirector
-from scripts.logic.holidays import HolidayContext
-from scripts.library.resolver import ContentResolver
-from scripts.schedule import ScheduleConfig
+from scripts.logic.calendar.holidays import HolidayContext
+from scripts.logic.resolution.resolver import ContentResolver
+from scripts.scheduling import ScheduleConfig
 from typing import Callable, Dict, List, Tuple, Optional
 
 def my_trigger(boss: DayDirector) -> bool:

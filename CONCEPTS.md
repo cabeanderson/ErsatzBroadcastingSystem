@@ -198,6 +198,51 @@ MOVIES = WeightedCollection([
 ])
 ```
 
+### Shapes That Are Refused
+
+Three configurations used to resolve perfectly and then play nothing. Each
+named a real content key, passed every offline checker, and produced an empty
+slot that the circuit breaker quietly filled — so the channel looked healthy
+and the block behind it had never run. All three now raise where they are
+written, in the channel file, rather than failing silently hours into a build.
+
+**A `Block` iterates. A content key does not.**
+```python
+Block(name="Frieren Night", items="frieren_tv")            # ValueError
+
+Block(name="Frieren Night", items=OrderedCollection(["frieren_tv"]))  # ✅ strip
+Block(name="Frieren Night", items=["frieren_tv"])                     # ✅ plays once
+```
+A string is neither a list nor a collection, so the engine's first pick returns
+`None`, which the loop reads as "exhausted": `0 items played`, no time
+advanced, no warning. Pick the collection form for a strip — it keeps handing
+the same key back for the whole slot — and the list form to play one item and
+yield the rest.
+
+**Both sides of a `Fallback` are bare keys.**
+```python
+Fallback(primary="eighties_music_videos", secondary=SOME_COLLECTION)  # ValueError
+Fallback(primary="eighties_music_videos", secondary="eighties_action_tv")  # ✅
+```
+`play_with_fallback` hands them straight to `play_item`, which resolves
+nothing — a wrapper is stringified into `"<RandomCollection object at 0x...>"`,
+matches no content, and still reports success.
+
+**`fallback_content` takes a key or a Collection, never a `Block`.**
+```python
+ScheduleConfig(..., fallback_content=SOME_BLOCK)          # ValueError
+ScheduleConfig(..., fallback_content="horror_movie")      # ✅
+ScheduleConfig(..., fallback_content=RandomCollection([...]))  # ✅
+```
+The circuit breaker plays a single content key. A Collection resolves down to
+one; a Block is a container of slots with no single key to reach, so the
+breaker would skip ahead instead and the channel would have a fallback that
+could never fire.
+
+> The shared lesson: **a gap is a loud failure, a fallback is a silent one.**
+> When a misconfiguration can only show up as "the right thing never aired",
+> the guard belongs at construction, not at build time.
+
 ---
 
 ## 3. Schedule Resolution Pipeline
@@ -795,8 +840,9 @@ logger.event("Marathon starting")
 ### Common Issues
 
 **"Wrong content playing":**
-1. Add logging to `resolve_schedule_target()`
-2. Check each resolution step
+1. Add logging to `resolve_content()` in `logic/resolution/pipeline.py`
+2. Check each resolution step -- the returned `ResolutionResult` carries a
+   `source` field naming which rule won (schedule / seasonal / holiday / ...)
 3. Verify priority order
 
 **"Marathon not triggering":**
