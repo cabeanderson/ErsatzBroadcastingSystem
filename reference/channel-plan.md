@@ -32,7 +32,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 102 | Wild Horizons | nature & wildlife — **on the server, absent from this plan**; identified 2026-09-02 from `/api/channels` | no |
 | 104 | Across the Pond | British television — **a broadcast day**, not "comedy & panel" | yes — **designed**. The last channel still on the default preset |
 | 116 | Cartoon Network | CN originals + Toonami + Adult Swim | yes — **rebuilt** |
-| 120 | Lucy TV | I Love Lucy 24/7 | no |
+| 120 | Lucy TV | I Love Lucy 24/7 — **out of scope, claims nothing** | no — and deliberately not |
 | 142 | Cabes Classic Cinema | film, **1920–1979** | yes — **designed**. The 1980s handed back; identity finally stated |
 | 144 | Mystery Theatre | detective / procedural | yes — **refined** |
 | 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
@@ -229,7 +229,7 @@ Nicktoons daytime, **Nick at Nite** 21:00–02:00. Nick's 8 animated shows can't
 
 Four daytime pools (Nicktoons Classic, Nicktoons, the WB bench, Nick Learns) ride `monthly_rotation()` across four strips — overnight, morning, midday, afternoon — each starting the cycle a month apart, so all four are showing different pools on any given day and all four move on together at the turn of the month.
 
-Nick at Nite splits at midnight: 21:00–24:00 is pre-1970 (I Love Lucy, Dick Van Dyke, Andy Griffith, Bewitched, I Dream of Jeannie, The Addams Family, Gilligan's Island), 00:00–02:00 is the 70s shift (Mary Tyler Moore, Bob Newhart, Taxi, MASH, Sanford and Son, Good Times, Soap, Mork & Mindy, Smothers Brothers). Sixteen shows, not seventeen — the library's only other pre-1980 comedies are *The Lucy Show* and *The Lucy-Desi Comedy Hour*, which stay with Lucy TV.
+Nick at Nite splits at midnight: 21:00–24:00 is pre-1970 (I Love Lucy, Dick Van Dyke, Andy Griffith, Bewitched, I Dream of Jeannie, The Addams Family, Gilligan's Island), 00:00–02:00 is the 70s shift (Mary Tyler Moore, Bob Newhart, Taxi, MASH, Sanford and Son, Good Times, Soap, Mork & Mindy, Smothers Brothers). Sixteen shows, not seventeen — the library's only other pre-1980 comedies are *The Lucy Show* and *The Lucy-Desi Comedy Hour*, which went to **Good Times** on 2026-09-08 when Lucy TV was settled as a non-claimant. Nick at Nite has no claim on either and is unchanged.
 
 The channel does not use the default timeslot preset: Nick at Nite needs 21:00–02:00, which `prime` 20–23 / `night` 23–02 can't express.
 
@@ -1152,17 +1152,24 @@ stays out of each title's *own* hours — which freed M\*A\*S\*H, Mary Tyler Moo
 and Bob Newhart for 20:00–23:00 and made the 1973 CBS Saturday lineup its
 Saturday prime. Verified over three simulated years: zero violations.
 
-**I Love Lucy — the exemption, restated 2026-09-02.** Lucy TV runs it 24/7, so
-*any* airing anywhere collides with it and no hours rule can fix that. C5 is the
-answer — name the exemption and earn it — and it covers **three** channels, not
-two: Lucy TV, Nick at Nite (21:00–24:00), and **Good Times**, where it signs the
-channel on at 06:00 on both CBS days. Stated by the operator: Good Times is the
-studio-audience channel and I Love Lucy is the show that invented the form, so
-it belongs there. The one binding constraint is Nick at Nite's window, which
-Good Times' prime and late slots respect.
+**I Love Lucy — the exemption is withdrawn, 2026-09-08. Lucy TV claims
+nothing.** Stated by the operator: it runs I Love Lucy and nothing else, as
+background television, and **every other channel schedules as though it did not
+exist**. The old framing counted it as a claimant, which is why I Love Lucy
+needed C5 to license a three-channel exemption at all. Take a non-claimant out
+of the curation scope and what is left is Nick at Nite and Good Times sharing
+one title under Nick's 21:00–24:00 window — an ordinary hours rule (C2 rung 2)
+that both grids were already honouring. There was never anything to except.
 
-The Lucy Show and The Lucy-Desi Comedy Hour are **not** covered and stay with
-Lucy TV alone.
+**It had been quietly holding two shows hostage.** *The Lucy Show* (156
+episodes) and *The Lucy-Desi Comedy Hour* (13) were reserved for Lucy TV, so no
+channel could take them and Lucy TV was never going to air them. **Both are on
+Good Times now**, which is where CBS 1962 and Desilu 1957 belong: The Lucy Show
+joins the Monday and Saturday CBS bench like any other half-hour, and the
+Comedy Hour — the only hour-long show on the channel at a 50.7-minute median —
+takes Saturday's two-hour noon, two episodes a week, a 45-day cycle. C5 has
+been rewritten around this: **before writing an exemption, establish that the
+other channel is claiming.**
 
 *Done in code when Nick was built.* Good Times used to run a collection literally named `NICK_AT_NITE` in its 23:00–02:00 slot. That is now `LATE_NIGHT_SYNDICATION` — Cheers, Wonder Years, Married… with Children, Newsradio, Drew Carey, Wings, Mad About You, 3rd Rock, The Nanny, Coach — none of them shared. The winter prime variants swapped in `CLASSIC_SITCOMS_60s_70s`, which reaches into 21:00–23:00, so they now take `EIGHTIES_NINETIES_CLASSICS` instead; and the channel fallback moved off the classics for the same reason. Mornings, daytime and the 02:00–06:00 overnight are untouched.
 

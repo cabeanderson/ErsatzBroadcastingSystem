@@ -376,21 +376,41 @@ Classic Cinema and Be Kind Rewind are **disjoint by construction** — the
 cleanest relationship two channels on this lineup have. Do not redraw this line
 for a new channel; slice within it.
 
-### C5 · Exceptions get named and earned
+### C5 · Exceptions get named and earned — and check the claimant is one
 
-I Love Lucy runs on Lucy TV 24 hours a day, so *every* airing of it anywhere is
-a C1 collision and no hours rule can make it otherwise. It is the lineup's one
-standing exemption, and as of 2026-09-02 it is a **three-channel** exemption:
-Lucy TV, Nick at Nite (21:00–24:00) and Good Times (06:00 sign-on, both CBS
-days). All three are written down here, in channel-plan.md and in the docstring
-of `library/sitcoms.py`.
+**The lineup's one standing exemption turned out not to be an exemption.** For
+as long as this file has existed, I Love Lucy was documented as a C1 exception
+on the grounds that Lucy TV runs it 24 hours a day, so every airing of it
+anywhere collided and no hours rule could help. By 2026-09-02 that had grown
+into a *three-channel* exemption — Lucy TV, Nick at Nite and Good Times —
+written down in three places.
 
-**The failure mode this rule exists to prevent runs in both directions.** An
-undocumented exception is a collision. But an exception that is documented
-loosely also invites the opposite error: the Good Times rebuild read "Nick at
-Nite's I Love Lucy is the lineup's one named exemption" as excluding Good Times
-and dropped the show off the channel, which was not what anyone had decided.
-**Name the channels the exemption covers, not just the title.**
+**It dissolved on 2026-09-08 when the operator stated that Lucy TV claims
+nothing.** It is a background channel that runs one show; every other channel
+schedules as though it did not exist. Remove a non-claimant from the curation
+scope and what is left is Nick at Nite and Good Times sharing one title under
+Nick's 21:00–24:00 hours rule — **an ordinary C2 rung 2, which the grid was
+already honouring.** There was never anything to except.
+
+**So: before writing an exemption, establish that the other channel is
+claiming.** A channel that exists is not automatically a claimant. C1 governs
+channels that are curated against each other; a channel deliberately outside
+that — background television, a single-show comfort loop, anything the operator
+wants left alone — constrains nobody, and treating it as a claimant does real
+damage. This one cost the lineup two shows: **The Lucy Show (156 episodes) and
+The Lucy-Desi Comedy Hour (13)** were reserved for Lucy TV for months, which
+meant no channel could take them and Lucy TV was never going to air them. Both
+are on Good Times now. **An exemption invented for a channel that does not
+claim is a hold on content that nothing releases.**
+
+**The original lesson still stands, because it is about documentation rather
+than about Lucy.** An undocumented exception is a collision; a loosely
+documented one invites the opposite error. The Good Times rebuild read "Nick at
+Nite's I Love Lucy is the lineup's one named exemption" as *excluding* Good
+Times and dropped the show off the channel, which nobody had decided. **Name
+the channels an exemption covers, not just the title** — and now also name why
+each one is a claimant, because that is the sentence that would have caught
+this three months earlier.
 
 ### C6 · Measure the fix, don't assert it
 

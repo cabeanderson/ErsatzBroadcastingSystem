@@ -486,6 +486,16 @@ TV_REGISTRY = {
     # --- SPECIFIC SHOWS (Legacy/Unrefactored) ---
     # These should be moved to inline definitions in collections.py eventually
     "i_love_lucy_tv": show_by_title("i love lucy"),
+    # The other two Lucille Ball series. They sat unclaimed and reserved for
+    # Lucy TV until 2026-09-08, when the operator settled that Lucy TV runs
+    # I Love Lucy and nothing else and holds no claim on anything -- so both
+    # came here, to the channel whose CBS days they belong to.
+    #
+    # The Lucy-Desi Comedy Hour is the only hour-long show on Good Times
+    # (50.7-minute median against 25 for everything else), which is why it
+    # takes a two-hour noon slot exactly rather than a half-hour strip (G2).
+    "lucy_show_tv": show_by_title("The Lucy Show"),
+    "lucy_desi_tv": show_by_title("The Lucy-Desi Comedy Hour"),
     "andy_griffith_tv": show_by_title("the andy griffith show"),
     "dick_van_dyke_tv": show_by_title("the dick van dyke show"),
     "bewitched_tv": show_by_title("bewitched"),

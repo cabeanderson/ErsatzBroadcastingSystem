@@ -8,7 +8,7 @@ Three daytime strips carry a season-keyed book on top, so the daytime reshuffles
 four times a year while prime, evening and the overnight stay the spine.
 
 The full design, the roster by network and -- most importantly -- the hours
-rules that keep the channel clear of Nick at Nite, Totally 80s and Lucy TV are
+rules that keep the channel clear of Nick at Nite and Totally 80s are
 in the docstring of `scripts/library/sitcoms.py`. Read that before editing a
 slot here; six of the ten slots have a title they may not carry.
 
@@ -245,7 +245,7 @@ def build_playout(api, context, build_id):
         holiday_schedules=HOLIDAY_SCHEDULES,
         block_profiles={},
         logger=ChannelLogger(prefix="[GOOD TIMES]"),
-        # Sixteen titles that are clear of Nick at Nite, Totally 80s and Lucy TV
+        # Sixteen titles that are clear of Nick at Nite and Totally 80s
         # at every hour of the day. A fallback fires on a stall and cannot know
         # what time it is, so "safe at some hours" is not safe.
         fallback_content=sitcoms.CHANNEL_FALLBACK,

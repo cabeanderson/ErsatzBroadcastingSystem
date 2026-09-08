@@ -71,18 +71,30 @@ weekday. Sunday's 17:00 strip and Monday's prime both depend on that.
   Thursday 20:00-23:00      Cheers · Night Court
   23:00-24:00               In Living Color
 
-Lucy TV runs I Love Lucy 24/7, so *any* airing anywhere collides with it. The
-lineup's answer is C5 -- name the exemption and earn it -- and it now covers
-three channels rather than two: Lucy TV, Nick at Nite, and this one. Stated by
-the operator 2026-09-02: I Love Lucy belongs on Good Times.
+**Lucy TV is out of scope, settled by the operator 2026-09-08.** It runs
+I Love Lucy and nothing else, as background television, and it **claims
+nothing**. Every other channel schedules as though it did not exist. This
+replaces the old framing, which treated it as a claimant and therefore needed
+C5 to license a "three-channel exemption" for I Love Lucy -- an exemption that
+existed only because a non-claimant had been counted as one.
 
-It is not a grudging exception. This is the multi-camera studio-audience
-channel and I Love Lucy is the show that invented the form, so it signs the
-channel on at 06:00 on both CBS days. The only constraint that binds is Nick at
-Nite's, above: out of 21:00-24:00, which prime and late respect.
+What is left is an ordinary hours rule, not an exception. I Love Lucy is on
+this channel and on Nick at Nite, and the only constraint that binds is Nick's,
+above: out of 21:00-24:00, which prime and late respect. It signs the channel
+on at 06:00 on both CBS days, and 06:00 is nowhere near Nick.
 
-The Lucy Show and The Lucy-Desi Comedy Hour stay with Lucy TV. They are not
-covered by the exemption and are off this channel.
+**All three Lucille Ball series are here as of 2026-09-08**, where the old
+policy reserved two of them for a channel that was never going to air them:
+
+* **I Love Lucy** (180 eps, 26.3m) -- the sign-on, both CBS days. This is the
+  multi-camera studio-audience channel and this is the show that invented the
+  form.
+* **The Lucy Show** (156 eps, 25.6m) -- CBS 1962, so it joins the CBS bench on
+  Monday and Saturday like any other half-hour on the roster.
+* **The Lucy-Desi Comedy Hour** (13 eps, **50.7m**) -- the only hour-long show
+  on the channel. Too short to strip (G6) and the wrong shape for a half-hour
+  slot (G2), so it takes Saturday's two-hour noon exactly: two episodes, one
+  day a week, a 45-day cycle.
 
 Thursday is the one to notice. Totally 80s runs Cheers and Night Court as *its*
 Must See Thursday; Good Times runs the 1990s Must See Thursday on the same
@@ -105,7 +117,7 @@ from . import branding
 # every pair of shows on one network report as SAME COLLECTION.
 
 _CBS_ROSTER = [
-    "i_love_lucy_tv",
+    "i_love_lucy_tv", "lucy_show_tv", "lucy_desi_tv",
     "andy_griffith_tv", "dick_van_dyke_tv", "gilligans_island_tv",
     "smothers_brothers_tv", "mary_tyler_moore_tv", "mash_tv", "bob_newhart_tv",
     "good_times_tv", "murphy_brown_tv", "northern_exposure_tv", "nanny_tv",
@@ -134,9 +146,11 @@ _FOURTH_NETWORK_ROSTER = [
     "sister_sister_tv",
 ]
 
-# The channel fallback. Every title here is clear of Nick at Nite, Totally 80s
-# and Lucy TV at *every* hour of the day, which is the only safe property for
-# content that fires on a stall and cannot know what time it is.
+# The channel fallback. Every title here is clear of Nick at Nite and Totally
+# 80s at *every* hour of the day, which is the only safe property for content
+# that fires on a stall and cannot know what time it is. Lucy TV used to be in
+# that sentence and is not a claimant (see the docstring), so it no longer
+# constrains anything here.
 CHANNEL_FALLBACK = RandomCollection([
     "seinfeld_tv", "frasier_tv", "wings_tv", "mad_about_you_tv", "newsradio_tv",
     "3rd_rock_tv", "just_shoot_me_tv", "will_and_grace_tv", "nanny_tv",
@@ -151,11 +165,12 @@ CHANNEL_FALLBACK = RandomCollection([
 
 MON_AFTER_HOURS = OrderedCollection(["nanny_tv", "murphy_brown_tv"])
 MON_OVERNIGHT = RandomCollection([
-    "i_love_lucy_tv", "gilligans_island_tv", "andy_griffith_tv",
+    "i_love_lucy_tv", "lucy_show_tv", "gilligans_island_tv", "andy_griffith_tv",
     "dick_van_dyke_tv",
 ])
-# The channel signs on with the show that invented it. See the exemption in
-# the module docstring; 06:00 is nowhere near Nick at Nite.
+# The channel signs on with the show that invented it. 06:00 is nowhere near
+# Nick at Nite's 21:00-24:00, so this is an hours rule and not an exception --
+# see the docstring.
 MON_EARLY = OrderedCollection(["i_love_lucy_tv", "dick_van_dyke_tv", "andy_griffith_tv"])
 
 MON_MORNING = {
@@ -167,7 +182,10 @@ MON_MORNING = {
 MON_MIDDAY = {
     "FALL":   OrderedCollection(["good_times_tv", "bob_newhart_tv"]),
     "WINTER": OrderedCollection(["bob_newhart_tv", "mary_tyler_moore_tv"]),
-    "SPRING": OrderedCollection(["nanny_tv", "murphy_brown_tv"]),
+    # The Lucy Show rather than I Love Lucy, deliberately: the two Ball series
+    # are never in the same arm, so the channel reads as having a Lucy on
+    # somewhere rather than as running Lucy twice (G4, inside one day).
+    "SPRING": OrderedCollection(["lucy_show_tv", "murphy_brown_tv"]),
     "SUMMER": OrderedCollection(["gilligans_island_tv", "good_times_tv"]),
 }
 MON_AFTERNOON = {
@@ -379,7 +397,9 @@ FRI_LATE = OrderedCollection(["soap_tv", "taxi_tv"])
 # ==============================================================================
 
 SAT_AFTER_HOURS = OrderedCollection(["nanny_tv", "northern_exposure_tv"])
-SAT_OVERNIGHT = OrderedCollection(["gilligans_island_tv", "andy_griffith_tv"])
+SAT_OVERNIGHT = OrderedCollection([
+    "gilligans_island_tv", "lucy_show_tv", "andy_griffith_tv",
+])
 SAT_EARLY = OrderedCollection(["i_love_lucy_tv", "dick_van_dyke_tv", "gilligans_island_tv"])
 
 SAT_MORNING = {
@@ -395,10 +415,10 @@ SAT_MIDDAY = {
     "SUMMER": OrderedCollection(["good_times_tv", "nanny_tv"]),
 }
 SAT_AFTERNOON = {
-    "FALL":   RandomCollection(["andy_griffith_tv", "gilligans_island_tv", "good_times_tv"]),
+    "FALL":   RandomCollection(["andy_griffith_tv", "lucy_show_tv", "good_times_tv"]),
     "WINTER": RandomCollection(["andy_griffith_tv", "northern_exposure_tv", "bob_newhart_tv"]),
     "SPRING": RandomCollection(["dick_van_dyke_tv", "gilligans_island_tv", "nanny_tv"]),
-    "SUMMER": RandomCollection(["gilligans_island_tv", "good_times_tv", "nanny_tv"]),
+    "SUMMER": RandomCollection(["gilligans_island_tv", "lucy_show_tv", "nanny_tv"]),
 }
 
 SAT_EVENING = OrderedCollection(["dick_van_dyke_tv", "good_times_tv"])
@@ -462,13 +482,19 @@ SUN_LATE = "martin_tv"
 # noon" rather than "sitcoms are on". Each day's anchor comes from that day's
 # network, so the strip turns over with the wheel.
 
+# Saturday is the one hour-long entry, and the slot is why. `noon` is two hours;
+# every other day fills it with four half-hours, and Saturday fills it with two
+# 50-minute Comedy Hours -- the same 100 minutes, so the shape of the slot does
+# not change. It is the only place on the channel an hour-long fits without
+# stranding a half-hour strip's tail (G2), and at two episodes a week those 13
+# run a 45-day cycle, which is what G6 asks of a pool too short to strip.
 NOON_HOUR = {
     "MONDAY":    "mash_tv",
     "TUESDAY":   "wings_tv",
     "WEDNESDAY": "taxi_tv",
     "THURSDAY":  "cheers_tv",
     "FRIDAY":    "perfect_strangers_tv",
-    "SATURDAY":  "mary_tyler_moore_tv",
+    "SATURDAY":  "lucy_desi_tv",
     "SUNDAY":    "martin_tv",
 }
 
