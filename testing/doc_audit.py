@@ -28,6 +28,21 @@ Check 3 is the valuable one and the reason this is a script rather than a
 grep: only an import can tell you whether `scripts.logic` really exposes
 `DayDirector`. It does not.
 
+**Check 3 was reading half its input until 2026-09-09.** The pattern required
+a word character directly after `import`, which the single-line form has and a
+parenthesised block does not -- so eighteen multi-line imports in IMPORTS.md
+were never executed and this tool reported PASS over them for as long as it
+had existed. Widening it surfaced 27 problems in one run, including two whole
+sections describing an API that never shipped: `BrandedBlock`,
+`play_branded_block`, `get_active_events` and `apply_event_overrides` do not
+exist anywhere in the tree, and `scripts.logic.structures` was credited with
+four symbols it does not export.
+
+That is this repo's own characteristic bug, in the checker written to catch
+it: **a green result that means "not looked at" rather than "fine".** When
+adding a check here, confirm it fails on a known-bad input before trusting a
+pass.
+
 ## Deliberate exceptions
 
 `ALLOWED_STALE` holds references that are *supposed* to name something gone --
@@ -51,6 +66,44 @@ ALLOWED_STALE = {
     ("ARCHITECTURE.md", "schedule.py"),      # the note explaining the rename
     ("IMPORTS.md", "schedule.py"),
 }
+
+
+def _import_lines(text: str):
+    """Yield (module, symbols) for every `from scripts... import ...` in a doc.
+
+    **Both spellings, which is the point.** This used to match only the
+    single-line form, because the pattern wanted a word character straight
+    after `import` and a parenthesised block has `(` there instead. Eighteen
+    multi-line imports in IMPORTS.md were therefore never executed, and four
+    of them were wrong -- `scripts.logic.structures` was documented as
+    exporting `annual_show`, `alternating_seasons`, `AppointmentBlock` and
+    `SeriesRelay`, and exports none of them.
+
+    A checker that silently examines half its input is the failure it exists
+    to catch, so this reads the parenthesised form too.
+    """
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        match = re.match(r"\s*from (scripts[\w.]*) import (.*)", line)
+        if not match:
+            continue
+        module_name, rest = match.group(1), match.group(2).strip()
+
+        if rest.startswith("("):
+            body = [rest[1:]]
+            for following in lines[index + 1:]:
+                if ")" in following:
+                    body.append(following.split(")")[0])
+                    break
+                body.append(following)
+        else:
+            body = [rest]
+
+        # Comments are stripped per line, before joining. Every symbol in
+        # these blocks carries a trailing `#` gloss, so stripping after the
+        # join would discard every symbol past the first one -- which is how
+        # the first version of this fix reported one bad name out of four.
+        yield module_name, " ".join(part.split("#")[0] for part in body)
 
 
 def _root() -> pathlib.Path:
@@ -83,19 +136,15 @@ def audit() -> list[str]:
             if ref not in defined:
                 problems.append(f"{doc}: references undefined `{ref}()`")
 
-        for line in text.splitlines():
-            m = re.match(r"\s*from (scripts[\w.]*) import ([\w, ]+)", line)
-            if not m:
-                continue
-            module_name, symbols = m.group(1), m.group(2)
+        for module_name, symbols in _import_lines(text):
             try:
                 module = importlib.import_module(module_name)
             except Exception as exc:
                 problems.append(f"{doc}: cannot import {module_name} ({type(exc).__name__})")
                 continue
             for symbol in (s.strip() for s in symbols.split(",")):
-                # Private names appear in the "don't do this" examples.
-                if not symbol or symbol.startswith("_"):
+                # Private names and `*` appear in the "don't do this" examples.
+                if not symbol or symbol.startswith("_") or symbol == "*":
                     continue
                 if not hasattr(module, symbol):
                     problems.append(f"{doc}: {module_name} has no {symbol!r}")

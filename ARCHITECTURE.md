@@ -74,6 +74,7 @@ scripts/
 │   ├── same_show_check.py   # CLI same-show check, incl. different keys for one show
 │   ├── validate_titles.py   # CLI check that every scheduled title resolves
 │   ├── key_census.py        # CLI check that every registry key resolves (offline)
+│   ├── unaired_check.py     # CLI check for config the schedule can never reach
 │   ├── key_airing_check.py  # CLI check that a scheduled key actually airs (live guide)
 │   ├── continuity_check.py  # CLI dead-air/gap finder against the live XMLTV export
 │   ├── library_census.py    # CLI census of the media on disk -> reference/library-*

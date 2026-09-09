@@ -1190,5 +1190,49 @@ class TestRotationCeilingIsEnforced(unittest.TestCase):
 
 
 
+class TestDocAuditReadsBothImportForms(unittest.TestCase):
+    """
+    The audit matched only single-line imports and reported PASS over the rest.
+
+    Eighteen parenthesised blocks in IMPORTS.md were never executed, and the
+    tool had said "docs match the code" the whole time -- a green result that
+    meant "not looked at". Widening it surfaced 27 problems, two of them whole
+    sections describing an API that never shipped.
+
+    These assert it fails on known-bad input, which is the only thing that
+    makes a passing run mean anything.
+    """
+
+    def test_a_multiline_import_is_read(self):
+        from scripts.testing.doc_audit import _import_lines
+        doc = "from scripts.logic.factories import (\n"
+        doc += "    annual_show,          # one season a year\n"
+        doc += "    multiyear_rotation    # a month per item\n"
+        doc += ")\n"
+        found = dict(_import_lines(doc))
+        self.assertIn("scripts.logic.factories", found)
+        symbols = {s.strip() for s in found["scripts.logic.factories"].split(",")}
+        self.assertEqual(symbols, {"annual_show", "multiyear_rotation"})
+
+    def test_comments_are_stripped_per_line_not_after_joining(self):
+        """Stripping after the join discarded every symbol past the first."""
+        from scripts.testing.doc_audit import _import_lines
+        doc = "from scripts.logic.models import (\n    Marathon,  # a\n    Fallback  # b\n)\n"
+        symbols = dict(_import_lines(doc))["scripts.logic.models"]
+        self.assertIn("Marathon", symbols)
+        self.assertIn("Fallback", symbols)
+
+    def test_the_single_line_form_still_works(self):
+        from scripts.testing.doc_audit import _import_lines
+        found = dict(_import_lines("from scripts.logic.triggers import chance, any_of\n"))
+        self.assertIn("scripts.logic.triggers", found)
+
+    def test_the_real_docs_pass(self):
+        from scripts.testing.doc_audit import audit
+        self.assertEqual(audit(), [], "documented imports no longer resolve")
+        print("✅ doc audit reads parenthesised imports, and the docs resolve")
+
+
+
 if __name__ == "__main__":
     unittest.main()

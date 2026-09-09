@@ -76,16 +76,15 @@ if holiday_ctx.is_active("halloween"):
 ```python
 from scripts.logic.calendar.seasonal import (
     SeasonalBlock,           # Blends base + seasonal content
-    get_seasonal_strength,   # Get 0.0-1.0 seasonal strength
     resolve_seasonal_block,  # Resolve block to content key
-    feather,                 # Helper for partial blending
-    swap                     # Helper for full takeover
+    Feather,                 # Partial blend -- some of the seasonal pool
+    Swap                     # Full takeover for the season
 )
 
 # Usage
 block = SeasonalBlock(
     base="classic_movies",
-    seasonal={"WINTER": feather("winter_movies", 0.4)},
+    seasonal={"WINTER": Feather("winter_movies", 0.4)},
     blend_ratio=1.0
 )
 ```
@@ -95,28 +94,25 @@ block = SeasonalBlock(
 from scripts.logic.calendar.timeslots import (
     DEFAULT_TIMESLOTS,   # Standard broadcast timeslots
     ALT_TIMESLOTS,       # Genre-specific presets
-    hour_in_window,      # Check if hour in window (handles wraparound)
-    expand_timeslots     # Convert named slots to hour tuples
+    expand_timeslots,    # Convert named slots to hour tuples
+    get_timeslot_map     # Resolve a channel's preset to its slot map
 )
 
-# Usage
-if hour_in_window(hour, 19, 22):  # 7pm-10pm
-    ...
+# Usage -- `hour_in_window` lives in logic.resolution.playback, not here.
+# get_timeslot_map takes the preset *name*, not the dict.
+slots = get_timeslot_map("movies")
 ```
 
 ### Triggers
 ```python
 from scripts.logic.triggers import (
-    Trigger,               # Base class
-    ProbabilityTrigger,    # Daily probability
-    DateRangeTrigger,      # Date range
-    LabelTrigger,          # Label-based
-    CompositeTrigger,      # Combine triggers
-    # Convenience factories:
-    chance,
-    on_date_range,
-    when_has,
-    combine
+    chance,         # Deterministic daily probability
+    has_label,      # Fires when the day carries a label
+    on_date,        # A single calendar date
+    in_range,       # A date range
+    day_of_month,   # The Nth of the month
+    all_of,         # Every trigger must fire
+    any_of          # Any one of them
 )
 
 # Usage
@@ -138,30 +134,32 @@ final_key = resolve_content(
 
 ### Playback Strategies
 ```python
-from scripts.logic.playback import (
+from scripts.logic.resolution.playback import (
     is_approaching_hour_boundary, # Check if near hour
-    hour_in_window                # Check time window
-)
-
-from scripts.engines.slots import (
-    handle_single_play_slot       # Single-play slot logic
+    hour_in_window,               # Check time window
+    calculate_boundary_dt         # The next boundary as a datetime
 )
 ```
 
 ### Programming Objects
 ```python
 from scripts.logic.models import (
-    Marathon,           # Dataclass for marathon config
-    Marathon,      # Dataclass for multi-day events
-    BrandedBlock,       # Dataclass for branded blocks
-    CommercialBreak     # Dataclass for commercial breaks
+    Marathon,           # Dataclass for a multi-day / triggered event
+    Branding,           # intro / outro / bumpers for a block
+    CommercialBreak,    # Dataclass for commercial breaks
+    Fallback            # Primary key with a secondary behind it
 )
 
 from scripts.logic.structures import (
-    AppointmentBlock,   # Absolute date scheduling
-    SeriesRelay,        # Relative sequential scheduling
-    annual_show,        # Helper for annual appointments
-    alternating_seasons # Helper for alternating shows
+    Block,              # A named container of slots
+    Program             # A scheduled item with its own rules
+)
+
+from scripts.logic.factories import (
+    annual_show,          # One season a year, chronological
+    alternating_seasons,  # Interleave several shows annually
+    monthly_rotation,     # A month per item, up to twelve
+    multiyear_rotation    # A month per item, across up to five years
 )
 
 # Usage
@@ -199,7 +197,10 @@ MASTER_SOURCES["simpsons_tv"]
 ### Resolver
 ```python
 from scripts.logic.resolution.resolver import (
-    ContentResolver,         # Main resolver class
+    ContentResolver          # Main resolver class
+)
+
+from scripts.library.queries import (
     extract_episode_range,   # Extract season/episode from query
     count_episodes_in_range  # Count episodes in query range
 )
@@ -230,16 +231,25 @@ context = run_marathon(
 ```
 
 ### Branded Blocks
+
+There is no `BrandedBlock`. Branding is a field on an ordinary `Block`, and the
+engine plays it around the block's contents.
+
 ```python
+from scripts.logic.structures import Block
+from scripts.logic.models import Branding
+
 from scripts.engines.blocks import (
-    BrandedBlock,          # Block configuration
-    play_branded_block     # Execute branded block
+    play_block,            # Execute a block, branding included
+    play_block_intro,      # The pieces, if you need them directly
+    play_block_outro,
+    play_generic_branding
 )
 
 # Usage
-tgif = BrandedBlock(
+tgif = Block(
     name="TGIF",
-    content=structures.FAMILY_SITCOMS,
+    items=structures.FAMILY_SITCOMS,
     intro="tgif_intro",
     bumpers="tgif_bumpers"
 )
@@ -247,18 +257,17 @@ tgif = BrandedBlock(
 
 ### Multi-Day Events
 ```python
-from scripts.engines.blocks import (
-    Marathon,        # Event configuration
-    get_active_events,    # Check which events are active
-    apply_event_overrides # Apply event overrides to target
-)
+from scripts.logic.models import Marathon
+from scripts.logic.calendar.assembly import find_active_marathon
 
-# Usage
+# Usage -- a marathon takes an hour window, not a duration in days, and the
+# trigger decides which days it fires on.
 shark_week = Marathon(
     name="Shark Week",
-    trigger=on_date_range(7, 15, 7, 21),
-    duration_days=7,
-    content=structures.SHARK_MOVIES
+    trigger=in_range(7, 15, 7, 21),
+    collection=structures.SHARK_MOVIES,
+    hours=(10, 24),
+    priority=1
 )
 ```
 
