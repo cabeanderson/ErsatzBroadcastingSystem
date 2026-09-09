@@ -313,6 +313,39 @@ and the channel aired something. What it aired was wrong.
   build timeout.~~ Fixed: `play_item` uses the returned context and only falls
   back to `get_context` on failure. A Cartoon Network day went 295 → 152 calls.
 
+- ~~🔴 **Every annual show reopened on episode 2 or 3, in every year but its
+  first.** `_apply_schedule_looping` mapped a date back into the season window
+  with `(current_date - first_start) % cycle_length_days`, where the cycle was
+  the raw day count from the run's start to the next season peak. That count is
+  almost never a whole number of weeks — 15 March to 15 March is 363 days, not
+  364 — so each re-run landed on a *different weekday* than the premiere.
+  `_find_active_episode` gates on the real airing weekday, found the mapped date
+  sitting mid-week, and returned slot 2 instead of slot 1. The run also slid
+  backwards through the calendar: Midnight Mass, seven episodes deliberately
+  timed to land beside Halloween, premiered 19 September in 2026 and 30 August
+  by 2030, and had not played episode one since its first year. **21 of 35
+  appointments across six channels were affected** — Hannibal, Evil, FROM,
+  Yellowjackets, Ash vs Evil Dead, Twin Peaks, Lovecraft Country, The Walking
+  Dead, Alias, Dark Winds, Deadwood, Lawmen: Bass Reeves, Fargo, Blue Eye
+  Samurai, Macross Plus, The Tatami Time Machine Blues, Attack on Titan Junior
+  High, Dragon Ball DAIMA and the three Star Wars *Tales* shorts. Nothing
+  reported it: an appointment that opens on episode 3 looks exactly like one
+  that is mid-run.~~ Fixed: both loop branches re-anchor on the calendar
+  instead of taking a modulo of a day count. `_restart_anchor` returns the
+  season peak moved forward to the first weekday the show actually airs on, and
+  `_anchor_weekdays` takes those weekdays from `frequency` rather than from the
+  window's own start — Disney's Star Wars shorts premiere in `("SPRING")` with
+  `frequency=["SATURDAY"]`, so the window opens on 15 March whatever weekday
+  that is, and anchoring on the window would have moved three premieres by a
+  week. A multi-season show keeps its multi-year cycle (Hannibal still runs
+  s1/s2/s3 over three autumns). The immediate-loop branch rounds its cycle up
+  to whole weeks for the same reason. Verified by diffing every scheduled
+  program over six years, before and after: 24 programs now open on episode 1
+  in every run, 0 still wrong, and **no premiere date moved**. A full
+  before/after schedule diff of all 16 channels over 14 days shows changes only
+  on the four channels whose appointments were broken, plus the channel being
+  edited.
+
 - ~~🔴 **`premiere_season=("SEASON", "DAY")` scheduled nothing, silently.**
   `annual_show()` passes `(year, premiere_season)` to `states.resolve_season_date`,
   which only understood `(int, str)`. Given a tuple season it returned `None`,

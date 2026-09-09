@@ -964,5 +964,68 @@ class TestLogCaptureAcrossDays(unittest.TestCase):
         print("✅ log capture follows redirect_stdout across days")
 
 
+class TestAnnualLoopAnchoring(unittest.TestCase):
+    """
+    A looping annual show must reopen on episode 1, on its own weekday, in
+    the same part of the calendar, every year.
+
+    It used to do none of those things after year one. `_apply_schedule_looping`
+    took a modulo of the raw day count from the run's start to the next season
+    peak; 15 March to 15 March is 363 days, so each re-run landed on a
+    different weekday, the frequency gate dropped its first slot, and the run
+    slid four days earlier a year. 21 of 35 appointments across six channels
+    opened on episode 2 or 3 -- including Midnight Mass, whose seven episodes
+    are timed to land beside Halloween.
+    """
+
+    def _runs(self, program, first, last):
+        """Group a program's airings into runs, one per premiere."""
+        from scripts.logic.resolution.pipeline import resolve_scheduled_content
+        out, prev = [], None
+        d = first
+        while d < last:
+            hit = resolve_scheduled_content(program, d)
+            if hit:
+                if prev is None or (d - prev).days > 60:
+                    out.append([])
+                out[-1].append((d, hit[2]))
+                prev = d
+            d += timedelta(days=1)
+        return out
+
+    def test_every_rerun_opens_on_episode_one(self):
+        from scripts.library import horror
+        runs = self._runs(horror.MIDNIGHT_MASS, date(2026, 1, 1), date(2032, 1, 1))
+        self.assertGreater(len(runs), 4, "expected one run a year")
+        self.assertEqual([r[0][1] for r in runs], [1] * len(runs),
+                         "a re-run opened on something other than episode 1")
+
+    def test_every_rerun_opens_on_the_same_weekday(self):
+        from scripts.library import horror
+        runs = self._runs(horror.MIDNIGHT_MASS, date(2026, 1, 1), date(2032, 1, 1))
+        weekdays = {r[0][0].strftime("%A") for r in runs}
+        self.assertEqual(weekdays, {"Saturday"},
+                         f"premiere wandered across weekdays: {weekdays}")
+
+    def test_the_run_does_not_slide_through_the_calendar(self):
+        """Every premiere stays within a week of the season peak it anchors to."""
+        from scripts.library import horror
+        runs = self._runs(horror.MIDNIGHT_MASS, date(2026, 1, 1), date(2032, 1, 1))
+        for start, _ in (r[0] for r in runs):
+            offset = (start - date(start.year, 9, 15)).days
+            self.assertTrue(0 <= offset < 7,
+                            f"{start} is {offset} days from the FALL peak, not within the week")
+
+    def test_a_multi_season_show_still_premieres_every_year(self):
+        """Hannibal runs s1/s2/s3 over three autumns, then starts again."""
+        from scripts.library import horror
+        runs = self._runs(horror.HANNIBAL, date(2026, 1, 1), date(2032, 1, 1))
+        self.assertGreaterEqual(len(runs), 5, "expected a premiere every year")
+        self.assertEqual([r[0][1] for r in runs], [1] * len(runs))
+
+        print("✅ annual loops re-anchor on the calendar and open on episode 1")
+
+
+
 if __name__ == "__main__":
     unittest.main()

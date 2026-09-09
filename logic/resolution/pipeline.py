@@ -383,8 +383,50 @@ def _build_season_windows(seasons: List[Tuple[str, int, Any]], episodes_per_slot
     season_windows.sort(key=lambda x: x[0])
     return season_windows
 
-def _apply_schedule_looping(current_date: date, season_windows: List[Tuple[date, date, str, int]], loop: bool, loop_restart_season: Any) -> Optional[date]:
-    """Adjusts current_date if looping is active and date is past end."""
+WEEKDAY_NAMES = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+
+
+def _anchor_weekdays(frequency: Any, first_start_date: date) -> List[int]:
+    """Which weekdays a re-run may open on.
+
+    `frequency` is authoritative when the caller named days, because the
+    season window's own start is not always an airing date: Disney's Star
+    Wars shorts premiere in ("SPRING") with `frequency=["SATURDAY"]`, so the
+    window opens on 15 March -- whatever weekday that is -- and the show
+    first airs on the Saturday after. Anchoring on the window's weekday moved
+    those premieres a week; anchoring on the frequency keeps every existing
+    premiere on the date it already had.
+    """
+    if isinstance(frequency, list) and frequency:
+        days = [WEEKDAY_NAMES.index(d) for d in frequency if d in WEEKDAY_NAMES]
+        if days:
+            return days
+    return [first_start_date.weekday()]
+
+
+def _restart_anchor(year: int, restart_month: int, restart_day: int, weekdays: List[int]) -> date:
+    """The date a re-run opens in `year`: the season peak, moved forward to
+    the first weekday the show actually airs on."""
+    peak = date(year, restart_month, restart_day)
+    return peak + timedelta(days=min((w - peak.weekday()) % 7 for w in weekdays))
+
+
+def _apply_schedule_looping(current_date: date, season_windows: List[Tuple[date, date, str, int]], loop: bool, loop_restart_season: Any, frequency: Any = None) -> Optional[date]:
+    """Adjusts current_date if looping is active and date is past end.
+
+    Both branches re-anchor rather than taking a modulo of a raw day count.
+    A cycle measured in days is almost never a whole number of weeks -- the
+    gap from one spring peak to the next is 363 days, not 364 -- so the
+    modulo landed each re-run on a *different weekday* than the premiere.
+    `_find_active_episode` then gated on the real airing weekday, found the
+    mapped date sitting mid-week, and handed back slot 2 instead of slot 1:
+    **every annual show in the library opened on episode 2 or 3 from its
+    second year onwards, and its run slid several days earlier each year.**
+    Midnight Mass, seven episodes timed to land beside Halloween, had not
+    played episode one since its premiere year.
+
+    Anchoring on the calendar keeps the weekday exact and the premiere first.
+    """
     first_start_date: date = season_windows[0][0]
     last_end_date: date = season_windows[-1][1]
 
@@ -395,28 +437,52 @@ def _apply_schedule_looping(current_date: date, season_windows: List[Tuple[date,
     if loop and current_date >= last_end_date:
         if loop_restart_season and isinstance(loop_restart_season, str):
             season_config: Optional[Dict[str, Any]] = registry.SEASONAL_RAMPS.get(loop_restart_season.upper())
-            
+
             if season_config:
                 restart_month, restart_day = season_config["peak_start"]
-                next_restart_year: int = last_end_date.year
-                first_restart_date: date = date(next_restart_year, restart_month, restart_day)
-                
-                if first_restart_date < last_end_date: first_restart_date = date(next_restart_year + 1, restart_month, restart_day)
-                
-                cycle_length: timedelta = first_restart_date - first_start_date
-                if cycle_length.days <= 0: return None # Avoid division by zero
+                weekdays: List[int] = _anchor_weekdays(frequency, first_start_date)
 
-                total_elapsed: timedelta = current_date - first_start_date
-                days_into_cycle: int = total_elapsed.days % cycle_length.days
-                current_date = first_start_date + timedelta(days=days_into_cycle)
+                # The year whose anchor opens the original run. A contiguous
+                # run may start somewhere the season table never names, so
+                # take the last anchor at or before it rather than assuming
+                # the two coincide.
+                base_year: int = first_start_date.year
+                if _restart_anchor(base_year, restart_month, restart_day, weekdays) > first_start_date:
+                    base_year -= 1
+
+                # A multi-season show occupies one year per season, so its
+                # cycle is however many years the whole run spans -- Hannibal
+                # premieres s1/s2/s3 in three consecutive autumns and only
+                # then starts again.
+                restart_year: int = last_end_date.year
+                while _restart_anchor(restart_year, restart_month, restart_day, weekdays) < last_end_date:
+                    restart_year += 1
+                cycle_years: int = restart_year - base_year
+                if cycle_years <= 0: return None
+
+                # Wind back to the most recent cycle start on or before today.
+                elapsed_cycles: int = (current_date.year - base_year) // cycle_years
+                anchor: date = _restart_anchor(base_year + elapsed_cycles * cycle_years, restart_month, restart_day, weekdays)
+                while anchor > current_date:
+                    elapsed_cycles -= 1
+                    anchor = _restart_anchor(base_year + elapsed_cycles * cycle_years, restart_month, restart_day, weekdays)
+
+                current_date = first_start_date + timedelta(days=(current_date - anchor).days)
                 if current_date >= last_end_date: return None
         else: # Immediate loop
             cycle_length_days: int = (last_end_date - first_start_date).days
             if cycle_length_days <= 0: return None # Avoid division by zero
+            # Round up to whole weeks for a weekday-gated strip, for the same
+            # reason: a 45-day cycle walks the run through the week and the
+            # gate drops its first slot. The run pauses for the few spare
+            # days instead, which the `reruns` bed covers.
+            if isinstance(frequency, list) and cycle_length_days % 7:
+                cycle_length_days += 7 - (cycle_length_days % 7)
             days_past_end: int = (current_date - last_end_date).days
             days_into_cycle: int = days_past_end % cycle_length_days
             current_date = first_start_date + timedelta(days=days_into_cycle)
-            
+            if current_date >= last_end_date: return None
+
     return current_date
 
 def _find_active_episode(current_date: date, season_windows: List[Tuple[date, date, str, int]], episodes_per_slot: int, frequency: str, airing_date: Optional[date] = None) -> Optional[Tuple[str, int, int]]:
@@ -536,7 +602,7 @@ def resolve_scheduled_content(program: Program, current_date: date) -> Optional[
         
     # 2. Handle Looping Logic
     airing_date = current_date
-    current_date = _apply_schedule_looping(current_date, season_windows, loop, loop_restart_season)
+    current_date = _apply_schedule_looping(current_date, season_windows, loop, loop_restart_season, frequency)
     if current_date is None:
         return None
 
