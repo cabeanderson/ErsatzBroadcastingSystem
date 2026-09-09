@@ -428,6 +428,64 @@ Organising the collection made the key *work*; it could never have made it *fill
 
 ## Open
 
+### 2026-09-08 — the marathon audit
+
+All 21 marathons in the lineup resolved and classified while building the
+Psych Yin/Yang trilogy. Three findings, none of them fixed here.
+
+The audit itself is the reusable part: resolve every `Marathon.collection`,
+and for anything carrying `.pick()` call it and ask `get_play_count` what the
+picked item is worth. **The distinction that matters is not `MarathonSequence`
+versus Collection — it is whether the picked item is bounded.** A
+`RandomCollection` that picks a whole show is the "pick a show, run it all
+day" pattern and works correctly; that is what Toonami Thanksgiving, Toonami
+New Year's Eve and the Cartoon Network Marathon do. A Collection that picks a
+single *film* is the failure. Exactly one marathon in the lineup does that.
+
+- 🟠 **The Dollars Trilogy plays one film.** High Noon declares a six-hour
+  18:00–24:00 Leone marathon backed by `DOLLARS_TRILOGY`, an
+  `OrderedCollection` of three films. `_resolve_marathon_collection` tests
+  `hasattr(collection, "pick")` *first*, and `OrderedCollection.pick()`
+  advances one step per day and returns a single `ContentItem` whose query is
+  year-bounded to one title — `play_count` 1. The window plays *For a Few
+  Dollars More*, yields, and the remaining five hours fall back to the grid.
+  The trilogy has never run as a trilogy. G9 in `channel-rules.md` describes
+  this exact failure and the channel still has it. One-word fix:
+  `MarathonSequence` instead of `OrderedCollection`.
+
+- 🟠 **Cabes Classic Cinema airs Elf.** `CHRISTMAS_FESTIVAL_EVENT` is a
+  `RandomCollection` of three keys and only one, `christmas_classic_movie`,
+  carries an era bound — `CLASSIC_ERA`, which is 1950–1969 and resolves to two
+  films. `christmas_all_movie` and `christmas_family_movie` are unbounded, so
+  two firings in three put post-1979 Christmas films on a channel whose stated
+  identity is 1920–1979. This hits both the 25 July marathon and the December
+  holiday schedule, which uses the same collection across afternoon, evening
+  and prime. The comment at `channels/classic_movies.py` claims "the pool it
+  draws is pre-1980 Christmas film"; it does not. Note that the honest fix is
+  not just a tighter bound — the library holds only a handful of genuinely
+  pre-1980 Christmas features, so this wants a short curated night rather than
+  a twelve-hour window.
+
+- 🟡 **`metadata_census` cannot see episode tags, and the holiday keys were
+  written off on its evidence.** `_scan` opens `tvshow.nfo` for every series
+  and never opens `episodedetails.nfo`, so the "327 distinct show tags" in
+  `reference/metadata-facets.md` are series-level only. Episode NFOs do carry
+  tags: a grep over the `nfo_backup` tree on the server counted **92 episodes
+  carrying `tag:christmas`**, and that tree is a subset of the library, so 92
+  is a floor. The EMPTY verdicts on `christmas_*_sitcoms_tv`,
+  `halloween_*_tv`, `thanksgiving_*_tv` and the rest are therefore **unproven,
+  not disproven** — the census never looked. Whether ErsatzTV *indexes* those
+  tags as `tag:` on an episode document is still unverified and is the actual
+  question; there is no `/api/search` to ask it directly, so the check is a
+  scheduled key plus `key_airing_check` against the live guide.
+
+  This does not change the Psych marathon, which is numbered by season and
+  episode on purpose: the three arc episodes share only generic series
+  keywords ("santa barbara", "detective team"), so no tag selects the arc
+  regardless of indexing. It does mean `monk_trudy_arc_tv` may be failing for
+  a different reason than the census reported, and that a whole class of
+  holiday-episode marathons may be recoverable.
+
 ### 2026-09-08 — the guards moved to where the mistake is made
 
 Nine items closed in one pass. **Three are the same bug wearing different

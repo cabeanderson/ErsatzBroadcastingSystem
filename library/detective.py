@@ -3,7 +3,7 @@ Detective Channel Content
 Collections, Blocks, and Special Programming.
 """
 
-from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection, Block
+from scripts.logic.structures import RandomCollection, OrderedCollection, DailyOrderedCollection, MarathonSequence, Block
 from scripts.library.queries import show_by_title
 from scripts.logic.factories import annual_show
 
@@ -245,3 +245,44 @@ SUNDAY_PRESTIGE_BLOCK = Block(
         {"title": "Millennium", "query": show_by_title("Millennium"), "order": "Chronological"}
     ])
 )
+
+# ==============================================================================
+# MARATHONS
+# ==============================================================================
+
+# The Yin/Yang trilogy: three season finales, one serial killer, told in order.
+# Season and episode numbers verified against the library's own `.nfo` files on
+# 2026-09-08 -- <season> and <episode> are the fields ErsatzTV indexes as
+# `season_number` and `episode_number`, and all three read 16.
+#
+# A `MarathonSequence`, not an `OrderedCollection` (G9): anything carrying a
+# `.pick()` collapses to a single item, which is the defect that has kept High
+# Noon's Dollars Trilogy to one film per firing.
+#
+# Numbered episode by episode rather than tagged. The library carries no tag
+# that selects this arc -- the three episodes share only the generic series
+# keywords ("santa barbara", "detective team"), which is the same trap that
+# leaves `monk_trudy_arc_tv` selecting nothing behind `tag:"main plot"`.
+#
+# `show_title:"Psych"` needs no year bound (G10): Psych is the only show whose
+# title begins with that token, and `type:episode` excludes Psycho (1960).
+#
+# Four episodes, 172 minutes. "Tuesday the 17th" opens it and is not part of
+# the arc: it is the slasher parody that aired one week before the Yang finale
+# and sets the register the trilogy then plays straight. It earns the slot
+# twice over, because the marathon runs on the 17th of October and the episode
+# is called Tuesday the 17th.
+PSYCH_YIN_YANG = MarathonSequence([
+    {"title": "Tuesday the 17th",
+     "query": 'type:episode AND show_title:"Psych" AND season_number:3 AND episode_number:15',
+     "order": "Chronological", "media_type": "show"},
+    {"title": "An Evening with Mr. Yang",
+     "query": 'type:episode AND show_title:"Psych" AND season_number:3 AND episode_number:16',
+     "order": "Chronological", "media_type": "show"},
+    {"title": "Mr. Yin Presents...",
+     "query": 'type:episode AND show_title:"Psych" AND season_number:4 AND episode_number:16',
+     "order": "Chronological", "media_type": "show"},
+    {"title": "Yang 3 in 2D",
+     "query": 'type:episode AND show_title:"Psych" AND season_number:5 AND episode_number:16',
+     "order": "Chronological", "media_type": "show"},
+])

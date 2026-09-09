@@ -34,7 +34,7 @@ The escape hatch is `annual_show()` Broadcast Mode: one season a year, chronolog
 | 116 | Cartoon Network | CN originals + Toonami + Adult Swim | yes — **rebuilt** |
 | 120 | Lucy TV | I Love Lucy 24/7 — **out of scope, claims nothing** | no — and deliberately not |
 | 142 | Cabes Classic Cinema | film, **1920–1979** | yes — **designed**. The 1980s handed back; identity finally stated |
-| 144 | Mystery Theatre | detective / procedural | yes — **refined** |
+| 144 | Mystery Theatre | detective / procedural | yes — **refined**. Gained the Psych Yin/Yang marathon 2026-09-08 |
 | 151 | Other Worlds | science fiction | yes — **refined**, fantasy & horror removed |
 | 164 | Japanorama | anime — **the Japanese broadcast day** | yes — **built** 2026-09-03 |
 | 180 | Totally 80s | 80s TV — **stays 80s** | yes — **designed** 2026-09-01 |
@@ -1128,6 +1128,65 @@ python3 -m scripts.testing.validate_titles --quiet          # findings only
 Matches on token sets, so the library's `Flintstones, The (1960)` form and a scheduled `the flintstones` line up. It is query-aware: a broad title narrowed by `studio:`/`tag:`/`genre:` is not flagged, an `OR` query passes if any branch resolves, and bare `title:` lookups that name an episode or special are reported separately as unverifiable rather than missing. Exits non-zero when it finds something, so it can gate a build.
 
 Reads the manifests in `reference/`, so it runs offline with no ErsatzTV.
+
+### Marathons — the blackout, the shape rule, and the arc marathon (2026-09-08)
+
+**The blackout is eleven days a year, and December is not one of them.**
+`find_active_marathon` returns nothing while `holiday_ctx.is_holiday_season`
+is true, and `_compute_is_holiday_season` raises that flag for exactly three
+events — Halloween, Thanksgiving, Christmas, plus the first two hangovers.
+Simulated 2026–2032 it resolves to the same shape every year:
+
+| Window | Dates | Notes |
+|---|---|---|
+| Halloween | 29–31 Oct | Fixed. Why Nightmare Theatre's Halloween is a *schedule* |
+| Thanksgiving | Thu ±1 day | Floats: 24–26 Nov in 2026, 20–22 in 2029 |
+| Christmas | 21–25 Dec | **1–20 December takes marathons normally** |
+
+That last row is the useful one: a December Christmas event does not have to
+be a holiday schedule, only Christmas week does. Doctor Who Day (23 Nov) is
+caught in three years of seven, not "most" as `core/registry.py` says.
+
+**The shape rule is about boundedness, not about `MarathonSequence`.** G9 says
+a Collection handed to a `Marathon` collapses because
+`_resolve_marathon_collection` tests `hasattr(collection, "pick")` first. True,
+but the collapse only *hurts* when the picked item is bounded. Picking a whole
+show gives "pick a show, run it all day", which is a legitimate pattern and
+what Toonami Thanksgiving, Toonami New Year's Eve and the Cartoon Network
+Marathon are. Picking a single film gives a six-hour window with one film in
+it. Audit by resolving the collection and asking `get_play_count` what the
+picked item is worth; across 21 marathons exactly one fails, and it is High
+Noon's Dollars Trilogy (KNOWN_ISSUES.md).
+
+**The arc marathon: number the episodes, do not tag them.** Mystery Theatre's
+Psych: The Yin/Yang Trilogy (17 October, 20:00–24:00) is a `MarathonSequence`
+of four items, each a `season_number` / `episode_number` pair:
+
+```python
+{"title": "Tuesday the 17th",
+ "query": 'type:episode AND show_title:"Psych" AND season_number:3 AND episode_number:15',
+ "order": "Chronological", "media_type": "show"},
+```
+
+A bare `episode_number:N` resolves to `play_count = 1`, so each item is exactly
+one episode and the sequence is the running order. Three points worth carrying
+to the next one:
+
+- **Verify the numbers against the library, not against memory.** Season and
+  episode numbering on disk is what ErsatzTV indexes — read `<season>` and
+  `<episode>` out of the episode's own `.nfo`. There is no `/api/search` to ask
+  the server, and `testing/list_content.py` is a 0-byte stub.
+- **A tag cannot select an arc.** The four Psych episodes share only generic
+  series keywords. This is the same trap `monk_trudy_arc_tv` is still in with
+  `tag:"main plot"`.
+- **Give the window slack.** `prime` is exactly (20, 23), but the evening
+  daypart ahead of it is the Mystery Movie Wheel on both weekend arms, and a
+  19:00 film pushes the marathon back an hour. (20, 24) absorbs it and costs
+  nothing, because the block yields the moment its items are exhausted.
+
+Seasonal injection touches marathon items but cannot break them: it wraps the
+tagged key in `Fallback(primary=tagged, secondary=base)`, and since the tag can
+only narrow an already-pinned episode to zero, the fallback restores it.
 
 ### Still needs building
 

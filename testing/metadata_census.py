@@ -285,6 +285,18 @@ def write_doc(movies, shows, tagrows, airtime, mvocab, svocab):
     A("> Regenerate whenever the library changes. This file is the answer to")
     A("> \"what can I write a content key against?\" — [library-analysis.md]"
       "(library-analysis.md) answers \"is there enough of it\".\n")
+    # Emitted from the generator rather than written into the doc, which is
+    # gitignored and would lose the caveat on the next regeneration.
+    A("> ⚠️ **Scope limit: this census reads `tvshow.nfo` and never")
+    A("> `episodedetails.nfo`.** Every show figure below — the distinct-tag")
+    A("> count, the coverage table, and every EMPTY/THIN verdict on a key that")
+    A("> ANDs a `tag:` clause into `type:episode` — is computed from")
+    A("> *series-level* metadata only. Episodes carry their own tags and this")
+    A("> tool has never seen them: a grep of the library counted 92 episodes")
+    A("> carrying `tag:christmas` while this file reported the holiday episode")
+    A("> keys as selecting nothing. Those verdicts are **unproven, not")
+    A("> disproven**. Whether ErsatzTV indexes episode tags as `tag:` is the")
+    A("> open question — see KNOWN_ISSUES.md, 2026-09-08.\n")
     A("---\n")
 
     # ---- 1. tags

@@ -34,7 +34,29 @@ MARATHONS = [
         collection="monk_trudy_arc_tv",
         hours=(10, 23),
         priority=1
-    )
+    ),
+    # The Yin/Yang trilogy, with "Tuesday the 17th" as its cold open. Prime
+    # rather than the daytime window Monk uses: these are the channel's four
+    # biggest Psych episodes and they are an event, not syndication.
+    #
+    # Triggered on a date rather than a roll so it can be relied on. 17 October
+    # clears the Halloween blackout by twelve days -- `find_active_marathon`
+    # returns nothing while `is_holiday_season` is true, which covers 29-31
+    # October every year (G9).
+    #
+    # 20:00-24:00 for 172 minutes of content, and the extra time is deliberate.
+    # `prime` is exactly (20, 23), but the evening daypart ahead of it is the
+    # Mystery Movie Wheel on both weekend arms, and a film starting at 19:00
+    # runs past 20:00 and pushes the marathon back an hour. Four hours absorbs
+    # that; the block yields back to the grid as soon as the fourth episode
+    # ends, so the slack costs nothing on the nights it is not needed.
+    Marathon(
+        name="Psych: The Yin/Yang Trilogy",
+        trigger=triggers.on_date(10, 17),
+        collection=detective.PSYCH_YIN_YANG,
+        hours=(20, 24),
+        priority=2
+    ),
 ]
 
 # ==============================================================================
