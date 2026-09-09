@@ -1115,5 +1115,80 @@ class TestMultiyearRotation(unittest.TestCase):
 
 
 
+class TestUnairedConfigDetection(unittest.TestCase):
+    """
+    The checker that finds config naming content the channel cannot play.
+
+    `unaired_check` sweeps the real lineup, which takes about a minute and is
+    too slow to live in this suite. These pin its two judgement calls on
+    synthetic input instead, so the tool cannot rot into always saying PASS:
+
+      * a branch nothing under it ever aired is DEAD -- the Disney Star Wars
+        reruns block, unreachable because its parent routed every weekend day
+        elsewhere and Mon-Fri always carries WEEKDAY;
+      * a branch that aired some of its items is THIN, not DEAD -- a random
+        collection not getting round to everything, which is what made
+        Michael Keaton's spotlight month report as a false positive.
+    """
+
+    def test_a_branch_that_never_airs_is_reported_dead(self):
+        from scripts.testing.unaired_check import classify
+        config = {"a": {"LIVE[x]"}, "b": {"DEAD[y]"}, "c": {"DEAD[y]"}}
+        dead, thin = classify(config, played={"a"})
+        self.assertEqual(set(dead), {"DEAD[y]"})
+        self.assertFalse(thin)
+
+    def test_a_partly_aired_branch_is_thin_not_dead(self):
+        from scripts.testing.unaired_check import classify
+        config = {"a": {"ROTATION[x]"}, "b": {"ROTATION[x]"}}
+        dead, thin = classify(config, played={"a"})
+        self.assertFalse(dead, "a random collection that missed one item is not dead")
+        self.assertEqual(set(thin), {"ROTATION[x]"})
+
+    def test_an_item_in_two_branches_counts_for_both(self):
+        """The false positive this cost: shared films emptied the second branch."""
+        from scripts.testing.unaired_check import classify
+        config = {"shared": {"BURTON[jan]", "KEATON[dec]"}}
+        dead, thin = classify(config, played={"shared"})
+        self.assertFalse(dead)
+        self.assertFalse(thin)
+
+    def test_a_cycle_longer_than_the_window_is_not_called_dead(self):
+        from scripts.testing.unaired_check import longest_cycle
+        self.assertEqual(longest_cycle({"SPOT[YEAR_OF_3_1][MARCH]"}), 3)
+        self.assertEqual(longest_cycle({"SPOT[MARCH]"}), 1)
+
+    def test_the_real_lineup_declares_nothing_it_cannot_reach(self):
+        """A cheap slice of the full sweep -- structure only, one channel."""
+        from scripts.testing.unaired_check import declared
+        from scripts.channels import disney
+        paths = {p for group in declared(disney).values() for p in group}
+        self.assertTrue(paths, "walked the config and found no content at all")
+        print("✅ unaired-config detection distinguishes dead branches from thin ones")
+
+
+class TestRotationCeilingIsEnforced(unittest.TestCase):
+    """
+    `monthly_rotation` truncated silently, and that is the whole defect.
+
+    A year has twelve months, so a thirteenth item could never be indexed and
+    never aired -- and the factory returned a perfectly good dict, so nothing
+    upstream could tell. It refuses now, and names the replacement.
+    """
+
+    def test_more_than_twelve_items_is_refused(self):
+        from scripts.logic.factories import monthly_rotation
+        with self.assertRaises(ValueError) as caught:
+            monthly_rotation([f"item{i}" for i in range(13)])
+        self.assertIn("multiyear_rotation", str(caught.exception),
+                      "the error should name the factory that handles this")
+
+    def test_exactly_twelve_is_still_fine(self):
+        from scripts.logic.factories import monthly_rotation
+        self.assertEqual(len(set(monthly_rotation([f"i{i}" for i in range(12)]).values())), 12)
+        print("✅ monthly_rotation refuses a rotation it cannot air")
+
+
+
 if __name__ == "__main__":
     unittest.main()

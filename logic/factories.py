@@ -111,19 +111,31 @@ def monthly_rotation(items: List[Any], start_month: int = 1) -> Dict[str, Any]:
         MIDDAY = monthly_rotation([BLOCK_A, BLOCK_B, BLOCK_C])
         # Jan -> A, Feb -> B, Mar -> C, Apr -> A, ...
 
-    **Twelve items is the ceiling, and passing more is a silent loss** -- the
-    returned dict has one key per month, so items[12:] are never indexed and
-    never air. Nothing reports it. Use `multiyear_rotation` for a longer list.
+    **Twelve items is the ceiling, and a thirteenth is refused rather than
+    dropped.** The returned dict has one key per month, so items[12:] could
+    never be indexed and never aired -- which is how Be Kind Rewind's
+    spotlights ran eight directors for months while the author believed a
+    longer list was on the channel. Use `multiyear_rotation` for a longer list;
+    it delegates here below thirteen, so switching is free.
 
     Args:
-        items: Content to cycle. Any length up to 12; 12 gives each month its
-            own. Longer lists are truncated -- see above.
+        items: Content to cycle, at most 12. 12 gives each month its own.
         start_month: Month (1-12) that receives items[0]. Defaults to January.
+
+    Raises:
+        ValueError: on an empty list, a start_month outside 1-12, or more than
+            twelve items.
     """
     if not items:
         raise ValueError("monthly_rotation() needs at least one item")
     if not 1 <= start_month <= 12:
         raise ValueError(f"start_month must be 1-12, got {start_month}")
+    if len(items) > 12:
+        raise ValueError(
+            f"monthly_rotation() got {len(items)} items but a year has 12 "
+            f"months, so {len(items) - 12} of them could never air. Use "
+            f"multiyear_rotation() for a rotation this long."
+        )
 
     return {
         registry.MONTHS[m]: items[(m - start_month) % len(items)]

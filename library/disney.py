@@ -200,9 +200,22 @@ DISNEY_AFTER_DARK = Block(
 # ==============================================================================
 
 # 277 episodes across seven shows is too much to fold into anyone else's block
-# and too serialized to shuffle, so it strips: chronological Monday to Friday,
-# shuffled at the weekend, same treatment as the Disney Channel shows.
-STAR_WARS_FIRST_RUN = Block(
+# and too serialized to shuffle, so it strips chronologically Monday to Friday.
+#
+# **It used to be a weekday/weekend pair and the weekend half never aired** --
+# found by `testing/unaired_check.py` 2026-09-09. `STAR_WARS_STRIP` was
+# `{"WEEKDAY": first-run, "default": reruns}`, but the only thing that reaches
+# it is `PRIME_BLOCK`'s own `default`, and Saturday and Sunday are routed away
+# from that to STAR_WARS_EVENT_NIGHT and WONDERFUL_WORLD_OF_DISNEY before it
+# is ever consulted. Mon-Fri always carries the WEEKDAY label, so the reruns
+# branch was unreachable on every day of the week.
+#
+# Nothing is lost by dropping it. The shuffled weekend it was meant to provide
+# is what STAR_WARS_VAULT already does at 21:00-24:00 every day, and
+# `star_wars_animation_tv` contains all three of the shows the reruns block
+# named. Removing it changes no airing -- verified by diffing two years of
+# this channel, 0 of 44,163 entries.
+STAR_WARS_STRIP = Block(
     name="Star Wars",
     items=OrderedCollection([
         "clone_wars_chronological_tv",
@@ -211,21 +224,6 @@ STAR_WARS_FIRST_RUN = Block(
     ]),
     use_epg_group=False
 )
-
-STAR_WARS_RERUNS = Block(
-    name="Star Wars",
-    items=OrderedCollection([
-        "clone_wars_shuffle_tv",
-        "rebels_shuffle_tv",
-        "bad_batch_shuffle_tv",
-    ]),
-    use_epg_group=False
-)
-
-STAR_WARS_STRIP = {
-    "WEEKDAY": STAR_WARS_FIRST_RUN,
-    "default": STAR_WARS_RERUNS,
-}
 
 # 21:00-24:00. Everything with Star Wars on the front, shuffled -- the vault
 # the strip draws down from, and where the four Saturday events go back to

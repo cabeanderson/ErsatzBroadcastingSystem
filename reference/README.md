@@ -39,9 +39,24 @@ which checks that every scheduled *title* resolves, and
 `scripts/testing/key_census.py`, which resolves every *key* in `MASTER_SOURCES`
 and fails on any that selects nothing.
 
-Both ask what the *library* can satisfy. Two further checkers ask what the
-server actually *aired*, which is a different question and catches what the
-manifests cannot see:
+Both ask what the *library* can satisfy. A third asks what the *schedule* can
+reach, which is neither — it needs no library and no server, only the config:
+
+```bash
+python3 -m scripts.testing.unaired_check      # config the schedule never selects
+```
+
+`unaired_check` exists because a branch of a channel's configuration can name
+real content, type-check, pass every other checker, and still never be chosen.
+Disney's Star Wars reruns block was unreachable on all seven days of the week —
+its parent routed the weekend away before the branch was consulted, and Mon–Fri
+always carries the `WEEKDAY` label that shadowed it. It simulates three years,
+diffs what aired against what the config declares, and separates a genuinely
+dead branch from a random collection that merely did not get round to
+everything.
+
+Two further checkers ask what the server actually *aired*, which is a different
+question again and catches what the manifests cannot see:
 
 ```bash
 python3 -m scripts.testing.continuity_check --future-only   # dead air

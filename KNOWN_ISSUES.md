@@ -459,6 +459,56 @@ Organising the collection made the key *work*; it could never have made it *fill
   2026-09-07 entry), so the practical effect is unchanged until the key is fixed.
   **Worth auditing the other channels for the same pairing.**
 
+### 2026-09-09 — the silent class got a checker, and it found one
+
+Five silent failures are now on this file's record, and the fifth is the one
+that made the pattern legible: `monthly_rotation` returned twelve month keys
+and **silently discarded a thirteenth item**, so Be Kind Rewind ran eight
+directors while the author believed a longer list was on the channel.
+
+Set beside the other four — the `("SEASON","DAY")` tuple that scheduled
+nothing, `frequency` pacing without gating, the loop anchoring that dropped 21
+of 35 premieres, and the `Block(items="key")` family — they share no mechanism.
+What they share is that **the configuration named content that never reached
+air, and nothing compared the two lists.**
+
+Two things closed here:
+
+- **`monthly_rotation` raises instead of truncating.** The guard where the
+  mistake is made, per the 2026-09-08 entry. The message names
+  `multiyear_rotation`, which is the thing you actually wanted.
+
+- **`testing/unaired_check.py` compares the two lists.** It simulates three
+  years, collects what aired, walks the config for every content identity it
+  declares — resolving anonymous `{title, query}` items through the resolver's
+  own `_auto_gen_key`, so a named film matches either way — and reports any
+  *branch* nothing under which ever aired.
+
+**It found one on the first run, and not on the channel being worked on.**
+Disney's `STAR_WARS_RERUNS` — a named `Block` holding three real content keys
+— was unreachable on all seven days. `STAR_WARS_STRIP` was
+`{"WEEKDAY": first-run, "default": reruns}`, but the only path to it is
+`PRIME_BLOCK`'s own `default`, and Saturday and Sunday are routed to their own
+blocks before it is consulted; Mon–Fri always carries `WEEKDAY`. The library
+comment promised "shuffled at the weekend" and the weekend never came. Removed,
+with a two-year diff proving 0 of 44,163 airings changed — the shuffled
+weekend it described is what `STAR_WARS_VAULT` already does at 21:00–24:00.
+
+**The tuning mattered as much as the tool.** The first run also reported
+Michael Keaton's spotlight month DEAD, which was a bug in the checker: films
+sit in more than one spotlight — Beetlejuice is Burton's and Keaton's — and
+attributing each film to the first branch walked emptied the others. An
+identity now counts for every branch that names it, and a branch is DEAD only
+when *nothing* it declares aired anywhere. That is deliberately conservative:
+it can miss a dead branch whose content all airs elsewhere, and the trade is
+right, because **a checker that cries wolf is a checker nobody runs.** The
+lineup reads 1,278 declarations, 0 dead branches.
+
+Still true, and the reason this is a CLI tool and not a unit test: the sweep
+takes about a minute. `test_scenarios` pins its judgement calls on synthetic
+input so it cannot rot into always saying PASS, but **the full sweep has to be
+run deliberately.** Add it to whatever you run before a deploy.
+
 ## Open
 
 ### 2026-09-08 — the marathon audit
