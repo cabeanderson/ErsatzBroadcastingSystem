@@ -61,7 +61,7 @@ from scripts.scheduling import run_daily_schedule, ScheduleConfig
 from scripts.logic import triggers
 from scripts.logic.models import Marathon
 from scripts.library import modern_movies
-from scripts.logic.factories import monthly_rotation
+from scripts.logic.factories import monthly_rotation, multiyear_rotation
 from scripts.core.logger import ChannelLogger
 
 # ==============================================================================
@@ -109,14 +109,23 @@ MARATHONS = [
 # 3. BLOCK DEFINITIONS
 # ==============================================================================
 
-# Tuesday and Thursday are the spotlights, rotated monthly. Eight directors and
-# four stars means the director cycles twice a year and the star three times.
+# Tuesday and Thursday are the spotlights, and they rotate on a three-year
+# cycle rather than a yearly one: 36 directors and 36 stars, one a month, no
+# repeat until the fourth year.
 #
-# `monthly_rotation` returns a month-keyed dict, which the resolution pipeline
-# already understands -- the same mechanic Nick and Disney use, and the reason
-# this needs no new resolution logic.
-DIRECTORS_CHAIR = monthly_rotation(modern_movies.DIRECTORS_CHAIR)
-STAR_OF_THE_MONTH = monthly_rotation(modern_movies.STAR_OF_THE_MONTH)
+# They were eight and four under `monthly_rotation`, which meant a director
+# came round twice a year and a star four times -- and twelve was as far as
+# that factory could ever go, because every label it keys on is a function of
+# the calendar within a year. `multiyear_rotation` keys on the YEAR_OF_*
+# labels too and returns a nested {year: {month: item}} dict, which the
+# resolution pipeline unwraps in two passes with no new resolution logic.
+#
+# `start_year` anchors the front of each list to 2027 so the curated years run
+# in their written order -- The Marquee, The Genre Shelf, The Back Room --
+# rather than wherever the modulo happens to put them. Only the residue
+# matters, so this anchors the cycle without dating the channel to 2027.
+DIRECTORS_CHAIR = multiyear_rotation(modern_movies.DIRECTORS_CHAIR, start_year=2027)
+STAR_OF_THE_MONTH = multiyear_rotation(modern_movies.STAR_OF_THE_MONTH, start_year=2027)
 
 # The decade rotations. A month per decade, so the afternoon has a character
 # that lasts long enough to be noticed rather than shuffling every day.

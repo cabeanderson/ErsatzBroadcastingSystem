@@ -431,14 +431,45 @@ survives of it is two keys, `recent_movie` and `new_release_movie`, used as
 
 **Sub-sorting is what the pool size buys.** Genre × decade now exists for every
 decade rather than only the 80s and 90s, and Tuesday and Thursday are
-title-built spotlights: eight directors (Spielberg, the Coens, Tarantino,
-Scorsese, Ridley Scott, Nolan, Fincher, Carpenter) and four stars
-(Schwarzenegger, Bill Murray, Sigourney Weaver, Denzel Washington). These are
-**title lists, not `director:` queries** — nothing in the repo uses that field,
-`ERSATZTV_API.md` does not document it, and it cannot be verified from the
-workstation. Every title was checked against `library-movies.tsv` and
-year-bounded, because `movie_by_title` is a phrase match and a bare
-`title:"Gladiator"` also returns Gladiator II.
+title-built spotlights. These are **title lists, not `director:` queries** —
+nothing in the repo uses that field, `ERSATZTV_API.md` does not document it,
+and it cannot be verified from the workstation. Every title was checked against
+`library-movies.tsv` and year-bounded, because `movie_by_title` is a phrase
+match and a bare `title:"Gladiator"` also returns Gladiator II.
+
+**The spotlights run on a three-year cycle — 2026-09-09.** They were eight
+directors and four stars, which meant a director returned twice a year and a
+star four times on the channel with the deepest pool on the lineup. The cause
+was not the lists: `monthly_rotation` has twelve slots and **silently discards
+a thirteenth item**, because every label it keys on is a function of the
+calendar within a year. Two Tuesdays two years apart had identical label sets.
+
+`registry.YEAR_CYCLES` and the `YEAR_OF_<n>_<r>` labels give the label system a
+year dimension, and `multiyear_rotation()` spreads a list across it as a nested
+`{year: {month: item}}` dict — which the pipeline already unwraps, so no new
+resolution logic. Phase is `year % n`, immune to the drift that broke the
+annual appointments; `start_year` says which year opens the list.
+
+Each spotlight is now **36 entries over three curated years**, so a year has a
+character the way a night of the week does:
+
+| | Year one | Year two | Year three |
+|---|---|---|---|
+| **Tue** — The Director's Chair | The Marquee — Spielberg, Scorsese, the Coens, Tarantino, Nolan, Cameron, Zemeckis, Ridley Scott, Fincher, Wes Anderson, Peter Jackson, Villeneuve | The Genre Shelf — Carpenter, Hughes, Burton, Landis, Dante, Verhoeven, Donner, McTiernan, Raimi, Sonnenfeld, Reiner, Rodriguez | The Back Room — Lynch, Cronenberg, PTA, del Toro, Cuarón, Bong, Linklater, Spike Lee, Mann, Gilliam, Soderbergh, Boyle |
+| **Thu** — Star of the Month | The Leads — Hanks, Ford, Willis, Cruise, Denzel, Roberts, Freeman, Jackson, Reeves, Weaver, De Niro, Pitt | The comedy and action walls — Murray, Murphy, Carrey, Williams, Martin, Candy, Schwarzenegger, Stallone, Gibson, Chan, Snipes, Keaton | The Character Shelf — Cage, Pesci, Pacino, Ryder, Depp, McDormand, Goldblum, Russell, Bale, DiCaprio, Johansson, Swinton |
+
+639 title references, every one resolving to exactly one film. Over three
+simulated years the Director's Chair goes from 72 distinct films to 197 and
+Star of the Month from 35 to 196; the most-repeated film drops from 20 plays to
+7. **No other slot on the channel changed** — 0 of 12,528 — and
+`same_title_check` reads 56/89 before and after.
+
+Sizing note: prime is 18:00–22:00, two features, ~4.3 Tuesdays a month, so a
+spotlight wants nine films to fill its month cleanly. The stars average ten.
+The directors average eight and the thinnest is five, so a thin director month
+plays a favourite twice — a month-long season of one filmmaker, and the limit
+is the library, not the list. Details in
+[channel-coverage.md](channel-coverage.md).
 
 ### Across the Pond — designed
 `scripts/channels/british.py` · `scripts/library/british.py`

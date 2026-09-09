@@ -1037,5 +1037,83 @@ class TestAnnualLoopAnchoring(unittest.TestCase):
 
 
 
+class TestMultiyearRotation(unittest.TestCase):
+    """
+    A rotation longer than twelve items must actually air all of them.
+
+    `monthly_rotation` returns one key per month, so a thirteenth item was
+    accepted and then never indexed -- and nothing reported it, because a
+    rotation that quietly runs twelve of its thirty-six entries looks exactly
+    like a rotation of twelve. Be Kind Rewind's Director's Chair was capped
+    this way: eight directors, each returning twice a year.
+
+    The fix is a year dimension in the label set. These tests pin both halves
+    -- that the labels distinguish years, and that the factory spreads a long
+    list across them without dropping or repeating an entry.
+    """
+
+    def _aired(self, rotation, first_year, years):
+        """What the rotation resolves to, month by month, for `years` years."""
+        from scripts.core.states import derive_labels
+        out = []
+        for year in range(first_year, first_year + years):
+            for month in range(1, 13):
+                labels = derive_labels(datetime(year, month, 15, 20))
+                target = rotation
+                while isinstance(target, dict):
+                    key = next((k for k in target if k in labels), None)
+                    self.assertIsNotNone(
+                        key, f"{year}-{month:02d} matched no key in {sorted(target)}")
+                    target = target[key]
+                out.append(target)
+        return out
+
+    def test_labels_distinguish_one_year_from_the_next(self):
+        """The defect underneath: without this, every rotation is annual."""
+        from scripts.core.states import derive_labels
+        same_day = [derive_labels(datetime(y, 3, 15, 20)) for y in (2027, 2028, 2029)]
+        for a, b in zip(same_day, same_day[1:]):
+            self.assertTrue(a ^ b, "two different years carried identical labels")
+
+    def test_a_thirty_six_item_rotation_airs_all_thirty_six(self):
+        from scripts.logic.factories import multiyear_rotation
+        items = [f"item{i:02d}" for i in range(36)]
+        aired = self._aired(multiyear_rotation(items), 2027, 3)
+        self.assertEqual(len(set(aired)), 36, "the rotation dropped entries")
+        self.assertEqual(len(aired), len(set(aired)), "an entry aired twice in one cycle")
+
+    def test_the_cycle_repeats_on_schedule_and_not_before(self):
+        from scripts.logic.factories import multiyear_rotation
+        rotation = multiyear_rotation([f"item{i:02d}" for i in range(36)])
+        aired = self._aired(rotation, 2027, 6)
+        self.assertEqual(aired[:36], aired[36:], "year four did not repeat year one")
+
+    def test_start_year_anchors_the_front_of_the_list(self):
+        from scripts.logic.factories import multiyear_rotation
+        items = [f"item{i:02d}" for i in range(36)]
+        aired = self._aired(multiyear_rotation(items, start_year=2027), 2027, 1)
+        self.assertEqual(aired[0], "item00", "the anchored year did not open the list")
+
+    def test_a_short_list_still_behaves_like_a_monthly_rotation(self):
+        from scripts.logic.factories import monthly_rotation, multiyear_rotation
+        items = ["a", "b", "c"]
+        self.assertEqual(multiyear_rotation(items), monthly_rotation(items))
+
+    def test_a_rotation_too_long_to_label_is_refused_not_truncated(self):
+        """The whole point: silent truncation is what this replaces."""
+        from scripts.logic.factories import multiyear_rotation
+        with self.assertRaises(ValueError):
+            multiyear_rotation([f"item{i}" for i in range(61)])
+
+    def test_be_kind_rewind_spotlights_run_three_years_deep(self):
+        from scripts.channels import be_kind_rewind
+        for name in ("DIRECTORS_CHAIR", "STAR_OF_THE_MONTH"):
+            aired = self._aired(getattr(be_kind_rewind, name), 2027, 3)
+            self.assertEqual(len(set(map(id, aired))), 36,
+                             f"{name} does not run 36 distinct spotlights")
+        print("✅ multiyear rotations air every entry and repeat only on cycle")
+
+
+
 if __name__ == "__main__":
     unittest.main()

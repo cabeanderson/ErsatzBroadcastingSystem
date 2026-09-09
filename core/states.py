@@ -176,6 +176,19 @@ def derive_labels(dt: datetime) -> Set[str]:
     # resolve anywhere the label system reaches, same as SATURDAY or SUMMER.
     labels.add(registry.MONTHS[m])
 
+    # 9. Year-Cycle Labels (e.g., YEAR_OF_3_1)
+    #
+    # The only labels here that distinguish one year from the next. Everything
+    # above is a function of month/day/weekday alone, so a block keyed on it
+    # airs the same content this year and every year after -- which capped
+    # `monthly_rotation` at twelve items and silently discarded the rest.
+    #
+    # Phase comes from `dt.year % n`, not from a start date, so the cycle is
+    # absolute: it does not drift, does not need an anchor, and two channels
+    # using the same cycle length stay in step. See `multiyear_rotation`.
+    for n in registry.YEAR_CYCLES:
+        labels.add(f"YEAR_OF_{n}_{dt.year % n}")
+
     return labels
 
 # A season may be named on its own ("FALL") or paired with the weekday an

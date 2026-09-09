@@ -111,8 +111,13 @@ def monthly_rotation(items: List[Any], start_month: int = 1) -> Dict[str, Any]:
         MIDDAY = monthly_rotation([BLOCK_A, BLOCK_B, BLOCK_C])
         # Jan -> A, Feb -> B, Mar -> C, Apr -> A, ...
 
+    **Twelve items is the ceiling, and passing more is a silent loss** -- the
+    returned dict has one key per month, so items[12:] are never indexed and
+    never air. Nothing reports it. Use `multiyear_rotation` for a longer list.
+
     Args:
-        items: Content to cycle. Any length; 12 gives each month its own.
+        items: Content to cycle. Any length up to 12; 12 gives each month its
+            own. Longer lists are truncated -- see above.
         start_month: Month (1-12) that receives items[0]. Defaults to January.
     """
     if not items:
@@ -123,6 +128,86 @@ def monthly_rotation(items: List[Any], start_month: int = 1) -> Dict[str, Any]:
     return {
         registry.MONTHS[m]: items[(m - start_month) % len(items)]
         for m in range(1, 13)
+    }
+
+
+def multiyear_rotation(
+    items: List[Any], start_month: int = 1, start_year: Optional[int] = None
+) -> Dict[str, Any]:
+    """
+    Builds a rotation that takes more than one year to come back around.
+
+    `monthly_rotation` can only ever express twelve slots, because every label
+    it keys on is a function of the calendar *within* a year. This keys on the
+    year-cycle labels as well, so a list of 36 gets 36 distinct months:
+
+        SPOTLIGHT = multiyear_rotation([A, B, C, ... 36 items])
+        # 2027 Jan -> A ... Dec -> L
+        # 2028 Jan -> M ... Dec -> X
+        # 2029 Jan -> Y ... Dec -> AJ
+        # 2030 Jan -> A, and round again
+
+    Returns a nested dict, {YEAR_LABEL: {MONTH_LABEL: item}}. The resolution
+    pipeline already unwraps nested label dicts, so this needs no new
+    resolution logic either -- `_unwrap_nested_structure` resolves the year
+    dict, then the month dict inside it, on successive passes.
+
+    Cycle length is derived from the list: 13-24 items is a two-year rotation,
+    25-36 a three-year, up to the five years `registry.YEAR_CYCLES` allows.
+    A list of 12 or fewer is delegated to `monthly_rotation`, so this is safe
+    to use wherever the list might grow later.
+
+    **Phase is absolute, not relative to a start date.** Year `Y` of an
+    `n`-year cycle is the year where `year % n == Y`, which means the rotation
+    cannot drift the way an appointment anchored on a raw day count does --
+    the defect that had 21 of 35 annual appointments opening on episode 2.
+    The cost is that `items[0]` lands in whichever calendar year the modulo
+    picks, which for an unnamed rotation does not matter and for a curated one
+    does: pass `start_year` to say which year the front of the list belongs to.
+
+    Args:
+        items: Content to cycle. Up to 12 * max(registry.YEAR_CYCLES) items.
+        start_month: Month (1-12) that receives items[0], within the first
+            year of the cycle. Defaults to January.
+        start_year: Calendar year that airs the front of the list. Defaults to
+            None, which leaves phase to the modulo. Only the year's residue
+            matters -- for a three-year cycle 2027, 2030 and 2033 are the same
+            instruction -- so this anchors the cycle without dating it.
+
+    Raises:
+        ValueError: on an empty list, a start_month outside 1-12, or more
+            items than the longest supported cycle can hold.
+    """
+    if not items:
+        raise ValueError("multiyear_rotation() needs at least one item")
+    if not 1 <= start_month <= 12:
+        raise ValueError(f"start_month must be 1-12, got {start_month}")
+
+    if len(items) <= 12:
+        return monthly_rotation(items, start_month)
+
+
+    years = -(-len(items) // 12)          # ceil, in whole years
+    longest = max(registry.YEAR_CYCLES)
+    if years > longest:
+        raise ValueError(
+            f"multiyear_rotation() got {len(items)} items, which needs a "
+            f"{years}-year cycle; the longest labelled cycle is {longest} "
+            f"years ({longest * 12} items). Widen registry.YEAR_CYCLES or "
+            f"split the rotation."
+        )
+
+    # The cycle is one flat run of `years * 12` months. Slot 0 is start_month
+    # of cycle-year 0, and the list is indexed modulo its own length, so a
+    # partly-filled final year repeats from the front rather than going dark.
+    span = years * 12
+    offset = start_year % years if start_year is not None else 0
+    return {
+        f"YEAR_OF_{years}_{(y + offset) % years}": {
+            registry.MONTHS[m]: items[((y * 12) + (m - start_month)) % span % len(items)]
+            for m in range(1, 13)
+        }
+        for y in range(years)
     }
 
 

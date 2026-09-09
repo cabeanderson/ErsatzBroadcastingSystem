@@ -112,6 +112,19 @@ MONTHS: Dict[int, str] = {
     9: "SEPTEMBER", 10: "OCTOBER", 11: "NOVEMBER", 12: "DECEMBER"
 }
 
+# Year-cycle lengths that get a label, in years.
+#
+# Every other label in this file repeats identically every year -- two Tuesdays
+# two years apart are indistinguishable to `derive_labels`, which is why a
+# month-keyed rotation is a twelve-slot loop no matter how much content sits
+# behind it. These are the only labels that tell one year from the next, and
+# `multiyear_rotation` is built on them.
+#
+# Four lengths rather than an open range because each one costs a label on
+# every day of every simulation, and a rotation longer than five years is a
+# rotation nobody will ever see the whole of.
+YEAR_CYCLES: Tuple[int, ...] = (2, 3, 4, 5)
+
 # Weekday labels, indexed to match datetime.weekday() (Monday == 0).
 WEEKDAYS: List[str] = [
     "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"
