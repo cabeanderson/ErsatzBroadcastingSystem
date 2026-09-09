@@ -31,6 +31,12 @@ What this build changed, beyond the grid:
     mismatches, all three are fixed in `library/british.py`.
   * Both marathons were RandomCollections, which collapse to one item (G9).
   * 110 UK commercials, categorised months ago and never once scheduled.
+
+Added 2026-09-09: **Sharpe is a season rather than a title in a rotation.**
+Sixteen feature-length films run one a Thursday at eight for sixteen weeks
+every spring, ending in the week of Waterloo Day, with a British period film
+behind them and a marathon on 18 June. See `library/british.py`.
+
 """
 
 # ErsatzTV
@@ -92,6 +98,17 @@ POND_TIMESLOTS = {
 # is true, so it could never have run. It is a holiday schedule below.
 
 MARATHONS = [
+    # 18 June. The spring Sharpe season reaches Sharpe's Waterloo in the week
+    # of the anniversary; this is the encore, and the one day Teatime and the
+    # Seven O'Clock Show give way. Priority 4 so it outranks Bond, which can
+    # only fire on the three US bank holidays and never on this date anyway.
+    Marathon(
+        name="Sharpe's Waterloo",
+        trigger=triggers.on_date(6, 18),
+        collection=british.SHARPES_WATERLOO,
+        hours=(17, 24),
+        priority=4
+    ),
     Marathon(
         name="Bank Holiday Bond",
         # US bank holidays as the proxy for UK ones. None of these three is a

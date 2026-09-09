@@ -24,9 +24,13 @@ CLOSEDOWN is the only place it is used broadly, because at 03:00 variety beats
 curation.
 """
 
+from datetime import date
+
 from scripts.logic.structures import (
-    RandomCollection, OrderedCollection, MarathonSequence, Block
+    RandomCollection, OrderedCollection, DailyOrderedCollection,
+    MarathonSequence, Block
 )
+from scripts.logic.factories import annual_show
 from scripts.library.queries import (
     show_by_title, movie_by_title, movie_by_title_year
 )
@@ -251,13 +255,120 @@ PRIME_WEDNESDAY_AFTER_DARK = Block(
     ]),
 )
 
+# ------------------------------------------------------------------------------
+# The bed under Sharpe, and the whole of Thursday the other thirty-six weeks.
+#
+# An appointment needs its own night *and its own bed* (G5), and taking Sharpe
+# out of the rotation left A Young Doctor's Notebook and Queer as Folk holding
+# it alone: 21 episodes and 9.1 hours against roughly 108 hours of off-season
+# Thursday prime, a twelvefold replay that fails F6 outright. Every drama shelf
+# on the channel is already spoken for on another night -- the mystery pool owns
+# the morning, Monday through Wednesday have the modern serials, and Doc Martin
+# is what keeps The Lunch Break above F6 -- so the bed comes off the film shelf
+# instead, which had two slots a week for sixty-odd named titles.
+#
+# The register is Sharpe's own: British period, historical and war. Waterloo
+# and Master and Commander are the Napoleonic pair either side of the run, and
+# nothing here is named on any other channel -- checked title by title, not
+# assumed. The channel's standing exception to the era line (C5) covers the
+# pre-1980 half the same way it already covers Python and Zulu: these are on
+# Across the Pond because they are British, not because of when they were made.
+#
+# Titles are year-bound (G10) and spelled as they are filed -- `Lion in Winter,
+# The`, not `The Lion in Winter`. That filing convention is what made the old
+# `title:"The World's End"` resolve to nothing on this very channel.
+
+BRITISH_PERIOD_FILM = RandomCollection([
+    # Napoleonic -- Sharpe's own war, on either side of his run
+    {"title": "Waterloo", "query": movie_by_title_year("Waterloo", 1970)},
+    {"title": "Master and Commander", "query": movie_by_title_year("Master and Commander - The Far Side of the World", 2003)},
+    # The islands, further back
+    {"title": "Rob Roy", "query": movie_by_title_year("Rob Roy", 1995)},
+    {"title": "Braveheart", "query": movie_by_title_year("Braveheart", 1995)},
+    {"title": "The Lion in Winter", "query": movie_by_title_year("Lion in Winter, The", 1968)},
+    {"title": "Excalibur", "query": movie_by_title_year("Excalibur", 1981)},
+    {"title": "Black Death", "query": movie_by_title_year("Black Death", 2010)},
+    # Empire
+    {"title": "A Passage to India", "query": movie_by_title_year("Passage to India, A", 1984)},
+    {"title": "The Last Emperor", "query": movie_by_title_year("Last Emperor, The", 1987)},
+    {"title": "The Lost City of Z", "query": movie_by_title_year("Lost City of Z, The", 2017)},
+    {"title": "The African Queen", "query": movie_by_title_year("African Queen, The", 1952)},
+    {"title": "Doctor Zhivago", "query": movie_by_title_year("Doctor Zhivago", 1965)},
+    # The war, and the men who ran it
+    {"title": "The Dam Busters", "query": movie_by_title_year("Dam Busters, The", 1955)},
+    {"title": "Where Eagles Dare", "query": movie_by_title_year("Where Eagles Dare", 1968)},
+    {"title": "Memphis Belle", "query": movie_by_title_year("Memphis Belle", 1990)},
+    {"title": "The Imitation Game", "query": movie_by_title_year("Imitation Game, The", 2014)},
+    {"title": "The King's Speech", "query": movie_by_title_year("King's Speech, The", 2010)},
+    {"title": "The Death of Stalin", "query": movie_by_title_year("Death of Stalin, The", 2017)},
+    # Costume
+    {"title": "Amadeus", "query": movie_by_title_year("Amadeus", 1984)},
+    {"title": "The Elephant Man", "query": movie_by_title_year("Elephant Man, The", 1980)},
+    {"title": "The Age of Innocence", "query": movie_by_title_year("Age of Innocence, The", 1993)},
+])
+
+# Thursday is the period night, and Sharpe is a season on it rather than a
+# title in a rotation.
+#
+# Sixteen feature-length films -- fourteen at 100 minutes, Challenge at 101,
+# Peril at 135, counted off disk rather than out of `library-tv.tsv` (V4) --
+# shared a shuffled three-title `OrderedCollection` with A Young Doctor's
+# Notebook and Queer as Folk. Split three ways, Sharpe surfaced about every
+# third Thursday in no particular order: a serial with a war in it, aired like
+# a rerun pool, taking a year to cycle and never once reading as a run.
+#
+# The disk carries the ITV broadcast shape exactly -- seasons of
+# [2, 3, 3, 3, 3, 1, 1], the fourteen Peninsular films plus the two India
+# sequels -- so contiguous mode chains the seven windows into one unbroken
+# sixteen-week run and `frequency` puts it on a Thursday.
+#
+# The date is not arbitrary. SPRING's peak in `core/registry.py` is 15 March,
+# aligned forward to the premiere weekday, and sixteen Thursdays from there put
+# **Sharpe's Waterloo, the fourteenth film, in the week of 18 June** -- the
+# anniversary -- in every year from 2027 to 2032, and on its eve in two of
+# them. Spring is also the only clear window: `enable_seasonal_injection` and
+# `enable_holiday_injection` are both on for this channel, so an autumn run
+# would take Halloween injections through its middle and lose a Thursday
+# outright to the DOCTOR_WHO_DAY schedule.
+#
+# `loop_restart_season="SPRING"` brings it back every March. That relies on a
+# fix to `_apply_schedule_looping` made in the same pass -- before it, every
+# annual show in the library opened on episode 2 or 3 from its second year on.
+
+SHARPE = annual_show(
+    show_title="Sharpe",
+    episodes_per_season=[2, 3, 3, 3, 3, 1, 1],
+    start_date=date(2027, 3, 18),   # SPRING peak, 15 March, forward to Thursday
+    frequency=["THURSDAY"],
+    reruns=BRITISH_PERIOD_FILM,
+    episodes_per_slot=1,
+    loop=True,
+    loop_restart_season="SPRING",
+)
+
+# `DailyOrderedCollection`, not `OrderedCollection`: it resets to index 0 each
+# day, so Sharpe is always first in the three hours and the premiere lands at
+# 20:00 every week rather than wherever the previous night's cursor stopped.
+# The film behind it fills what a 100-minute Sharpe leaves of the slot, and is
+# the whole block once the season ends -- the same shape Nightmare Theatre uses
+# under its six weeknight appointments.
+#
+# A daily collection that wraps replays its first item later the same night,
+# which is the live defect G5 names. It cannot happen here, and by arithmetic
+# rather than by luck: the shortest film on the shelf is Black Death at 101
+# minutes, so Sharpe plus one feature is at least 201 minutes against a
+# 180-minute prime. The collection reaches the boundary before it can come
+# back round. Anything shorter than 80 minutes added to `BRITISH_PERIOD_FILM`
+# would reopen it.
+#
+# The two short period serials are not here. They keep The Omnibus, where 21
+# episodes against three hours a week is a cycle rather than a treadmill; at
+# eight on a Thursday they were the reason the block failed F6.
+
 PRIME_THURSDAY_PERIOD = Block(
     name="Thursday Night Period Drama",
-    items=OrderedCollection([
-        {"title": "Sharpe", "query": show_by_title("Sharpe"), "order": "Shuffle"},
-        {"title": "A Young Doctor's Notebook", "query": show_by_title("A Young Doctor's Notebook"), "order": "Shuffle"},
-        {"title": "Queer as Folk", "query": show_by_title("Queer as Folk"), "order": "Shuffle"},
-    ]),
+    items=DailyOrderedCollection([SHARPE, BRITISH_PERIOD_FILM]),
+    fill_strategy="yield",
 )
 
 # Friday night sketch. Python, Mitchell and Webb and Serafinowicz are the three
@@ -326,7 +437,6 @@ THE_OMNIBUS = Block(
         {"title": "Luther", "query": show_by_title("Luther")},
         {"title": "Black Mirror", "query": show_by_title("Black Mirror")},
         {"title": "I May Destroy You", "query": show_by_title("I May Destroy You")},
-        {"title": "Sharpe", "query": show_by_title("Sharpe")},
         {"title": "A Young Doctor's Notebook", "query": show_by_title("A Young Doctor's Notebook")},
         {"title": "Queer as Folk", "query": show_by_title("Queer as Folk")},
     ]),
@@ -470,6 +580,42 @@ PUB_LOCK_IN_B = Block(
 # Both of this channel's marathons were RandomCollections. They are sequences
 # now (G9), and the Bond run is ordered and year-bound (G10) so it plays as a
 # run of films rather than a shuffle of everything with "Bond" in the title.
+
+# 18 June, the anniversary of the battle, and the one date the channel drops
+# Teatime and the Seven O'Clock Show. Sharpe's last three films are one
+# continuous arc -- Revenge, Justice, Waterloo, the whole of season five in
+# order -- and the 1970 film closes the night by telling the same battle from
+# the other end of the field.
+#
+# 18 June is outside every holiday season, which is the reason this can be a
+# marathon at all: `find_active_marathon` returns nothing while
+# `is_holiday_season` is true, and only Halloween, Thanksgiving and Christmas
+# set it (G9). Doctor Who Day had to become a holiday schedule for exactly the
+# reason this one does not.
+#
+# It lands the day after the spring season reaches Sharpe's Waterloo in most
+# years, so it plays as an encore. In 2030 and 2031 the season gets there a
+# day or two later and the marathon arrives first; that is the cost of pinning
+# an event to a real date rather than to the run.
+#
+# Episodes are addressed by season and number, not by title: the phrase match
+# `title:"Sharpe's Waterloo"` is fine but the season-five triple is contiguous
+# and reads better as what it is. 3 x 100 minutes plus 132 slightly overruns
+# the seven-hour window, and the film runs past midnight into the lock-in
+# rather than being cut -- the same call Krampusnacht makes.
+
+SHARPES_WATERLOO = MarathonSequence(items=[
+    {"title": "Sharpe's Revenge",
+     "query": show_by_title("Sharpe") + " AND season_number:5 AND episode_number:1"},
+    {"title": "Sharpe's Justice",
+     "query": show_by_title("Sharpe") + " AND season_number:5 AND episode_number:2"},
+    {"title": "Sharpe's Waterloo",
+     "query": show_by_title("Sharpe") + " AND season_number:5 AND episode_number:3"},
+    {"title": "Waterloo",
+     "query": movie_by_title_year("Waterloo", 1970),
+     "media_type": "movie"},
+])
+
 
 JAMES_BOND_MARATHON = MarathonSequence(items=[
     {"title": "Dr. No", "query": movie_by_title_year("Dr. No", 1962)},

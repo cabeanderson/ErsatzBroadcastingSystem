@@ -1023,6 +1023,16 @@ class TestAnnualLoopAnchoring(unittest.TestCase):
         self.assertGreaterEqual(len(runs), 5, "expected a premiere every year")
         self.assertEqual([r[0][1] for r in runs], [1] * len(runs))
 
+    def test_a_contiguous_spring_season_runs_complete_every_year(self):
+        """Sharpe: 16 films, in order, opening on Sharpe's Rifles each spring."""
+        from scripts.library import british
+        runs = self._runs(british.SHARPE, date(2027, 1, 1), date(2032, 1, 1))
+        self.assertEqual(len(runs), 5, "expected one season a year")
+        for run in runs:
+            self.assertEqual(len(run), 16, "a season ran short of the full sixteen")
+            self.assertEqual(run[0][1], 1, "a season opened on something other than Rifles")
+            self.assertTrue(all(d.strftime("%A") == "Thursday" for d, _ in run),
+                            "Sharpe aired off its own night")
         print("✅ annual loops re-anchor on the calendar and open on episode 1")
 
 
