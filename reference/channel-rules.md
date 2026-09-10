@@ -173,6 +173,31 @@ Related trap, same channel: `annual_show(reruns=...)` hangs the bed on the
 Program, and a Program that resolves to nothing yields the *whole slot* rather
 than passing the turn to the next item — so stacked Programs silently never air.
 
+**What "stacked" means, restated 2026-09-10.** The rule is not "never put more
+than one appointment in a slot" — Other Worlds' Sunday night runs three and is
+the lineup's reference implementation (CONCEPTS.md, *Appointment TV*). The
+failure is appointments that are **simultaneous and share one bed**. Other
+Worlds' three are *staggered* — Lost premieres in FALL, Alias in WINTER, Fringe
+in SPRING — and each carries **its own `reruns=` shelf**, so exactly one is
+mid-season, the other two play their own filler, and no Program ever resolves to
+nothing. That is what makes three safe where four simultaneous ones were not.
+
+The two safe shapes, both in the tree:
+
+* **Staggered relay**, `library/scifi.py` — N appointments, N premiere seasons,
+  one filler shelf each, one slot.
+* **One per night**, `library/western.py::_appointment()` —
+  `DailyOrderedCollection([program, bed])` with `fill_strategy="yield"`, behind a
+  weekday-keyed `PRIME_BLOCK`.
+
+**Give the slot enough content to cover its window.** A block whose items run
+short is re-entered by the runner and restarts at the top of its list, so the
+first appointment gets a partial repeat. High Noon sizes the slot to the lineup
+— prime is 20:00–22:00, not 20:00–23:00, because "a three-hour slot leaves an
+hour of bed behind it every night and the block stops reading as an
+appointment". `DailyOrderedCollection` does the other half: a re-entry continues
+into filler instead of restarting the appointment.
+
 ### G6 · Too short to strip is a feature, not a rounding error
 
 Anything that cannot strip becomes a yearly event: Dragon Ball DAIMA (20 eps),

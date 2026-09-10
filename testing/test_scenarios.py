@@ -1234,5 +1234,83 @@ class TestDocAuditReadsBothImportForms(unittest.TestCase):
 
 
 
+class TestBroadcastYear(unittest.TestCase):
+    """
+    The broadcast calendar has to partition the year and nest sweeps correctly.
+
+    The meteorological seasons answer "what does it feel like outside"; these
+    answer "where is the network in its year". Two failures are easy and both
+    are silent: a gap leaves a day with no season label, so a block keyed on
+    the calendar falls through to its default and nobody notices; and an
+    overlap puts two season labels on one day, so which one wins depends on
+    the order a channel happens to write its arms.
+
+    The sweeps windows are dates rather than whole months for the same reason.
+    A whole-month May put SWEEPS_MAY on 30 May -- nine days into SUMMER_RERUNS
+    and a week past FINALE_WEEK, a ratings period running after the finales it
+    exists to lead into.
+    """
+
+    SEASONS = {"FALL_SEASON", "HIATUS", "MIDSEASON", "FINALE_WEEK", "SUMMER_RERUNS"}
+
+    def _labels(self, y, m, d):
+        from scripts.core import states
+        return states.derive_labels(datetime(y, m, d, 20, 0))
+
+    def test_every_day_carries_exactly_one_season(self):
+        for year in (2027, 2028, 2029, 2030):
+            day = date(year, 1, 1)
+            while day.year == year:
+                found = self._labels(year, day.month, day.day) & self.SEASONS
+                self.assertEqual(
+                    len(found), 1,
+                    f"{day} carries {sorted(found) or 'no season label'}"
+                )
+                day += timedelta(days=1)
+        print("✅ the broadcast year partitions every day, four years running")
+
+    def test_sweeps_never_outlives_its_season(self):
+        # The specific defect: sweeps bleeding past the finales into summer.
+        for year in (2027, 2028, 2029, 2030):
+            for month, day_n in ((5, 30), (6, 15), (7, 4), (8, 20)):
+                labels = self._labels(year, month, day_n)
+                self.assertIn("SUMMER_RERUNS", labels)
+                self.assertNotIn("SWEEPS", labels, f"{year}-{month}-{day_n}")
+        print("✅ no sweeps period survives into the summer")
+
+    def test_sweeps_sits_inside_a_season_not_beside_it(self):
+        # Overlap is deliberate here -- the point is that it is *nested*.
+        for year, month, day_n, season in (
+            (2027, 11, 10, "FALL_SEASON"),
+            (2027, 2, 14, "MIDSEASON"),
+            (2027, 5, 1, "MIDSEASON"),
+        ):
+            labels = self._labels(year, month, day_n)
+            self.assertIn("SWEEPS", labels)
+            self.assertIn(season, labels)
+        print("✅ each sweeps period is nested inside a season")
+
+    def test_premiere_week_is_seven_days_inside_the_fall_season(self):
+        for year in (2027, 2028, 2029, 2030):
+            hits = [
+                d for d in range(1, 31)
+                if "PREMIERE_WEEK" in self._labels(year, 9, d)
+            ]
+            self.assertEqual(len(hits), 7, f"{year}: {hits}")
+            # A premiere opens the season; it must not read as a gap in it.
+            for d in hits:
+                self.assertIn("FALL_SEASON", self._labels(year, 9, d))
+            # And it opens on the third Monday.
+            self.assertEqual(date(year, 9, hits[0]).weekday(), 0)
+        print("✅ premiere week is the seven days from September's third Monday")
+
+    def test_the_new_labels_do_not_collide_with_the_old_ones(self):
+        # FALL_SEASON and FALL are different questions about the same date.
+        labels = self._labels(2027, 12, 10)
+        self.assertIn("FALL_SEASON", labels)   # the network is still in season
+        self.assertIn("WINTER", labels)        # the weather is not
+        print("✅ FALL_SEASON and the meteorological seasons stay independent")
+
+
 if __name__ == "__main__":
     unittest.main()

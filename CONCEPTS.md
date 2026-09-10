@@ -31,6 +31,7 @@ labels = {
     "PRIMETIME",           # Daypart, from the hour
     "SECOND_WEDNESDAY",    # Positional
     "JANUARY",             # Month
+    "MIDSEASON",           # Broadcast year
     "YEAR_OF_2_0", "YEAR_OF_3_1",   # Year-cycle phase
     "YEAR_OF_4_2", "YEAR_OF_5_1",
 }
@@ -43,6 +44,8 @@ labels = {
     "HALLOWEEN",           # Static holiday
     "FIFTH_SATURDAY",
     "OCTOBER",
+    "FALL_SEASON",         # Broadcast year
+    "SWEEPS", "SWEEPS_NOV",  # ...and the ratings period inside it
     "PRIMETIME",
     "YEAR_OF_2_0", "YEAR_OF_3_1",
     "YEAR_OF_4_2", "YEAR_OF_5_1",
@@ -71,6 +74,33 @@ rotation cannot drift and two channels on the same cycle length stay in step.
 
 You rarely name one of these directly — `multiyear_rotation()` builds the
 dict for you. See **Rotations** below.
+
+**The broadcast-year labels say where the *network* is in its year**, which the
+meteorological seasons cannot: September and December are both `FALL`, but one
+is premiere month and the other is the dead fortnight before New Year.
+
+| Label | Window | Meaning |
+|---|---|---|
+| `PREMIERE_WEEK` | 3rd Monday of Sep, +7 days | The season opens |
+| `FALL_SEASON` | 15 Sep – 15 Dec | The marquee lineup |
+| `HIATUS` | 16 – 31 Dec | The dead fortnight |
+| `MIDSEASON` | 1 Jan – 15 May | The replacement season |
+| `FINALE_WEEK` | 16 – 22 May | Season finales |
+| `SUMMER_RERUNS` | 23 May – 14 Sep | Repeats and the odd shelf |
+| `SWEEPS` + `SWEEPS_NOV` / `_FEB` / `_MAY` | 28 Oct–24 Nov · 28 Jan–24 Feb · 25 Apr–22 May | The ratings periods |
+
+The five season labels are a strict partition — **exactly one applies to any
+date** — so a block keyed on them can never fall through. `PREMIERE_WEEK` and
+the sweeps labels are *additive* and sit inside a season, so a November date
+carries `FALL_SEASON`, `SWEEPS` and `SWEEPS_NOV` together. Dict resolution takes
+the first label it matches, so a channel decides which one wins by the order it
+writes its arms — the same mechanism Noir November uses on Mystery Theatre.
+
+Sweeps are date windows rather than whole months on purpose: a month-keyed May
+put `SWEEPS_MAY` on 30 May, nine days into `SUMMER_RERUNS` and a week past
+`FINALE_WEEK` — a ratings period running after the finales it exists to lead
+into. `registry.BROADCAST_SEASONS` and `registry.SWEEPS_PERIODS` hold the
+windows; `TestBroadcastYear` pins the partition.
 
 ---
 
@@ -568,6 +598,77 @@ ScheduleConfig(
 ---
 
 ## 5. Special Programming
+
+### Appointment TV — the staggered-premiere relay
+**Concept:** A show airs one episode a week from a premiere date until its
+season's episodes run out, then hands its slot to a filler shelf until the
+following year, when it returns with the next season.
+
+**Reference implementation: Other Worlds' Sunday night**
+([`library/scifi.py`](library/scifi.py)). Read this before building any
+appointment; it is the shape the lineup settled on.
+
+```python
+annual_show(
+    show_title="Lost",
+    episodes_per_season=[25, 24, 23, 14, 17, 18],
+    premiere_year=2026,
+    premiere_season=("FALL", "SUNDAY"),
+    frequency=["SUNDAY"],
+    reruns=LOST_FILLERS,     # this show's own shelf, chronological
+    loop=True,               # next year, next season
+)
+```
+
+Three things make it work, and the third is the one that is easy to miss:
+
+1. **`episodes_per_season` ends the season.** The run stops on the finale
+   because the count says where the season stops — not by exhausting a pool and
+   silently looping back to episode one.
+2. **`loop=True` advances a season a year.** Six seasons of *Lost* is six years
+   of distinct Sunday programming from one entry.
+3. **`reruns=` is per show, not per block.** *Lost*, *Alias* and *Fringe* each
+   carry their own chronological filler shelf, so the 21:00 hour still reads as
+   the 21:00 hour when *Alias* is out of season.
+
+**Stagger the premieres so the night is never all-dark.** Other Worlds runs
+`FALL`, `WINTER` and `SPRING` across its three hours, so one show is always
+mid-season and the night always has something opening or closing. Together the
+three give roughly sixteen years before anything repeats.
+
+**The gating comes from the slot, not from `frequency`.** `frequency=["SUNDAY"]`
+paces the episode index; it does not stop the appointment airing on other days.
+Put the appointment behind a weekday-keyed slot dict — the `PRIME_BLOCK` shape
+on High Noon and Mystery Theatre. See rule G5 in
+[reference/channel-rules.md](reference/channel-rules.md).
+
+**Give the slot enough content to cover its window.** A block whose items run
+short of the slot is re-entered by the runner and restarts at the top of the
+list, so the first appointment gets a partial repeat. Two fixes, both in use:
+
+* **Size the slot to the lineup.** High Noon's prime is 20:00–22:00 rather than
+  20:00–23:00 — *"a three-hour slot leaves an hour of bed behind it every night
+  and the block stops reading as an appointment."*
+* **Use `DailyOrderedCollection`.** It resets to index 0 each day, so the
+  appointment is always first and the premiere lands at the top of the hour
+  every week, while a re-entry continues into filler rather than restarting the
+  appointment. `library/western.py::_appointment()` is the one-per-night form:
+
+```python
+Block(
+    name=name,
+    items=DailyOrderedCollection([program, "modern_western_movie"]),
+    fill_strategy="yield",
+)
+```
+
+> **Simulating an appointment?** `simulator._guess_duration` reads a runtime
+> hint out of the key name (`_movie` → 120, `_tv` → 30). `annual_show`
+> generates `__auto_<show>_s<n>`, which carries no such word, so **every
+> appointment on the lineup simulates at the 20-minute default** and its block
+> appears to wrap several times over. Pass real runtimes for the appointments
+> *and* their fillers via `ChannelSimulator(mod, content_durations=...)` before
+> concluding anything about replays.
 
 ### Marathons
 **Concept:** Multi-episode takeover during specific hours.

@@ -112,6 +112,55 @@ MONTHS: Dict[int, str] = {
     9: "SEPTEMBER", 10: "OCTOBER", 11: "NOVEMBER", 12: "DECEMBER"
 }
 
+# 4b. THE BROADCAST YEAR
+#
+# The meteorological seasons above answer "what does it feel like outside".
+# They do not answer "where is the network in its year", and that is the
+# question a channel simulating broadcast television actually needs. September
+# and December are both FALL; one is premiere month and the other is the dead
+# fortnight before New Year, and no label told them apart.
+#
+# Windows are (start_month, start_day, end_month, end_day), inclusive, and are
+# resolved by `is_in_date_range` so a window may wrap the year end. They are
+# deliberately allowed to overlap: SWEEPS sits inside FALL_SEASON and
+# MIDSEASON, and PREMIERE_WEEK inside FALL_SEASON. Dict resolution takes the
+# first matching label, so a channel decides which one wins by the order it
+# writes the arms -- the same mechanism Noir November uses on Mystery Theatre.
+#
+# Dates follow US network practice: the season opens the week containing the
+# third Monday of September, sweeps are the November/February/May rating
+# months, finales run late May, and summer is repeats until the next premiere.
+BROADCAST_SEASONS: Dict[str, Tuple[int, int, int, int]] = {
+    "FALL_SEASON":   (9, 15, 12, 15),
+    "HIATUS":        (12, 16, 12, 31),
+    "MIDSEASON":     (1, 1, 5, 15),
+    "FINALE_WEEK":   (5, 16, 5, 22),
+    "SUMMER_RERUNS": (5, 23, 9, 14),
+}
+
+# Premiere week is the week containing the third Monday of September. Held
+# separately from BROADCAST_SEASONS because it is derived from a weekday rather
+# than a fixed date, and because it must not exclude FALL_SEASON -- a premiere
+# is the opening of the season, not a gap in it.
+PREMIERE_WEEK_MONTH: int = 9
+PREMIERE_WEEK_OCCURRENCE: int = 3
+
+# The three ratings periods. Each emits both the generic SWEEPS label and its
+# own, so a block can say "any sweeps" or "the November one" -- November is the
+# only sweeps period that also carries a holiday, and channels treat it
+# differently for that reason.
+#
+# Date windows rather than whole months, and not cosmetically: a whole-month
+# May put SWEEPS_MAY on 30 May, which is nine days into SUMMER_RERUNS and a
+# week past FINALE_WEEK -- a sweeps period running after the finales it exists
+# to lead into. These are the real broadcast windows, and each one ends where
+# its season ends.
+SWEEPS_PERIODS: Dict[str, Tuple[int, int, int, int]] = {
+    "SWEEPS_NOV": (10, 28, 11, 24),   # ends before Thanksgiving
+    "SWEEPS_FEB": (1, 28, 2, 24),
+    "SWEEPS_MAY": (4, 25, 5, 22),     # ends with FINALE_WEEK
+}
+
 # Year-cycle lengths that get a label, in years.
 #
 # Every other label in this file repeats identically every year -- two Tuesdays

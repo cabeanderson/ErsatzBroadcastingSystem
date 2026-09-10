@@ -176,6 +176,38 @@ def derive_labels(dt: datetime) -> Set[str]:
     # resolve anywhere the label system reaches, same as SATURDAY or SUMMER.
     labels.add(registry.MONTHS[m])
 
+    # 8b. The Broadcast Year (e.g. FALL_SEASON, SWEEPS, PREMIERE_WEEK)
+    #
+    # Where the *network* is in its year, which the meteorological seasons
+    # above cannot express -- September and December are both FALL. These
+    # overlap on purpose: a date in November carries FALL_SEASON, SWEEPS and
+    # SWEEPS_NOV together, and the channel picks a winner by the order it
+    # writes its arms.
+    for name, (sm, sd, em, ed) in registry.BROADCAST_SEASONS.items():
+        if is_in_date_range(dt, sm, sd, em, ed):
+            labels.add(name)
+
+    # Premiere week is weekday-derived, not a fixed date: the seven days
+    # opening with the third Monday of September. Additive to FALL_SEASON --
+    # the premiere is the start of the season, not a hole in it.
+    if m == registry.PREMIERE_WEEK_MONTH:
+        premiere_monday = get_floating_date(dt.year, {
+            "month": registry.PREMIERE_WEEK_MONTH,
+            "weekday": 0,
+            "occurrence": registry.PREMIERE_WEEK_OCCURRENCE,
+        })
+        # `get_floating_date` returns a `date`; `dt` may be either.
+        dt_date = dt.date() if hasattr(dt, "date") else dt
+        if premiere_monday and 0 <= (dt_date - premiere_monday).days < 7:
+            labels.add("PREMIERE_WEEK")
+
+    # The ratings periods, generic and specific.
+    for name, (sm, sd, em, ed) in registry.SWEEPS_PERIODS.items():
+        if is_in_date_range(dt, sm, sd, em, ed):
+            labels.add("SWEEPS")
+            labels.add(name)
+            break
+
     # 9. Year-Cycle Labels (e.g., YEAR_OF_3_1)
     #
     # The only labels here that distinguish one year from the next. Everything
