@@ -87,6 +87,11 @@ SEASONAL_TAG_QUERIES = {
 # --- THEMATIC TAGS ---
 # Unified Injection Rules
 # Supports: Ramps, Static Days, Vetos, and Context Overrides
+#
+# On TV keys every theme airs at most once a day per show, and one that runs for
+# weeks (the ramps, NOVEMBER) only one day in seven; `single_day` marks a holiday
+# that is over in a day and so needs no weekly turn. See _tv_injection_turn in
+# logic/resolution/pipeline.py.
 INJECTION_RULES = {
     "CHRISTMAS": {
         "mode": "ramp",
@@ -115,14 +120,15 @@ INJECTION_RULES = {
     "VALENTINES_DAY": {
         "mode": "static",
         "label": "VALENTINES_DAY",
+        "single_day": True,
         "query": '(tag:valentines OR tag:"Valentines Day")',
         "ratio": 1.0,
         "veto": ["Horror", "Crime", "War"]
     },
     "NOVEMBER": {"mode": "static", "label": "NOVEMBER", "query": "(tag:noir OR plot:noir)", "ratio": 0.4},
-    "ST_PATRICKS_DAY": {"mode": "static", "label": "ST_PATRICKS_DAY", "query": 'tag:"St Patricks Day"', "ratio": 0.8},
-    "NEW_YEARS_EVE": {"mode": "static", "label": "NEW_YEARS_EVE", "query": 'tag:"New Years"', "ratio": 1.0},
-    "NEW_YEARS_DAY": {"mode": "static", "label": "NEW_YEARS_DAY", "query": 'tag:"New Years"', "ratio": 0.8},
-    "EASTER": {"mode": "static", "label": "EASTER", "query": "tag:Easter", "ratio": 0.8},
-    "JULY_4": {"mode": "static", "label": "JULY_4", "query": 'tag:"July 4th"', "ratio": 1.0}
+    "ST_PATRICKS_DAY": {"mode": "static", "label": "ST_PATRICKS_DAY", "single_day": True, "query": 'tag:"St Patricks Day"', "ratio": 0.8},
+    "NEW_YEARS_EVE": {"mode": "static", "label": "NEW_YEARS_EVE", "single_day": True, "query": 'tag:"New Years"', "ratio": 1.0},
+    "NEW_YEARS_DAY": {"mode": "static", "label": "NEW_YEARS_DAY", "single_day": True, "query": 'tag:"New Years"', "ratio": 0.8},
+    "EASTER": {"mode": "static", "label": "EASTER", "single_day": True, "query": "tag:Easter", "ratio": 0.8},
+    "JULY_4": {"mode": "static", "label": "JULY_4", "single_day": True, "query": 'tag:"July 4th"', "ratio": 1.0}
 }

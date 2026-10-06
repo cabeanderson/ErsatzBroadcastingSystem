@@ -206,8 +206,9 @@ class TestScenarios(unittest.TestCase):
         self.mock_context.current_time = datetime(2026, 10, 31, 12, 0, 0)
         self.boss.roll = MagicMock(return_value=True) # Force injection roll
         
-        # Setup: Content
-        self.resolver.registry["show_ep1"] = "show_title:Test"
+        # Setup: Content. A movie search, so the TV rotation limit (one tagged
+        # airing a day, one day in seven) stays out of a test about appointments.
+        self.resolver.registry["show_ep1"] = "type:movie AND title:Test"
         
         # 1. Regular Program (Should inject)
         prog_regular = Program(name="Regular", content="show_ep1")
@@ -265,6 +266,37 @@ class TestScenarios(unittest.TestCase):
         self.assertIsNotNone(res_explicit.wrapper, "Explicit enable should allow injection")
 
         print("✅ Appointment TV injection protection verified")
+
+    def test_tv_injection_rotation(self):
+        """A tagged TV key airs once a day, on one day in seven; a movie pool is not limited."""
+        from scripts.logic.resolution.pipeline import apply_thematic_injection
+        from scripts.core.identity import stable_hash
+
+        self.resolver.registry["scrubs_tv"] = 'type:episode AND show_title:"scrubs"'
+        self.resolver.registry["horror_movie"] = "type:movie AND genre:horror"
+
+        def inject(key, day):
+            ctx = MagicMock()
+            ctx.current_time = datetime(2026, 10, day, 12, 0, 0)
+            boss = DayDirector(ctx)
+            boss.signal = MagicMock(side_effect=lambda name: 1.0 if name == "HALLOWEEN" else 0.0)
+            boss.roll = MagicMock(return_value=True)
+            first = apply_thematic_injection(key, boss, self.resolver, self.logger)
+            second = apply_thematic_injection(key, boss, self.resolver, self.logger)
+            return first.wrapper is not None, second.wrapper is not None
+
+        turn = int(stable_hash("scrubs_tv_auto_halloween"), 16) % 7
+        week = range(20, 27)
+        results = {d: inject("scrubs_tv", d) for d in week}
+        on_turn = [d for d in week if date(2026, 10, d).toordinal() % 7 == turn]
+        self.assertEqual(len(on_turn), 1)
+        for d, (first, second) in results.items():
+            self.assertEqual(first, d in on_turn, f"Oct {d}: injected off its turn")
+            self.assertFalse(second, f"Oct {d}: injected twice in one day")
+
+        for d in week:
+            self.assertEqual(inject("horror_movie", d), (True, True), "movie pools are not rotated")
+        print("✅ TV injection rotation verified")
 
 
 class TestApiContract(unittest.TestCase):

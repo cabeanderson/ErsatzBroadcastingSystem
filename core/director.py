@@ -26,6 +26,8 @@ class DayDirector:
         self._label_cache: Dict[datetime, Set[str]] = {}
         self._rng_cache: Dict[str, random.Random] = {}
         self._roll_cache: Dict[str, float] = {}
+        # Tagged TV keys already injected today (logic/resolution/pipeline.py).
+        self.tv_injections: Set[str] = set()
         
         if anniversary_years is not None:
             self.anniversary: Optional[datetime] = self._get_anniversary_date(self._initial_time, anniversary_years)

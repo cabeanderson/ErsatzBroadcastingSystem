@@ -9,6 +9,7 @@ This includes:
 4. Extracting raw content for gap filling
 """
 
+import re
 import traceback
 from datetime import date, timedelta
 from typing import Any, Union, Optional, Tuple, List, Dict
@@ -140,11 +141,51 @@ def _attempt_injection(base_key: str, tag_query: str, suffix: str, probability: 
             return ResolutionResult(wrapper=Fallback(primary=tagged_key, secondary=base_key), source=source_label)
     return None
 
+def _base_query(resolver: Any, key: str) -> str:
+    """The Lucene query a key searches with, or "" when it has none."""
+    data = resolver.get_query_data(key)
+    if isinstance(data, dict):
+        return data.get("query", "") or ""
+    if isinstance(data, str):
+        return data
+    return ""
+
+def _is_movie_query(query: str) -> bool:
+    """True for a movie search. Every registry query carries a `type:` clause."""
+    return bool(re.search(r'type:"?movie\b', query, re.IGNORECASE))
+
+def _tv_injection_turn(tagged_key: str, boss: Any, weekly: bool) -> bool:
+    """May this tagged TV key air today? The caller records it in
+    `boss.tv_injections` once it actually injects.
+
+    A movie pool tagged down is still a pool. A show tagged down is usually a
+    handful of episodes and often exactly one -- Scrubs has one `halloween`
+    episode -- and Shuffle over one item replays it, so the injection became
+    the same episode several times an hour, every day, through the season.
+
+    So a tagged TV key airs at most once a day, and for a theme that runs for
+    weeks (`weekly`) only on one day in seven. That day is fixed per key from
+    the date ordinal, not remembered, because a rebuild is a fresh process and
+    would forget: the same key always lands on the same weekday, exactly seven
+    days apart.
+    """
+    if weekly and boss.date.toordinal() % 7 != int(stable_hash(tagged_key), 16) % 7:
+        return False
+    return tagged_key not in boss.tv_injections
+
 def apply_seasonal_injection(final_key: Any, boss: Any, resolver: Any, logger: ChannelLogger, enabled: bool = True, source: str = "schedule") -> ResolutionResult:
     """
     Attempts to automatically inject seasonal tags into the base content query.
+
+    Movies only. The season lists are a dozen loose tags each (`school`,
+    `mystery`, `halloween`...) meant to vary a film pool; on a single show they
+    pick out a few arbitrary episodes and replay them -- Bonanza's one `school`
+    episode drew 78 injections in a fortnight on High Noon.
     """
     if not enabled or not isinstance(final_key, str) or not resolver:
+        return ResolutionResult(key=final_key, source=source)
+
+    if not _is_movie_query(_base_query(resolver, final_key)):
         return ResolutionResult(key=final_key, source=source)
 
     from scripts.library.filters import SEASONAL_TAG_QUERIES
@@ -185,13 +226,9 @@ def apply_thematic_injection(final_key: Any, boss: Any, resolver: Any, logger: C
     from scripts.library.filters import INJECTION_RULES
 
     # Get base query data for context checks (veto/overrides)
-    base_data = resolver.get_query_data(final_key)
-    base_query = ""
-    if isinstance(base_data, dict):
-        base_query = base_data.get("query", "")
-    elif isinstance(base_data, str):
-        base_query = base_data
-    
+    base_query = _base_query(resolver, final_key)
+    is_tv = not _is_movie_query(base_query)
+
     # Normalize base query for checking
     base_query_lower = base_query.lower()
 
@@ -246,11 +283,17 @@ def apply_thematic_injection(final_key: Any, boss: Any, resolver: Any, logger: C
                 tag_query = override_query
                 break
 
-        # 4. Attempt Injection
+        # 4. Rotation limit for TV (see _tv_injection_turn)
+        suffix = f"_auto_{label.lower()}"
+        tagged_key = f"{final_key}{suffix}"
+        if is_tv and not _tv_injection_turn(tagged_key, boss, weekly=not config.get("single_day", False)):
+            break
+
+        # 5. Attempt Injection
         res = _attempt_injection(
             base_key=final_key,
             tag_query=tag_query,
-            suffix=f"_auto_{label.lower()}",
+            suffix=suffix,
             probability=probability,
             roll_key=f"thematic_auto_tag_{label}_{final_key}_{boss.now.hour}",
             source_label=f"injection_{label.lower()}",
@@ -259,6 +302,8 @@ def apply_thematic_injection(final_key: Any, boss: Any, resolver: Any, logger: C
             logger=logger
         )
         if res:
+            if is_tv:
+                boss.tv_injections.add(tagged_key)
             return res
         break # Only apply the first matching theme
             
