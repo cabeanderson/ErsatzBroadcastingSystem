@@ -196,8 +196,9 @@ def apply_seasonal_injection(final_key: Any, boss: Any, resolver: Any, logger: C
 
     # Get the strength of the current season vibe
     strength = boss.get_season_strength(boss.season_vibe)
-    # Cap auto-tag probability at 0.4 (40%)
-    auto_ratio = 0.4
+    # Cap auto-tag probability at 0.1: seasonal colour on about one film in ten,
+    # not a third of the channel (it measured 33-41% at 0.4).
+    auto_ratio = 0.1
     
     # Roll for injection
     res = _attempt_injection(
