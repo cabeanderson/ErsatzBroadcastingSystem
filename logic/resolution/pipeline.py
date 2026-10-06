@@ -167,7 +167,9 @@ def _tv_injection_turn(tagged_key: str, boss: Any, weekly: bool) -> bool:
     weeks (`weekly`) only on one day in seven. That day is fixed per key from
     the date ordinal, not remembered, because a rebuild is a fresh process and
     would forget: the same key always lands on the same weekday, exactly seven
-    days apart.
+    days apart. The holiday itself is the exception (the caller passes
+    weekly=False when a ramp peaks): the build-up is rationed, the day is not,
+    so most of the lineup plays its holiday episode then.
     """
     if weekly and boss.date.toordinal() % 7 != int(stable_hash(tagged_key), 16) % 7:
         return False
@@ -237,6 +239,7 @@ def apply_thematic_injection(final_key: Any, boss: Any, resolver: Any, logger: C
         # 1. Determine Activation & Probability
         is_active = False
         probability = 0.0
+        holiday_day = False
         
         mode = config.get("mode", "static")
         
@@ -247,6 +250,7 @@ def apply_thematic_injection(final_key: Any, boss: Any, resolver: Any, logger: C
                 if strength > 0.01:
                     is_active = True
                     probability = strength * config.get("ratio", 1.0)
+                    holiday_day = strength >= 1.0  # the surge peaks on the day itself
         elif mode == "static":
             check_label = config.get("label", label)
             if boss.has(check_label):
@@ -287,7 +291,7 @@ def apply_thematic_injection(final_key: Any, boss: Any, resolver: Any, logger: C
         # 4. Rotation limit for TV (see _tv_injection_turn)
         suffix = f"_auto_{label.lower()}"
         tagged_key = f"{final_key}{suffix}"
-        if is_tv and not _tv_injection_turn(tagged_key, boss, weekly=not config.get("single_day", False)):
+        if is_tv and not _tv_injection_turn(tagged_key, boss, weekly=not (config.get("single_day", False) or holiday_day)):
             break
 
         # 5. Attempt Injection

@@ -279,7 +279,8 @@ class TestScenarios(unittest.TestCase):
             ctx = MagicMock()
             ctx.current_time = datetime(2026, 10, day, 12, 0, 0)
             boss = DayDirector(ctx)
-            boss.signal = MagicMock(side_effect=lambda name: 1.0 if name == "HALLOWEEN" else 0.0)
+            strength = 1.0 if day == 31 else 0.5
+            boss.signal = MagicMock(side_effect=lambda name: strength if name == "HALLOWEEN" else 0.0)
             boss.roll = MagicMock(return_value=True)
             first = apply_thematic_injection(key, boss, self.resolver, self.logger)
             second = apply_thematic_injection(key, boss, self.resolver, self.logger)
@@ -296,6 +297,9 @@ class TestScenarios(unittest.TestCase):
 
         for d in week:
             self.assertEqual(inject("horror_movie", d), (True, True), "movie pools are not rotated")
+
+        # Halloween itself: every show may play its holiday episode, once.
+        self.assertEqual(inject("scrubs_tv", 31), (True, False), "the holiday skips the weekly turn")
         print("✅ TV injection rotation verified")
 
 
