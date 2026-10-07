@@ -249,6 +249,12 @@ def build_playout(api, context, build_id):
         # at every hour of the day. A fallback fires on a stall and cannot know
         # what time it is, so "safe at some hours" is not safe.
         fallback_content=sitcoms.CHANNEL_FALLBACK,
+        # The ad pool for the one block on the channel that declares commercial
+        # breaks. `enable_commercials` stays at its global default of False, so
+        # this is inert everywhere except TGIF, which turns it on per-Block.
+        # `commercials_spot` -- the framework default -- is every commercial on
+        # disk regardless of era or country; this is the 90s pool.
+        commercial_content="commercials_90s_spot",
         enable_holiday_injection=True,
         enable_seasonal_injection=True,
         enable_thematic_injection=True,

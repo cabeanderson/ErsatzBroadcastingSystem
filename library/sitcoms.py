@@ -101,7 +101,7 @@ Must See Thursday; Good Times runs the 1990s Must See Thursday on the same
 night. Same night's identity, two eras, no shared title.
 """
 
-from scripts.logic.structures import RandomCollection, OrderedCollection, Block
+from scripts.logic.structures import RandomCollection, OrderedCollection, Block, Program
 from scripts.library.queries import show_by_title
 from . import branding
 
@@ -342,14 +342,81 @@ THU_PRIME = Block(
     use_epg_group=False,
 )
 
-
 # ==============================================================================
 # 6. FRIDAY -- ABC, TGIF
 # ==============================================================================
+#
+# The one night on the channel that has a *season*. Everything else here is a
+# strip -- the same shape every week, with the daytime books reshuffling four
+# times a year. TGIF instead runs a broadcast year: shows premiere, run week by
+# week, break for the holidays, come back, and go into repeats.
+#
+# **The epoch.** Schedule year 2026 is broadcast season 1989-90 -- TGIF's first
+# night was 22 September 1989 -- so every show's seasons are placed at their
+# real broadcast year plus `TGIF_EPOCH`. That is the whole trick, and it needs
+# no machinery: `states.resolve_season_date` turns a `(year, season)` pair into
+# an absolute calendar date, so `premiere_year` is a hard anchor and relative
+# alignment between shows is arithmetic. Perfect Strangers S7 is on the air the
+# year Mr. Cooper premieres because that is when it happened.
+#
+#     sched  broadcast   20:00           20:30           21:00         21:30
+#     2026   1989-90     Full House S3   Fam Matters S1  Perf Str S5   --
+#     2027   1990-91     Full House S4   Fam Matters S2  Perf Str S6   Dinosaurs S1
+#     2028   1991-92     Full House S5   Fam Matters S3  Perf Str S7   Dinosaurs S2
+#     2029   1992-93     Full House S6   Fam Matters S4  Mr Cooper S1  Dinosaurs S3
+#     2030   1993-94     Full House S7   Fam Matters S5  Mr Cooper S2  Sister Sis S1
+#     2031   1994-95     Full House S8   Fam Matters S6  Mr Cooper S3  Sister Sis S2
+#     2032   1995-96     --              Fam Matters S7  Mr Cooper S4  Sister Sis S3
+#     2033   1996-97     Sabrina S1      Fam Matters S8  Mr Cooper S5  Sister Sis S4
+#     2034   1997-98     Sabrina S2      Fam Matters S9  --            Sister Sis S5
+#     2035   1998-99     Sabrina S3      --              --            Sister Sis S6
+#     2036   1999-00     Sabrina S4      --              --            --
+#
+# **Four chairs, not four shows.** A chair is one `Program` whose season list
+# walks *across* shows, which is how the real 21:00 half-hour worked: Mr. Cooper
+# took the slot Perfect Strangers vacated, and Sister, Sister took Dinosaurs'.
+# `annual_show()` cannot express that -- it numbers seasons from 1 and maps
+# season `i` to `premiere_year + i`, so it can neither start a show mid-run nor
+# hand a slot over -- so `_chair` below builds the same `Program` shape by hand.
+# The query it writes per season is character-for-character what
+# `factories._get_content_key` writes, so nothing about resolution changes.
+#
+# **Every chair carries a bed (C-rung: an off-season appointment must not
+# stall).** `blocks._resolve_and_prepare_program_content` returns nothing for a
+# Program whose season window is closed and whose `content` is None; the block
+# loop then sees time unmoved and `playout.circuit_breaker` fires, spending the
+# half-hour on `fallback_content` and logging a warning. So `content=TGIF_BENCH`
+# on all four. It is deliberately the *same object* on each: `RandomCollection`
+# clears its no-repeat state once per day, so four chairs drawing one bench
+# cannot serve the same title twice in a night (G4).
+#
+# **Two seasons are held back from the chairs on purpose.** Perfect Strangers S8
+# (6 episodes) and Dinosaurs S4 (14) were both burned off over the summer rather
+# than aired in season, so they are the SUMMER_RERUNS arm below instead of the
+# tail of a chair. That is both the faithful reading and the reason the chairs
+# hand over cleanly -- without it Perfect Strangers and Mr. Cooper would both
+# want 2029.
+#
+# **What does not air on the first pass.** Full House S1-S2 and Perfect
+# Strangers S1-S4 sit at schedule years 2022-2025, which are in the past: 117
+# episodes that `unaired_check` will flag and that will not air until the chair
+# loops (chair A in 2037, chair C in 2034). That is expected, not a defect --
+# the alternative is truncating the lists, which would strand them permanently.
+#
+# **Where this stops being true.** Each chair loops on its own span, so from
+# 2037 they drift out of step with each other and the table above stops holding.
+# Keeping it aligned forever needs an explicit cycle length on the appointment
+# resolver (`_apply_schedule_looping`); see KNOWN_ISSUES.md. Ten years of
+# correct history was judged worth more than the machinery to extend it.
+#
+# **Hours rules.** All seven titles are clear at 20:00-23:00. Nick at Nite holds
+# none of them at any hour. Totally 80s holds Full House and Family Matters at
+# 08:00-10:00 and 17:00-20:00 and Perfect Strangers at 08:00-10:00 -- every one
+# of those claims ends at or before 20:00, which is where this block starts.
 
-FRI_AFTER_HOURS = OrderedCollection(["spin_city_tv", "sabrina_tv"])
+FRI_AFTER_HOURS = OrderedCollection(["spin_city_tv", "drew_carey_tv"])
 FRI_OVERNIGHT = OrderedCollection(["bewitched_tv", "addams_family_tv"])
-FRI_EARLY = OrderedCollection(["dinosaurs_tv", "sabrina_tv"])
+FRI_EARLY = OrderedCollection(["dinosaurs_tv", "mr_cooper_tv"])
 
 FRI_MORNING = {
     "FALL":   OrderedCollection(["drew_carey_tv", "spin_city_tv"]),
@@ -370,28 +437,284 @@ FRI_AFTERNOON = {
     "SUMMER": RandomCollection(["full_house_tv", "sister_sister_tv", "wonder_years_tv"]),
 }
 
-FRI_EVENING = RandomCollection(["drew_carey_tv", "home_improvement_tv", "sabrina_tv"])
+# Sabrina came out of `after_hours`, `early` and `evening` in the TGIF pass. It
+# was in eleven places across the lineup and five of Friday's ten slots, one of
+# them the 17:00-20:00 strip immediately before prime; it now holds the 20:00
+# chair from 2033 and keeps Wednesday, which is its ABC day.
+FRI_EVENING = RandomCollection(["drew_carey_tv", "home_improvement_tv", "spin_city_tv"])
 
-# The one block on the channel that keeps its own branding. Queried by title
-# rather than by key because the block wants a shuffled order of its own, and a
-# content key carries its playback order (G8).
-FRI_PRIME = Block(
-    name="TGIF",
-    items=OrderedCollection([
-        {"title": "Full House", "query": show_by_title("Full House"), "order": "Shuffle"},
-        {"title": "Family Matters", "query": show_by_title("Family Matters"), "order": "Shuffle"},
-        {"title": "Perfect Strangers", "query": show_by_title("Perfect Strangers"), "order": "Shuffle"},
-        {"title": "Hangin' with Mr. Cooper", "query": show_by_title("Hangin' with Mr. Cooper"), "order": "Shuffle"},
-        {"title": "Sister, Sister", "query": show_by_title("Sister, Sister"), "order": "Shuffle"},
-        {"title": "Dinosaurs", "query": show_by_title("Dinosaurs"), "order": "Shuffle"},
+
+# --- the TGIF broadcast year --------------------------------------------------
+
+# Schedule year - broadcast year. 2026 == 1989-90, TGIF's first season.
+TGIF_EPOCH = 37
+
+_FRI_FALL = ("FALL", "FRIDAY")
+_FRI_SPRING = ("SPRING", "FRIDAY")
+
+
+# The three shows that arrived at midseason. Their first season -- and only
+# their first -- opens at the SPRING ramp rather than the FALL one, which is
+# where it really opened: Perfect Strangers March 1986, Dinosaurs April 1991,
+# Sister, Sister April 1994. Their short first orders (6, 5 and 12 episodes)
+# are the evidence; no other show in the seven has a first season under 22.
+_SPRING_PREMIERES = {"perfect_strangers", "dinosaurs", "sister_sister"}
+
+
+def _seasons(title, stem, entries):
+    """Season triples for one show's run inside a chair.
+
+    `entries` are `(season_number, episode_count, broadcast_year)` -- the real
+    year the season *opened*, so a spring premiere carries the year its
+    broadcast season began (Dinosaurs S1 aired April 1991 and is 1990). Returns
+    the `(key, count, (year, season_spec))` triples the appointment resolver
+    wants, plus the queries to pre-register.
+    """
+    triples, queries = [], {}
+    for number, count, broadcast_year in entries:
+        key = f"__tgif_{stem}_s{number}"
+        queries[key] = f'{show_by_title(title)} AND season_number:{number}'
+        spec = _FRI_SPRING if number == 1 and stem in _SPRING_PREMIERES else _FRI_FALL
+        triples.append((key, count, (broadcast_year + TGIF_EPOCH, spec)))
+    return triples, queries
+
+
+
+
+def _chair(name, runs, restart, bed):
+    """One half-hour of TGIF, across every show that ever held it."""
+    triples, queries = [], {}
+    for title, stem, entries in runs:
+        t, q = _seasons(title, stem, entries)
+        triples.extend(t)
+        queries.update(q)
+    return Program(
+        name=name,
+        content=bed,
+        scheduling={
+            "seasons": triples,
+            "frequency": ["FRIDAY"],
+            "episodes_per_slot": 1,
+            "loop": True,
+            "loop_restart_season": restart,
+            "generated_queries": queries,
+        },
+    )
+
+
+# **Each chair reruns its own shows, and nothing else.** The first version put
+# one shared `TGIF_BENCH` under all four, which measured badly: 69% of nights
+# aired the same title twice in prime, because the bench could hand back the
+# show that had just aired as an appointment. The four chairs own *disjoint*
+# sets, so a per-chair bed makes that structurally impossible -- and it gives
+# each half-hour an identity that holds all year. Nine o'clock is Perfect
+# Strangers or Mr. Cooper whether it is a new episode or a repeat, which is
+# what a slot on a real station felt like. This is the per-show shelf pattern
+# from `library/scifi.py`; the shared bench was a mistake.
+TGIF_BED_2000 = OrderedCollection(["full_house_tv", "sabrina_tv"])
+TGIF_BED_2030 = OrderedCollection(["family_matters_tv"])
+TGIF_BED_2100 = OrderedCollection(["perfect_strangers_tv", "mr_cooper_tv"])
+TGIF_BED_2130 = OrderedCollection(["dinosaurs_tv", "sister_sister_tv"])
+
+# The 22:00 tail's pool, and the block's last-resort filler. Still all seven --
+# the tail is explicitly the hour where the night stops being appointments and
+# becomes the shelf.
+TGIF_BENCH = RandomCollection([
+    "full_house_tv", "family_matters_tv", "perfect_strangers_tv",
+    "mr_cooper_tv", "sister_sister_tv", "dinosaurs_tv", "sabrina_tv",
+])
+
+TGIF_CHAIR_2000 = _chair("TGIF 8:00", [
+    ("Full House", "full_house", [
+        (1, 22, 1987), (2, 22, 1988), (3, 24, 1989), (4, 26, 1990),
+        (5, 26, 1991), (6, 24, 1992), (7, 24, 1993), (8, 24, 1994),
     ]),
-    bumpers=branding.BRANDING_TGIF.bumpers,
-    use_epg_group=False,
-)
+    # ABC years only. Sabrina's last three seasons were The WB, which is not
+    # this night and not this channel's ABC day.
+    ("Sabrina, the Teenage Witch", "sabrina", [
+        (1, 24, 1996), (2, 26, 1997), (3, 25, 1998), (4, 22, 1999),
+    ]),
+], restart="FALL", bed=TGIF_BED_2000)
+
+TGIF_CHAIR_2030 = _chair("TGIF 8:30", [
+    ("Family Matters", "family_matters", [
+        (1, 22, 1989), (2, 25, 1990), (3, 25, 1991), (4, 24, 1992),
+        (5, 24, 1993), (6, 25, 1994), (7, 24, 1995), (8, 24, 1996),
+        (9, 22, 1997),
+    ]),
+], restart="FALL", bed=TGIF_BED_2030)
+
+# The handover chair. Mr. Cooper really did take the 9:00 half-hour Perfect
+# Strangers vacated, and S8 -- burned off in the summer of 1993 -- is what makes
+# the handover land clean instead of both shows wanting 2029.
+TGIF_CHAIR_2100 = _chair("TGIF 9:00", [
+    ("Perfect Strangers", "perfect_strangers", [
+        (1, 6, 1985), (2, 22, 1986), (3, 23, 1987), (4, 22, 1988),
+        (5, 24, 1989), (6, 24, 1990), (7, 24, 1991),
+    ]),
+    ("Hangin' with Mr. Cooper", "mr_cooper", [
+        (1, 22, 1992), (2, 22, 1993), (3, 22, 1994), (4, 22, 1995),
+        (5, 13, 1996),
+    ]),
+], restart="SPRING", bed=TGIF_BED_2100)
+
+# The fourth-show chair -- the slot TGIF rotated hardest. Dinosaurs S4 is held
+# back for the same reason as Perfect Strangers S8: it was burned off over the
+# summer of 1994, and holding it back is what lets Sister, Sister open in 2030.
+TGIF_CHAIR_2130 = _chair("TGIF 9:30", [
+    ("Dinosaurs", "dinosaurs", [
+        (1, 5, 1990), (2, 24, 1991), (3, 22, 1992),
+    ]),
+    ("Sister, Sister", "sister_sister", [
+        (1, 12, 1993), (2, 19, 1994), (3, 22, 1995), (4, 22, 1996),
+        (5, 22, 1997), (6, 22, 1998),
+    ]),
+], restart="SPRING", bed=TGIF_BED_2130)
+
+TGIF_CHAIRS = [
+    TGIF_CHAIR_2000, TGIF_CHAIR_2030, TGIF_CHAIR_2100, TGIF_CHAIR_2130,
+]
+
+# --- the 22:00 hour ------------------------------------------------------------
+#
+# **The tail is not TGIF, and that is the point.** TGIF was 20:00-22:00; ten
+# o'clock on ABC was the grown-up hour. Making the tail the channel's other
+# 90s ABC shows does three things at once: it gives 22:00 an identity of its
+# own, it means the night has eight distinct titles instead of six, and it
+# **structurally removes the duplicate problem** -- every one of the seven TGIF
+# shows belongs to a chair, so any tail drawn from them repeats a chair. That
+# measured at 69-71% of nights airing a title twice, and per-chair beds alone
+# did not touch it, because the tail was the duplicator all along.
+#
+# Hours rules: Bewitched and The Addams Family are Nick at Nite's 21:00-24:00
+# and are deliberately absent. Roseanne is Totally 80s' *Tuesday* prime and
+# Wonder Years its weekday 17:00-20:00, so neither is free here. What is left
+# is the four below, all clear at 22:00 on a Friday.
+TGIF_TEN_OCLOCK = RandomCollection([
+    "home_improvement_tv", "coach_tv", "drew_carey_tv", "spin_city_tv",
+])
+
+# The night that built the block, for the two nights that celebrate it.
+TGIF_TAIL_PREMIERE = OrderedCollection(["full_house_tv", "family_matters_tv"])
+
+# Dinosaurs is the odd one out tonally and the most event-shaped thing on the
+# shelf, which is what a sweeps stunt wants.
+TGIF_TAIL_STUNT = OrderedCollection(["dinosaurs_tv"])
+
+TGIF_TAIL_HOLIDAY = RandomCollection([
+    "christmas_80s_sitcoms_tv", "christmas_90s_sitcoms_tv",
+])
+
+# The two seasons held back from the chairs, aired when they really aired.
+# Queried inline rather than through a registry key because they exist only
+# here (G8: a content key carries its own playback order, and these want
+# chronological).
+TGIF_TAIL_BURNOFF = OrderedCollection([
+    {"title": "Perfect Strangers",
+     "query": f'{show_by_title("Perfect Strangers")} AND season_number:8',
+     "order": "Chronological"},
+    {"title": "Dinosaurs",
+     "query": f'{show_by_title("Dinosaurs")} AND season_number:4',
+     "order": "Chronological"},
+])
+
+# The bench, kept only as the block's last-resort filler.
+TGIF_BENCH = RandomCollection([
+    "full_house_tv", "family_matters_tv", "perfect_strangers_tv",
+    "mr_cooper_tv", "sister_sister_tv", "dinosaurs_tv", "sabrina_tv",
+])
+
+
+def _tgif_night(name, tail):
+    """One arm of the broadcast year: four chairs, then four tail half-hours.
+
+    `tail` is a **list of four entries**, one per 22:00 half-hour, not one
+    object repeated. Repeating it was worth 56% of nights airing a title twice:
+    the summer arm is two burn-off seasons and the sweeps arm is one show, so
+    four picks from either had to collide. Arms with less than four half-hours
+    of signature content top up from `TGIF_TEN_OCLOCK`.
+
+    **Every arm carries the chairs; only the tail changes.** The first draft of
+    this went dark for HIATUS and SUMMER_RERUNS on the reading that the dead
+    fortnight and the summer hold no appointment -- and that silently destroyed
+    86 episodes between 2026 and 2036. `resolve_scheduled_content` is driven by
+    the calendar, not by what aired: a season window that opens in September
+    counts every Friday inside it whether the block asked for an episode or
+    not, so two dark Fridays in December are two episodes the viewer never
+    sees, every year, with nothing in the logs. The chairs stay in, the label
+    layer dresses the 22:00 hour, and the two clocks stay uncoupled -- which is
+    what this design claimed to be doing in the first place.
+
+    `items` is a list rather than a collection so the block *exhausts*:
+    `blocks._get_next_block_item` indexes a list by position and returns None
+    past the end, where a collection keeps handing items back and wraps. That
+    wrap is the defect KNOWN_ISSUES.md records against the old Must See
+    Thursday, and it was live here -- six shuffled titles in a three-hour slot
+    had room for a seventh pick.
+
+    **Eight items, and why the grid does not land on the half hour.** Episodes
+    run 21.3-24.0 minutes (measured off disk, median 22.6). A half-hour grid
+    needs the balance in advertising -- about seven minutes a show, which is
+    what a 1990 network half-hour really carried. The operator's call was one
+    or two spots between shows and no more: *enjoyment over accuracy*. That is
+    a deliberate trade, and the consequence is arithmetic -- eight shows at
+    ~23 minutes plus 35-second breaks fills 20:00 to roughly 23:05, so the
+    night runs on its own clock rather than the station's. What it buys is
+    the slot being **97% programming** instead of 77%, with no dead air and
+    no arbitrary repeat: the 13% pad and the 9% overflow both go to shows.
+    """
+    return Block(
+        name=name,
+        items=[*TGIF_CHAIRS, *tail],
+        bumpers=branding.BRANDING_TGIF.bumpers,
+        use_epg_group=False,
+        # Two spots between shows. `Block.commercials` is declared but never
+        # read -- `_handle_program_commercials` passes `program.commercials` --
+        # so the pool comes from the channel's `commercial_content`.
+        enable_commercials=True,
+        commercial_duration=35,
+        fill_strategy="fill",
+        filler=TGIF_BENCH,
+    )
+
+
+# Resolution takes the first key the day carries (pipeline._unwrap_nested_
+# structure), so the additive labels have to be written above the season they
+# sit inside: a Friday in November carries FALL_SEASON, SWEEPS and SWEEPS_NOV
+# together. The five season labels are a strict partition, so nothing can fall
+# through; `default` is belt-and-braces.
+FRI_PRIME = {
+    # Premiere and finale night lead with the two shows that built the block.
+    # They are chairs A and B, so those two nights a year do air a title twice
+    # -- deliberately: "the night TGIF built" wants more of it, not less.
+    "PREMIERE_WEEK": _tgif_night("TGIF Premiere Night",
+                                 [TGIF_TAIL_PREMIERE, TGIF_TAIL_PREMIERE,
+                                  TGIF_TEN_OCLOCK, TGIF_TEN_OCLOCK]),
+    "SWEEPS_NOV":    _tgif_night("TGIF -- November Sweeps",
+                                 [TGIF_TAIL_STUNT, TGIF_TEN_OCLOCK,
+                                  TGIF_TEN_OCLOCK, TGIF_TEN_OCLOCK]),
+    "SWEEPS_FEB":    _tgif_night("TGIF -- February Sweeps",
+                                 [TGIF_TAIL_STUNT, TGIF_TEN_OCLOCK,
+                                  TGIF_TEN_OCLOCK, TGIF_TEN_OCLOCK]),
+    "SWEEPS_MAY":    _tgif_night("TGIF -- May Sweeps",
+                                 [TGIF_TAIL_STUNT, TGIF_TEN_OCLOCK,
+                                  TGIF_TEN_OCLOCK, TGIF_TEN_OCLOCK]),
+    "FINALE_WEEK":   _tgif_night("TGIF Finale Night",
+                                 [TGIF_TAIL_PREMIERE, TGIF_TAIL_PREMIERE,
+                                  TGIF_TEN_OCLOCK, TGIF_TEN_OCLOCK]),
+    # The holiday keys are episode *pools*, not single shows, so four draws are
+    # four different Christmas episodes.
+    "HIATUS":        _tgif_night("TGIF Holiday Break",
+                                 [TGIF_TAIL_HOLIDAY] * 4),
+    "FALL_SEASON":   _tgif_night("TGIF", [TGIF_TEN_OCLOCK] * 4),
+    "MIDSEASON":     _tgif_night("TGIF", [TGIF_TEN_OCLOCK] * 4),
+    "SUMMER_RERUNS": _tgif_night("TGIF Summer",
+                                 [TGIF_TAIL_BURNOFF, TGIF_TAIL_BURNOFF,
+                                  TGIF_TEN_OCLOCK, TGIF_TEN_OCLOCK]),
+    "default":       _tgif_night("TGIF", [TGIF_TEN_OCLOCK] * 4),
+}
 
 FRI_LATE = OrderedCollection(["soap_tv", "taxi_tv"])
-
-
 # ==============================================================================
 # 7. SATURDAY -- CBS, The Greatest Night
 # ==============================================================================
