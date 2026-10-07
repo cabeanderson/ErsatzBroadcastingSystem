@@ -70,17 +70,28 @@ Restructured against [cartoon-network-review.md](cartoon-network-review.md), whi
 | 00–02 after hours | Midnight Run | Midnight Run | Midnight Run | Adult Swim originals *(Sun night)* |
 | 02–06 overnight | Adult Swim, acquisitions | ← | ← | **Toonami: The Midnight Run** *(Sat night)* |
 | 06–08 early | The Vault | ← | ← | ← |
-| 08–10 morning | Cartoon Cartoons | ← | Saturday Morning | The Scooby Block |
-| 10–12 midday | Cartoon Network | ← | Cartoon Cartoons | The Vault |
-| 12–14 noon | The Vault | ← | Syndication Hour | Cartoon Theatre |
-| 14–17 afternoon | Action Hour | ← | Action Hour | Cartoon Network |
-| 17–20 evening | **Toonami** | Cartoon Cartoon Fridays | **Toonami Saturday** | Cartoon Cartoons |
-| 20–23 prime | Adult Swim originals A/B | A | Toonami Saturday cont. | FOX Primetime |
+| 08–09 morning | Cartoon Cartoons | ← | Cartoon Cartoons | Sunday Morning oldies |
+| 09–10 late morning | Cartoon Cartoons | ← | Cartoon Cartoons | Cartoon Cartoons |
+| 10–12 midday | Syndication / CN in summer | ← | Cartoon Network | Cartoon Theatre |
+| 12–14 noon | Action Hour | ← | Syndication Hour | Cartoon Cartoons |
+| 14–15 afternoon | Scooby-Doo | ← | Syndication Hour | Cartoon Network |
+| 15–17 after school | **Toonami** | ← | Action Hour / rare movie | Syndication Hour |
+| 17–18 power hour | **Two Dragon Ball Z** | ← | Action Hour | Action Hour |
+| 18–19 early evening | Cartoon Network | ← | **Toonami Saturday** | Action Hour |
+| 19–20 access | **Simpsons + one FOX companion** | ← | Toonami Saturday | **FOX Primetime** |
+| 20–22 prime | Cartoon Network | Cartoon Cartoon Fridays | Toonami vault | FOX Primetime |
+| 22–23 late prime | Adult Swim originals A/B | A | Toonami vault | Adult Swim originals |
 | 23–24 night | Midnight Run | Midnight Run **premiere** | Midnight Run | Adult Swim originals |
 
-Simulated over 365 continuous days: no gaps, no circuit breakers, no unresolved programs. Airtime share of ~21,000 programme plays — **CN originals 22.6%, anime/Toonami 16.7%, Adult Swim originals 11.1%** (50.4% between them, against ~9% before), acquisitions 14.3%, the vault 19.3%, superhero 9.9%. Disney and Nickelodeon are at zero.
+**Verification, 2026-10-01.** The structural week resolves all sixteen slots on
+all seven days. A realistic-runtime playout across all five weekdays pins FOX
+at 19:00, plays exactly Simpsons plus one companion, bridges the unused tail
+back to CN, and still enters the scheduled 20:00 block. DBZ produces exactly
+two consecutive episodes and Toonami never reaches emergency fallback. The
+80-scenario suite, nine comprehensive tests, import/refactor checks and the
+documentation audit all pass.
 
-**Adult Swim runs last, not first.** Originals at 20:00, the anime Midnight Run at 23:00, acquisitions 02:00–06:00. The old grid had the 2009–2014 acquisitions as the 20:00 marquee and the Williams Street originals behind them.
+**Adult Swim runs last, not first.** Originals at 22:00, the anime Midnight Run at 23:00, acquisitions 02:00–06:00. The old grid had the 2009–2014 acquisitions as the 20:00 marquee and the Williams Street originals behind them.
 
 **Own timeslot map, split at midnight.** The default preset's `night: (23, 2)` wraps, and a wrapping slot is entered twice under two different day labels — so "Sunday night" resolved to two different nights and a `DailyOrderedCollection` replayed its first items across the boundary. `night` is 23–24 and `after_hours` is 00–02, each with its own block. Same reason Nick and Disney carry their own maps.
 
@@ -88,9 +99,15 @@ Simulated over 365 continuous days: no gaps, no circuit breakers, no unresolved 
 
 **Per-show bumpers are wired.** ~940 Toonami and 5,316 Adult Swim files were unreachable; each Toonami and Adult Swim item now carries its own set through a `Program` wrapper (`animation._with_bumpers`). `play_smart_bumper` would find them by title on its own, but it requires a `bumpers` tag and the trees are tagged `bumps`/`shows`.
 
+**The guide describes programmes, not brands.** Ordinary blocks set
+`use_epg_group=False`, preserving each show's title, episode information and
+art. Marathon takeovers are the exception. Separate named feeds give daytime,
+prime, weekend and rerun placements independent chronological positions;
+overnight rerun wheels are the deliberate shuffle exception.
+
 **No daytime filler.** `filler_content="adult_swim_bumpers"` was channel-wide and only the five branded blocks overrode it, so ~14 hours of every 24 — Saturday-morning Scooby-Doo included — ran Adult Swim bumps. There is nothing to replace it with: `filler/bumpers/cartoon network/general/` is empty and the 110 files under `commercials/90s` are mislabelled 2000s British adverts. Silence is closer to Cartoon Network than Adult Swim is. Sourcing checkerboard / Powerhouse / CN City branding is the outstanding asset job.
 
-Summer (Jun–Aug) hands weekday 08:00–14:00 to CN's own shows and drops the vault from lunchtime; spring still leans Marvel, in the Action Hour rather than the retired 08:00 superhero hour. Marathons are date-anchored — Thanksgiving and New Year's Toonami, July 4th DBZ, Memorial Day Bebop, first Saturday of the month CN — each keeping its old random chance on top via `triggers.any_of`.
+Summer (Jun–Aug) hands weekday 10:00–12:00 to CN's own shows; spring still leans Marvel in Action Hour. Ordinary films have a 5% chance to replace Saturday's 15:00 Action Hour, while a curated three-film DBZ bill has a 1% chance on each weekend day. Thanksgiving and New Year's remain Toonami appointments, Memorial Day can trigger Bebop, and the first Saturday retains the CN marathon.
 
 ### Japanorama — built
 `scripts/channels/japanorama.py` · `scripts/library/anime.py`
@@ -142,16 +159,17 @@ Ceding it leaves a fortnight's cycle; taking it without a rule breaks C1 a dozen
 times a night. So C2 rungs 1 and 2 together: Toonami runs these shows as a
 first-run chronological strip after school, Japanorama runs them as **shuffled
 daytime syndication**, and the `_syndication_tv` keys carry Shuffle at the key
-level (C3). Cartoon Network airs anime in four windows — 17:00–20:00 weekdays,
-17:00–23:00 Saturday, 23:00–02:00 nightly, 02:00–06:00 Saturday night — leaving
-06:00–17:00 daily plus 20:00–23:00 off-Saturday. Every shared title sits inside
-that window. Verified over three simulated years: the only shared titles outside
+level (C3). Cartoon Network airs Toonami at 15:00–18:00 weekdays and
+18:00–23:00 Saturday, plus its Midnight Run. Japanorama keeps the shared
+weekday titles outside that window; its simultaneous 17:00 Dragon Ball block
+uses only GT and Super, leaving DBZ exclusive to CN's power hour. Verified over
+three simulated years: the only shared titles outside
 daytime are Fullmetal Alchemist: Brotherhood and Death Note on Friday
 21:00–23:00, which is the documented exception.
 
 **Attack on Titan is deliberately not on this channel** — it anchors CN's
 Midnight Run at 23:00 every night, which makes it a coin flip rather than a
-rule. Teatime draws no shared title at all because 17:00–19:00 is inside
+rule. Teatime draws no shared title at all because 15:00–17:00 is inside
 Toonami's window.
 
 **Measured, not asserted (C6).** `collision_report` groups by key name and so
@@ -607,7 +625,7 @@ at eight in the morning and signs on at six with Dick Van Dyke (1961).
 | Tue | NBC | NBC Tuesday, 1997 — Mad About You · NewsRadio · Frasier · Just Shoot Me! |
 | Wed | ABC | ABC Wednesday, 1995 — The Drew Carey Show · Roseanne · Coach |
 | Thu | NBC | **Must See TV** — Seinfeld · Mad About You · Frasier · Will & Grace |
-| Fri | ABC | **TGIF** — Full House · Family Matters · Perfect Strangers · Mr. Cooper · Sister, Sister · Dinosaurs |
+| Fri | ABC | **TGIF** — an appointment block with its own broadcast year; see below |
 | Sat | CBS | **The Greatest Night** (CBS Saturday, 1973) — M\*A\*S\*H · Mary Tyler Moore · Bob Newhart |
 | Sun | FOX + the fourth networks | Fox Sunday — Married… with Children · In Living Color · Martin |
 
@@ -680,6 +698,117 @@ and I Dream of Jeannie in the 02:00–05:00 vault while Nickelodeon runs I Love
 Lucy, Dick Van Dyke and Andy Griffith at 21:00–23:37 and Good Times, M\*A\*S\*H
 and Sanford and Son at 00:00–01:41. The Addams Family is on air, which it could
 not be before the query fix.
+
+### TGIF — the night with a broadcast year (2026-09-10)
+
+Every other slot on Good Times is a strip: the same shape every week, with the
+daytime books reshuffling four times a year. Friday prime is now the one night
+that has a **season** — shows premiere, run week by week, break for the
+holidays, come back, and go into repeats.
+
+**The epoch.** Schedule year 2026 is broadcast season 1989-90, TGIF's first.
+Every show's seasons sit at their real broadcast year **plus 37**, so the
+channel replays TGIF's actual history and the relative order between shows is
+correct by construction. Perfect Strangers S7 is on the air the year Mr. Cooper
+premieres because that is when it happened. This needs no machinery:
+`states.resolve_season_date` turns a `(year, season)` pair into an absolute
+calendar date, so `premiere_year` is a hard anchor and alignment is arithmetic.
+
+**Four chairs, not four shows.** A chair is one `Program` whose season list
+walks *across* shows — which is how the real 21:00 half-hour worked, Mr. Cooper
+taking the slot Perfect Strangers vacated and Sister, Sister taking Dinosaurs'.
+
+| Sched | Broadcast | 20:00 | 20:30 | 21:00 | 21:30 |
+|---|---|---|---|---|---|
+| 2026 | 1989–90 | Full House S3 | Family Matters S1 | Perfect Strangers S5 | — |
+| 2028 | 1991–92 | Full House S5 | Family Matters S3 | Perfect Strangers S7 | Dinosaurs S2 |
+| 2029 | 1992–93 | Full House S6 | Family Matters S4 | **Mr. Cooper S1** | Dinosaurs S3 |
+| 2031 | 1994–95 | Full House S8 | Family Matters S6 | Mr. Cooper S3 | Sister, Sister S2 |
+| 2033 | 1996–97 | **Sabrina S1** | Family Matters S8 | Mr. Cooper S5 | Sister, Sister S4 |
+| 2036 | 1999–00 | Sabrina S4 | — | — | — |
+
+`annual_show()` cannot express a chair — it numbers seasons from 1 and maps
+season `i` to `premiere_year + i`, so it can neither start a show mid-run nor
+hand a slot over. `library/sitcoms._chair` builds the same `Program` shape by
+hand, writing character-for-character the query `factories._get_content_key`
+writes, so nothing about resolution changes.
+
+**The midseason shows identify themselves.** Perfect Strangers (March 1986),
+Dinosaurs (April 1991) and Sister, Sister (April 1994) all arrived at midseason,
+and they are the only three of the seven whose first season is under 22
+episodes — 6, 5 and 12. Their S1, and only their S1, opens at the SPRING ramp.
+The episode counts on disk are the evidence; the split was not imposed.
+
+**Two seasons are held back on purpose.** Perfect Strangers S8 (6 episodes) and
+Dinosaurs S4 (14) were both burned off over the summer rather than aired in
+season, so they are the `SUMMER_RERUNS` arm rather than the tail of a chair.
+That is both the faithful reading and what makes the chairs hand over cleanly —
+without it Perfect Strangers and Mr. Cooper would both want 2029.
+
+**Two clocks, deliberately uncoupled.** The appointment clock decides *which
+episode* airs; the broadcast-year labels decide *what the night is*, and they
+only ever touch the 22:00 tail and the block's name. Neither can desynchronise
+the other, so every arm is correct by construction. Ten arms, with the additive
+labels written above the season they sit inside — a Friday in November carries
+`FALL_SEASON`, `SWEEPS` and `SWEEPS_NOV` together and resolution takes the
+first match.
+
+**The night is eight half-hours: four chairs, then the ten o'clock.** TGIF was
+20:00–22:00; ten on ABC was the grown-up hour, so 22:00–23:00 is the channel's
+other 90s ABC shows — Home Improvement, Coach, The Drew Carey Show, Spin City.
+That is not decoration. All seven TGIF shows belong to a chair, so any tail
+drawn from them repeats one: the first build measured **69% of nights airing a
+title twice**, and per-chair rerun beds alone did not move it, because the tail
+was the duplicator. Moving the tail off the TGIF roster took it to **11%**, and
+what is left is premiere and finale night leading with Full House and Family
+Matters on purpose.
+
+**How the three hours are actually spent** (198 simulated Fridays, real
+runtimes measured off disk — episodes 21.3–24.0 min, median 22.6; spots 17s):
+
+| | first build | now |
+|---|---:|---:|
+| Designed programming | 77.1% | **96.8%** |
+| Commercials | 1.0% | 3.1% |
+| Undesigned overflow (`fill` repeating one show) | 8.8% | **0%** |
+| Dead pad | 13.1% | **0%** |
+| Appointment episode | 18.9% | 18.9% |
+
+**The half-hour grid is deliberately not attempted.** Shows land on the half
+hour only if the balance is advertising — about seven minutes each, which is
+what a 1990 network half-hour really carried. The operator's call was one or
+two spots between shows and no more: *enjoyment over accuracy*. The arithmetic
+consequence is that eight ~23-minute shows plus 35-second breaks fill 20:00 to
+about 23:11, so the night runs on its own clock. The late shift absorbs it —
+23:00–24:00 still schedules its two titles.
+
+**Appointment share is capped by the shelf, not the design.** 18.9% is roughly
+1.5 of 4 chairs live on an average night, and **more episodes per Friday would
+not change it**: 24 episodes a year is 24 episodes a year, whether one or two a
+night — it only concentrates them into twelve weeks and empties the rest. The
+levers are more shows live at once, which is what the acquisitions are for.
+Chairs live per night by arm: `FALL_SEASON` **3.32 of 4**, `HIATUS` 2.18,
+`MIDSEASON` **1.49**, `SUMMER_RERUNS` 0.03. Midseason is the measured hole and
+it is arithmetic: a 22–26 episode season at one episode a Friday runs out in
+late February. That is what the TGIF section of `acquisitions.md` is sized
+against.
+
+Zero circuit breakers, zero errors, zero stalls, zero overlaps across the run.
+
+**Hours rules hold.** 704 channel-days simulated across all 16 channels on
+Fridays 2026–2036: **zero** airings of any of the seven TGIF titles at
+20:00–23:00 anywhere but Good Times. Nick at Nite holds none of the seven at
+any hour; Totally 80s' claims on Full House, Family Matters and Perfect
+Strangers all end at or before 20:00.
+
+**What this cost, and what it is worth.** Sabrina was in eleven places across
+the lineup and five of Friday's ten slots, one of them the 17:00–20:00 strip
+immediately before prime; it came out of `after_hours`, `early` and `evening`
+and now holds the 20:00 chair from 2033. And each chair loops on its own span,
+so from **2037** the chairs drift out of step and the table above stops
+holding — keeping it aligned forever needs an explicit cycle length on the
+appointment resolver. Ten years of correct history was judged worth more than
+the machinery to extend it. See KNOWN_ISSUES.md.
 
 **Shapes that failed.** Three rotation designs were drawn and rejected before
 the network wheel:
@@ -781,8 +910,8 @@ years confirms each named night on its own weekday, all four Limited Series
 shows cycling, and zero violations of the one hours rule below.
 
 **The one sharing rule.** Cartoon Network's Adult Swim airs The Eric Andre Show
-and Check It Out! with Dr. Steve Brule inside `AS_ORIGINALS_B`: 20:00–23:00
-Tuesday and Thursday, 23:00–24:00 Sunday, 00:00–02:00 Monday.
+and Check It Out! with Dr. Steve Brule inside `AS_ORIGINALS_B` after 22:00 on
+Tuesday, Thursday and Sunday.
 channel-coverage.md already prescribed the C2 rung-1
 split for exactly these — Adult Swim first-run, Corncob syndication — and The
 Syndication Hour at 10:00–12:00 is it. Adult Swim is not on air at that hour on

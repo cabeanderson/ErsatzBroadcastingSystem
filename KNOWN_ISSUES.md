@@ -511,6 +511,88 @@ run deliberately.** Add it to whatever you run before a deploy.
 
 ## Open
 
+### 2026-10-01 — code review, corrected against the API contract
+
+**Evidence and scope.** Reviewed the current working tree, including local
+channel changes. The scenario and comprehensive suites passed **87 unit tests**;
+the import/resolution smoke check and documentation audit passed. **48 direct
+mock builds** completed: 16 channels on October 1, Halloween and Christmas 2026.
+Targeted synthetic reproductions exposed the cases below. No live server,
+installed client/version, real media durations or XMLTV output was validated.
+
+The first review overstated production impact by treating mock reproductions
+and comments as sufficient evidence of broken playback. The corrected findings
+below supersede those severity claims. They were checked against
+[the API contract](ERSATZTV_API.md) and the upstream engine/entrypoint linked
+there; upstream source is not proof of the installed server's version.
+
+**Confirmed tooling issues and conditional correctness risks:**
+
+- [ ] 🟠 **Simulation errors can look like successful partial builds.**
+  `ChannelSimulator.simulate_day` catches exceptions, prints a traceback and
+  returns the schedule accumulated so far without a failure status.
+  `test_comprehensive.test_02_channel_schedules` also ignores unknown string
+  keys instead of asserting, and `test_marathon_sequence.py` prints transitions
+  without assertions (it contributes no tests to unittest collection). Make
+  failures explicit and test that each checker rejects invalid input. Passing
+  these checks currently establishes less than their names suggest.
+
+- [ ] 🟠 **Collection state leaks between simulations in the same process.**
+  Ordered/random/daily collections keep mutable selection state on shared
+  configuration objects and reset on a date change, not a new build. Two fresh
+  mock builds for October 1 produced different schedules for Detective, Cartoon
+  Network, Sitcoms and Eighties. This is a test-isolation/reproducibility issue;
+  the documented production lifecycle launches a subprocess per build, so the
+  reproduction does **not** establish cross-build leakage in production. Give
+  simulations isolated selection state, preferably owned by the build session.
+
+- [ ] 🟠 **Anonymous content identity omits playback order.**
+  `_auto_gen_key` hashes the query with the title but excludes `order`. Resolving
+  the same title/query first as Shuffle, then as Chronological, returns one key
+  and retains Shuffle because `register_dynamic_query` skips active keys. The
+  API binds order at registration. Include order in identity or reject
+  conflicting definitions. The collision is reproduced; an affected current
+  channel has **not** been established.
+
+**Playback behavior to specify before changing it:**
+
+- [ ] 🟡 **Midnight boundary recalculation is a latent edge case, not a
+  demonstrated lineup failure.** A synthetic `gap` block ending at 24:00,
+  starting an item on October 1 at 23:50 with a 30-minute duration, waited until
+  October 3 at 00:00. After the item crosses midnight, `fill_to_boundary`
+  recalculates the deadline from the new date; `calculate_boundary_dt(..., 24)`
+  then selects the following midnight. `wait_until_exact` honors that supplied
+  future timestamp. There are no active `gap` blocks in the reviewed lineup;
+  ordinary `yield` blocks return before this recalculation, and the explicit
+  `fill` blocks are the daytime movie block and TGIF prime. The operator reports
+  no midnight rollover issue. If this path is enabled, retain the original
+  absolute slot deadline rather than reconstructing it after playback.
+
+- [ ] 🟡 **`strict_window` comments promise more than the implementation.**
+  The loop checks the boundary before each program; ordinary `add_count` plays
+  whole items without a deadline. A 30-minute item starting at 10:50 therefore
+  finishes at 11:20 in a block ending at 11:00. This agrees with the API, and
+  TGIF's programming notes explicitly accept whole-item overflow. Clarify the
+  policy and comments before adding truncation or rejecting items that do not
+  fit. The reproduction is not evidence that the intended programming is wrong.
+
+- [ ] 🟡 **Bridge comments and actual handoff deadlines differ.**
+  `_bridge_to_next_slot` logs a hard stop at the current slot's end but passes
+  the next block's hours without `force_end_hour`. A bridge at 10:40 into an
+  11:00–13:00 collection block ran through 13:00. Channel notes deliberately
+  start the next strand early, so running through that strand may be intended;
+  no production harm was established. Specify whether bridging borrows only
+  the current tail or hands off through the next slot, then align comments,
+  behavior and assertions. A bare-key bridge already uses the current deadline.
+
+**Architecture follow-up.** Preserve the declarative channel model and
+standard-library runtime. Prioritize honest validation and explicit playback
+policies, then isolate mutable build state, normalize content types at
+preflight, and reduce the `blocks`/`dispatcher` dependency cycle. Broad exception
+recovery into time skips remains the separately tracked "Errors swallowed into
+dead air" issue. This review does not justify a rewrite or an immediate change
+to the lineup's whole-item playback policy.
+
 ### 2026-09-08 — the marathon audit
 
 All 21 marathons in the lineup resolved and classified while building the
@@ -610,6 +692,110 @@ Measured after: 48 unit tests green, and a 7-day simulation across all 16
 built channels — 112 channel-days — with zero errors and zero warnings. That
 sweep is also the first one worth trusting, because the logger fix in this
 batch is what makes a multi-day capture real rather than day one repeated.
+
+### 2026-09-10 — TGIF, and an appointment clock that runs whether you watch or not
+
+Good Times' Friday prime was rebuilt as an appointment block keyed to a real
+broadcast year (see `reference/channel-plan.md`). Three things came out of it
+that are not specific to that channel.
+
+- [x] ✅ **FIXED. The old `FRI_PRIME` could wrap and replay an item.** It was a
+  six-item `OrderedCollection` in a three-hour slot, and a collection never
+  exhausts — `blocks._get_next_block_item` keeps calling `.pick`. Six ~22-minute
+  shows leave room for a seventh pick. This is the same defect this file records
+  against the old Must See Thursday, and the fix is the one that entry
+  recommended: `items` is now a **list**, which `_get_next_block_item` indexes
+  by position and terminates, plus a two-half-hour tail so the end of the block
+  is a programming decision rather than an accident.
+
+- [x] ✅ **FIXED IN DESIGN, and worth writing down: a dark block does not pause
+  its appointments.** The first draft gave the `HIATUS` and `SUMMER_RERUNS` arms
+  no chairs, on the reading that the dead fortnight and the summer hold no
+  appointment. `resolve_scheduled_content` is driven by the **calendar**, not by
+  what aired: a season window that opens in September counts every Friday inside
+  it whether the block asked for an episode or not. Two dark Fridays in December
+  are two episodes the viewer never sees — **86 episodes destroyed between 2026
+  and 2036**, with nothing in the logs, because from the engine's side nothing
+  went wrong.
+
+  **Nothing would have caught this.** All 87 unit tests were green, the
+  simulation ran clean, and `unaired_check` passes — it scores config branches,
+  and every branch here does reach air; what went missing was *episodes inside a
+  branch that airs*. It was found by counting live season windows against arms
+  the block was dark on. **If a block gates an appointment on anything other
+  than the appointment's own schedule, count the episodes.** The fix is that
+  every arm carries the chairs and only the tail varies, which is what the
+  design claimed to be doing anyway.
+
+- [x] ✅ **FIXED. 22% of TGIF prime was not programmed.** Measured with real
+  runtimes off disk (episodes 21.3-24.0 min, median 22.6; spots 17s median),
+  the three-hour slot was 77.1% designed programming, 8.8% `fill` repeating one
+  arbitrary bench show, and **13.1% dead pad**. Six ~23-minute shows cannot fill
+  180 minutes; the missing time is advertising a 1990 half-hour carried and this
+  channel does not. Fixed by programming rather than by ads, per the operator:
+  eight items instead of six, two spots between shows. Now **96.8% programming,
+  0% overflow, 0% pad**.
+
+  **The tradeoff is explicit and worth not re-litigating.** Shows land on the
+  half hour only with ~7 minutes of ads each. The operator chose one or two
+  spots — *enjoyment over accuracy* — so the block runs 20:00 to about 23:11 on
+  its own clock instead. The late shift absorbs it.
+
+- [x] ✅ **FIXED. 69% of nights aired the same title twice in prime.** All seven
+  TGIF shows belong to a chair, so any tail drawn from the TGIF roster repeats
+  a chair. Giving each chair its own rerun bed (the `library/scifi.py` per-show
+  shelf pattern, which the first build skipped in favour of one shared bench)
+  did **not** fix it — the tail was the duplicator. Moving 22:00-23:00 off the
+  TGIF roster entirely, to the channel's other 90s ABC shows, took it to 11%,
+  and the remainder is premiere and finale night leading with Full House and
+  Family Matters deliberately.
+
+  **A second, smaller version of the same bug:** the tail object was passed four
+  times rather than as four per-slot entries, so the summer arm (two burn-off
+  seasons) and the sweeps arm (one show) collided with themselves. Arms now
+  carry a list of four and top up from the ten o'clock.
+
+- 🟡 **`Block.commercials` is declared and never read.** The dataclass carries
+  it, but `blocks._handle_program_commercials` passes `program.commercials`, so
+  a block-level ad pool silently falls through to `config.commercial_content`.
+  Good Times sets the pool on the channel instead. Either wire the block field
+  or drop it — a field that looks like configuration and is not is the same
+  class of trap as the inert flags below.
+
+- 🟡 **`enable_commercials=True` on Totally 80s is inert.** `ENABLE_COMMERCIALS`
+  is False globally and `DEFAULT_COMMERCIAL_DURATION` is 0, and that channel
+  sets neither `commercial_duration` nor `timeslot_commercials` — so
+  `play_commercials` is called with `duration=0` and does nothing. Exactly the
+  shape of the `enable_filler=True` with no `filler_content` trap that channel's
+  own comment describes. **Until 2026-09-10 no channel on the lineup aired a
+  commercial break at all.**
+
+- 🟡 **`annual_show()` cannot start a show mid-run or hand a slot over.** It
+  numbers seasons from 1 and maps season `i` to `premiere_year + i`, so it can
+  express neither "Perfect Strangers, from S5" nor "and then Mr. Cooper takes
+  the slot". `library/sitcoms._chair` builds the `Program` by hand instead,
+  writing the same query string `factories._get_content_key` writes. If a second
+  channel ever wants this, it belongs in `factories.py` — one channel doing it
+  by hand is not yet a pattern.
+
+- 🟡 **A multi-show appointment run cannot hold its relative alignment past one
+  pass.** `_apply_schedule_looping` derives `cycle_years` from each Program's
+  own span, so TGIF's four chairs — spanning 13, 9, 12 and 9 years — restart at
+  different times and drift out of step from **2037**. Holding it needs an
+  explicit cycle length threaded through `annual_show()` into
+  `_apply_schedule_looping`. Deliberately not built: ten years of correct
+  history was judged worth more than the machinery, and the drift degrades into
+  an ordinary unsynchronised rotation rather than a failure.
+
+- 🟡 **`commercials_90s_spot` is country-mixed.** `filler_source("commercials",
+  "90s")` is `tag_full:"commercials" AND tag_full:"90s"`, and the filler tree now
+  sorts by country first — `commercials/{us,uk,au}/90s` — so the key pulls all
+  three and TGIF's ad breaks are part British and Australian.
+  `commercials_us_90s_spot` (3,373 files) already exists and is the right pool.
+  Left alone at the operator's direction; branding is a later pass.
+  Note also that `reference/bumper-inventory.md` is **stale** as of its
+  2026-08-29 scan: the tree has been reorganised and grown, and `promos/` —
+  1,232 files, including 154 US 90s network promos — has no registry key at all.
 
 ### 2026-09-08 (later) — the appointment scheduler, and the loose-script hack
 

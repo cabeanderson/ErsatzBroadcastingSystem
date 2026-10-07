@@ -2,7 +2,8 @@
 
 Reference for the ErsatzTV scripted-schedule API this framework is built on,
 derived from primary sources (below) rather than from the local mock. Written
-2026-08-27.
+2026-08-27; framework usage and review caveats reconciled 2026-10-01. The latter
+review checked upstream source, not the installed server/client version.
 
 `etv_client` ships inside the ErsatzTV container and is not installable locally,
 so `scripts/testing/simulator.py` acts as our de facto spec. **The mock is not
@@ -82,12 +83,12 @@ one-at-a-time, `shuffleGroups` randomizes group order. It combines multiple
 |---|---|---|---|---|
 | `add_count` | `content`, `count` | `fillerKind`, `customTitle`, `disableWatermarks` | `PlayoutContext` | **used** |
 | `add_all` | `content` | same | `PlayoutContext` | unused |
-| `add_duration` | `content`, `duration` | `fallback`, `trim`, `discardAttempts`, `stopBeforeEnd`, `offlineTail`, + above | `PlayoutContext` | unused |
-| `pad_until` | `content`, `when` (HH:MM) | `tomorrow`, + all `add_duration` optionals | `PlayoutContext` | **used** |
-| `pad_until_exact` | `content`, `when` (date-time) | same, no `tomorrow` | `PlayoutContext` | unused |
+| `add_duration` | `content`, `duration` | `fallback`, `trim`, `discardAttempts`, `stopBeforeEnd`, `offlineTail`, + above | `PlayoutContext` | **used** — unbounded marathon content |
+| `pad_until` | `content`, `when` (HH:MM) | `tomorrow`, + all `add_duration` optionals | `PlayoutContext` | unused by current playback helpers |
+| `pad_until_exact` | `content`, `when` (date-time) | same, no `tomorrow` | `PlayoutContext` | **used** |
 | `pad_to_next` | `content`, `minutes` | same | `PlayoutContext` | unused |
-| `wait_until` | `when` (HH:MM) | `tomorrow`, `rewindOnReset` | `PlayoutContext` | **used** |
-| `wait_until_exact` | `when` (date-time) | `rewindOnReset` | `PlayoutContext` | unused |
+| `wait_until` | `when` (HH:MM) | `tomorrow`, `rewindOnReset` | `PlayoutContext` | **used** — reset hooks |
+| `wait_until_exact` | `when` (date-time) | `rewindOnReset` | `PlayoutContext` | **used** |
 
 ### Cursor control, inspection, overlays
 
@@ -168,11 +169,12 @@ When the current time is already past `when` **and `tomorrow` is false**,
 no log. The spec says as much: *"When false, no content will be scheduled by
 this request."*
 
-That is the failure mode behind the defensive comment in
-[`engines/dispatcher.py:265`](engines/dispatcher.py). `pad_until` is not
-unreliable; it is precise about a contract we get wrong. Our `is_tomorrow` is
-computed as `target_dt.day > current_time.day`, which returns `False` across a
-month boundary (Aug 31 → Sep 1 is `1 > 31`), producing exactly this input.
+That was the failure mode behind the former time-of-day padding helper.
+`pad_until` is not unreliable; it is precise about its contract. The old
+`is_tomorrow` calculation used `target_dt.day > current_time.day`, which returns
+`False` across a month boundary (Aug 31 → Sep 1 is `1 > 31`). Current playback
+helpers use the exact endpoints instead; this is historical context, not an
+outstanding defect in those helpers.
 
 ### ErsatzTV has known DST bugs in the time-of-day variants
 
@@ -193,9 +195,27 @@ reset-mode rewind branch (`rewindOnReset` with `tomorrow=false`).
 ### Every scheduling call already returns the context
 
 `add_count`, `add_all`, `add_duration`, all three `pad_*` and both `wait_until*`
-return `PlayoutContext`. [`playout.py:46`](playout.py) discards it and issues a
-separate `get_context`, doubling HTTP round trips on the hottest path in the
-framework — against a 30-second build timeout.
+return `PlayoutContext`. [`playout.play_item`](playout.py) uses the returned
+context directly, requesting `get_context` only if the call raises or returns
+`None`. The former unconditional extra request has been removed; retaining
+this behavior avoids doubling round trips on the hottest path.
+
+### Framework policy is separate from API correctness
+
+The 2026-10-01 review reproduced whole-item overflow with `add_count`, which
+is expected API behavior. `Block.strict_window` checks time between programs;
+it does not make `add_count` truncate an item. Some programming, notably TGIF,
+deliberately accepts overflow. Establish the desired policy before replacing
+whole-item playback with fitting or trimming.
+
+Likewise, `_exact` endpoints accept the timestamp the caller supplies; they
+cannot infer the original slot deadline. Recalculating a 24:00 deadline after
+an item has crossed midnight can select the following midnight in a synthetic
+non-`yield` block. This is a conditional framework risk, not evidence of a live
+rollover problem. Ordinary `yield` blocks bypass that filling path.
+
+See the **2026-10-01 code review** in [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for the
+reproduction conditions, bridge-policy discrepancy, and corrected impact.
 
 ## Reading the live server, outside a build
 
@@ -334,11 +354,25 @@ tests assert against the mock, so they are only as good as its fidelity to
 `SchedulingEngine.cs` — treat them as a record of intent, not proof about a
 live ErsatzTV.
 
-## Unused capability worth a look
+Additional limits confirmed by the 2026-10-01 review:
 
-- **`add_duration`** — bounded by wall-clock duration, with `trim`,
-  `stopBeforeEnd`, `offlineTail` and a `fallback` key for the remainder. This is
-  the natural primitive for "play this marathon for six hours".
+- `ChannelSimulator.simulate_day` catches build exceptions and returns partial
+  output. A returned schedule alone is not proof that the build succeeded.
+- Repeated simulations share imported, mutable collection objects. Same-date
+  runs can differ due to residual selection state. Production's documented
+  subprocess-per-build lifecycle does not share those Python objects between
+  builds; distinguish test isolation from production persistence.
+- Neither a synthetic duration nor a passing mock test establishes that the
+  reviewed lineup reaches the failing path. Verify configuration reachability
+  and API semantics before assigning production severity, then use live XMLTV
+  or build evidence to establish actual impact.
+
+## Capabilities worth further evaluation
+
+- **`add_duration` options** — already used for unbounded marathon content via
+  `play_for_duration`, with `stopBeforeEnd` and an optional fallback. Broader
+  use of `trim`, `discardAttempts` and `offlineTail` needs policy and live-client
+  validation; changing fitting behavior can change the intended programming.
 - **`add_marathon`** — native multi-show marathon with grouping and per-group
   ordering. Overlaps substantially with `logic/calendar/assembly.py`.
 - **`peek_next/{content}`** — next item's duration without consuming it. Enables
