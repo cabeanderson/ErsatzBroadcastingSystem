@@ -227,6 +227,11 @@ def _bridge_to_next_slot(
                 start_hour=next_slot_tuple[0],
                 end_hour=next_slot_tuple[1],
                 day_schedule=day_schedule,
+                # The bridge borrows the next block only until the current
+                # slot boundary. Without this override a 19:40 handoff into a
+                # 20:00-22:00 block ran that block all the way to 22:00 and
+                # swallowed the boundary it was meant merely to fill.
+                force_end_hour=end,
                 ignore_start_window=True,
                 bridge_depth=bridge_depth + 1
             )

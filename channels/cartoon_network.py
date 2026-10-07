@@ -8,21 +8,36 @@ giving 27 hours a week to Disney and 13 to Nickelodeon while Cartoon Network's
 own originals held five, and that Adult Swim was running 20:00-02:00 with
 Hanna-Barbera behind it until 06:00 -- the exact inverse of the real thing.
 
-Schedule shape:
-- Overnight (02-06): Adult Swim, the acquisitions -- Toonami on Saturday
-- Early     (06-08): The Vault
-- Morning   (08-10): Cartoon Cartoons -- Saturday Morning, Scooby on Sunday
-- Midday    (10-12): Cartoon Network, the modern shows
-- Noon      (12-14): The Vault -- Syndication Hour Saturday, a film Sunday
-- Afternoon (14-17): Action Hour, Marvel-led in spring
-- Evening   (17-20): TOONAMI -- Cartoon Cartoon Fridays, Toonami Saturday
-- Prime     (20-23): Adult Swim, originals -- FOX Primetime on Sunday
-- Night     (23-24): The Midnight Run -- its premiere hour on Friday
-- After hrs (00-02): The Midnight Run, the deeper cuts
+Schedule shape, weekdays:
+- Overnight    (02-06): Adult Swim, the acquisitions
+- Early        (06-08): The Vault
+- Morning      (08-10): Cartoon Cartoons
+- Midday       (10-12): Syndication Hour -- CN's own shows in summer
+- Noon         (12-14): Action Hour, Marvel-led in spring
+- Afternoon    (14-15): The Scooby Block
+- After school (15-17): TOONAMI
+- Power hour   (17-18): two chronological Dragon Ball Z episodes
+- Evening      (18-19): Cartoon Network
+- FOX access   (19-~19:40): Simpsons plus one companion
+- Prime        (~19:40-22): Cartoon Network -- CCF from 20:00 Friday
+- Late prime   (22-23): Adult Swim, the originals
+- Night        (23-24): The Midnight Run -- its premiere hour on Friday
+- After hrs    (00-02): The Midnight Run, the deeper cuts
 
-Summer (June-August) hands 08:00-14:00 on weekdays to CN's own shows and takes
-the vault out of the lunchtime slot -- the one seasonal change the channel most
-wanted and the only season that had no variant at all.
+Saturday runs oldest to newest and then into the action: the classic shorts at
+06:00, Cartoon Cartoons at 08:00, the modern shows at 10:00, the syndication
+package 12:00-15:00, Action Hour 15:00-18:00, then five hours of Toonami. The
+Toonami Midnight Run takes the Saturday-night overnight.
+
+Sunday: the vault, oldies only through 09:00, Cartoon Cartoons, a film at
+10:00, the modern shows, syndication, Action Hour, and FOX Primetime at 19:00.
+
+Daytime blocks group seven- and eleven-minute segments into programme-length
+picks and carry enough shows to avoid cycling repeatedly inside one window.
+The deliberate exceptions read like television: DBZ is a two-episode power
+hour, FOX Sunday reruns its three anchors once, and overnight reruns may shuffle.
+
+Summer (June-August) hands the weekday 10:00 slot to CN's own shows.
 
 No sharing rules. Everything this channel used to hold for Disney or Nick has
 gone back: DISNEY_MORNING, DISNEY_AFTERNOON, Gargoyles, the Star Wars Day
@@ -60,17 +75,25 @@ from scripts.core.logger import ChannelLogger
 # is the first two of the morning, and each carries its own block.
 #
 # Nick and Disney carry their own maps for the same reason.
+#
+# Toonami begins at 15:00, where it belongs historically. Its final hour is a
+# separate DBZ power hour so that exactly two episodes can be guaranteed.
 CARTOON_NETWORK_TIMESLOTS = {
-    "after_hours": (0, 2),
-    "overnight":   (2, 6),
-    "early":       (6, 8),
-    "morning":     (8, 10),
-    "midday":      (10, 12),
-    "noon":        (12, 14),
-    "afternoon":   (14, 17),
-    "evening":     (17, 20),
-    "prime":       (20, 23),
-    "night":       (23, 24),
+    "after_hours":  (0, 2),
+    "overnight":    (2, 6),
+    "early":        (6, 8),
+    "morning":      (8, 9),
+    "late_morning": (9, 10),
+    "midday":       (10, 12),
+    "noon":         (12, 14),
+    "afternoon":    (14, 15),
+    "after_school": (15, 17),
+    "power_hour":   (17, 18),
+    "early_evening": (18, 19),
+    "access":       (19, 20),
+    "prime":        (20, 22),
+    "late_prime":   (22, 23),
+    "night":        (23, 24),
 }
 
 # ==============================================================================
@@ -105,13 +128,16 @@ MARATHONS = [
         priority=3
     ),
     Marathon(
-        name="DBZ Marathon",
-        trigger=triggers.any_of(
-            triggers.has_label("JULY_4"),
-            triggers.chance(0.02, "dbz_takeover")
+        name="DBZ Movie Marathon",
+        # One percent on each eligible weekend day: about one event a year,
+        # rare enough to remain a surprise instead of becoming another strip.
+        trigger=triggers.all_of(
+            triggers.any_of(triggers.has_label("SATURDAY"),
+                            triggers.has_label("SUNDAY")),
+            triggers.chance(0.01, "dbz_movie_takeover")
         ),
-        collection=animation.DBZ_SAGAS,
-        hours=(10, 24),
+        collection=animation.DBZ_MOVIE_TRILOGIES,
+        hours=(12, 18),
         priority=2
     ),
     Marathon(
@@ -151,45 +177,93 @@ OVERNIGHT_BLOCK = {
     "default": animation.AS_LATE,
 }
 
-MORNING_BLOCK = {
+# 06:00-08:00. Saturday has its own fixed running order, the one day the
+# weekend-only shorts (Popeye, the Fleischer Superman) open the morning.
+EARLY_BLOCK = {
     "SATURDAY": animation.SATURDAY_MORNING,
-    "SUNDAY": animation.THE_SCOOBY_BLOCK,
+    "default": animation.THE_VAULT,
+}
+
+MORNING_BLOCK = {
+    "SUNDAY": animation.SUNDAY_MORNING,
+    "SATURDAY": animation.CARTOON_CARTOONS_WEEKEND,
     "default": animation.CARTOON_CARTOONS,
 }
 
-# Sunday takes the vault an hour earlier than the rest of the week, so the
-# afternoon can hold three hours of the modern shows.
+# Sunday oldies end at 09:00. From here both weekend days use their own
+# chronological Cartoon Cartoons feed, independent of the weekday strip.
+LATE_MORNING_BLOCK = {
+    "SATURDAY": animation.CARTOON_CARTOONS_WEEKEND,
+    "SUNDAY": animation.CARTOON_CARTOONS_WEEKEND,
+    "default": animation.CARTOON_CARTOONS,
+}
+
 MIDDAY_BLOCK = {
-    "SATURDAY": animation.CARTOON_CARTOONS,
-    "SUNDAY": animation.THE_VAULT,
+    "SATURDAY": animation.CN_SATURDAY,
+    "SUNDAY": animation.CARTOON_THEATRE,
     "default": animation.CN_MIDDAY_BLOCK,
 }
 
 NOON_BLOCK = {
     "SATURDAY": animation.SYNDICATION_HOUR,
-    "SUNDAY": animation.CARTOON_THEATRE,
-    "default": animation.CN_NOON_BLOCK,
-}
-
-AFTERNOON_BLOCK = {
-    "SUNDAY": animation.CN_MODERN,
+    "SUNDAY": animation.CARTOON_CARTOONS_WEEKEND,
     "default": animation.CN_AFTERNOON_BLOCK,
 }
 
-# FRIDAY comes before WEEKDAY in the dict, and the resolver takes the first
-# label that matches -- Cartoon Cartoon Fridays takes the Toonami slot.
-EVENING_BLOCK = {
-    "FRIDAY": animation.CARTOON_CARTOON_FRIDAY,
+# 14:00-15:00. On Saturday this is the third hour of the syndication package:
+# the same collection continues where 12:00 stopped, so the three hours are
+# eight different shows.
+AFTERNOON_BLOCK = {
+    "SATURDAY": animation.SYNDICATION_HOUR,
+    "SUNDAY": animation.CN_MODERN,
+    "default": animation.THE_SCOOBY_BLOCK,
+}
+
+# 15:00-17:00. Saturday has the only ordinary random film opportunity: about
+# five percent of Saturdays, Cartoon Theatre replaces these two action hours.
+AFTER_SCHOOL_BLOCK = {
+    "SATURDAY": animation.WEEKEND_ACTION_OR_MOVIE,
+    "SUNDAY": animation.SYNDICATION_HOUR,
+    "default": animation.TOONAMI_EARLY,
+}
+
+# 17:00-18:00. DBZ gets two consecutive chronological episodes every weekday.
+POWER_HOUR_BLOCK = {
+    "SATURDAY": animation.ACTION_HOUR,
+    "SUNDAY": animation.ACTION_HOUR,
+    "default": animation.TOONAMI_POWER_HOUR,
+}
+
+EARLY_EVENING_BLOCK = {
     "SATURDAY": animation.TOONAMI_SATURDAY,
-    "SUNDAY": animation.CARTOON_CARTOONS,
-    "default": animation.TOONAMI_BLOCK,
+    "SUNDAY": animation.ACTION_HOUR,
+    **animation.CN_EARLY_EVENING,
+}
+
+# 19:00. Weekdays always play exactly Simpsons plus one companion, then bridge
+# into the 20:00 CN block as soon as those two episodes finish. Sunday begins
+# its full FOX night; Saturday continues Toonami.
+ACCESS_BLOCK = {
+    "SATURDAY": animation.TOONAMI_SATURDAY,
+    "SUNDAY": animation.FOX_PRIMETIME,
+    **animation.FOX_WEEKDAY,
 }
 
 PRIME_BLOCK = {
     "SATURDAY": animation.TOONAMI_SATURDAY_VAULT,
     "SUNDAY": animation.FOX_PRIMETIME,
-    "WEEKDAY_A": animation.AS_ORIGINALS_A,  # Mon/Wed/Fri
-    "default": animation.AS_ORIGINALS_B,    # Tue/Thu/Sat
+    "FRIDAY": animation.CARTOON_CARTOON_FRIDAY,
+    "default": animation.CN_PRIME,
+}
+
+# Adult Swim now begins at 22:00, after the CN/FOX evening. Friday uses the
+# same rotation as Monday/Wednesday; CCF remains a tight two hours and never
+# wraps its six-show list merely to fill a third.
+LATE_PRIME_BLOCK = {
+    "SATURDAY": animation.TOONAMI_SATURDAY_VAULT,
+    "SUNDAY": animation.AS_ORIGINALS_B,
+    "WEEKDAY_A": animation.AS_ORIGINALS_A,
+    "default": animation.AS_ORIGINALS_B,
 }
 
 # 23:00-24:00. Sunday is the one night the originals run late instead of the
@@ -199,13 +273,17 @@ PRIME_BLOCK = {
 NIGHT_BLOCK = {
     "FRIDAY": animation.MIDNIGHT_RUN_PREMIERE,
     "SUNDAY": animation.AS_ORIGINALS_B,
-    "default": animation.MIDNIGHT_RUN,
+    "SATURDAY": animation.MIDNIGHT_RUN,
+    "WEEKDAY_A": animation.AS_ORIGINALS_A,
+    "default": animation.AS_ORIGINALS_B,
 }
 
-# 00:00-02:00. MONDAY here is Sunday night, following AS_ORIGINALS_B through
-# the midnight boundary rather than cutting to anime halfway.
+# 00:00-02:00. MONDAY here is Sunday night, which stays with the originals
+# through the midnight boundary rather than cutting to anime halfway. It is the
+# A rotation, not B: 23:00 was B under Sunday's date, and B again under
+# Monday's would restart one show along and replay two of the last hour's.
 AFTER_HOURS_BLOCK = {
-    "MONDAY": animation.AS_ORIGINALS_B,
+    "MONDAY": animation.AS_ORIGINALS_A,
     "default": animation.MIDNIGHT_RUN_LATE,
 }
 
@@ -220,11 +298,16 @@ HALLOWEEN_SCHEDULE = {
     "overnight": common.HALLOWEEN_ADULT_SCARES,
     "early":     common.HALLOWEEN_KIDS_SPOOKFEST,
     "morning":   common.HALLOWEEN_KIDS_SPOOKFEST,
+    "late_morning": common.HALLOWEEN_KIDS_SPOOKFEST,
     "midday":    animation.CN_HALLOWEEN,
     "noon":      animation.CN_HALLOWEEN,
     "afternoon": animation.CN_HALLOWEEN,
-    "evening":   animation.CN_HALLOWEEN,
+    "after_school": animation.CN_HALLOWEEN,
+    "power_hour": animation.CN_HALLOWEEN,
+    "early_evening": animation.CN_HALLOWEEN,
+    "access":    animation.CN_HALLOWEEN,
     "prime":     common.HALLOWEEN_TV_EVENT,
+    "late_prime": common.HALLOWEEN_TV_EVENT,
     "night":     common.HALLOWEEN_ADULT_SCARES,
     "after_hours": common.HALLOWEEN_ADULT_SCARES,
 }
@@ -233,11 +316,16 @@ CHRISTMAS_SCHEDULE = {
     "overnight": common.CHRISTMAS_TV_EVENT,
     "early":     common.CHRISTMAS_TV_EVENT,
     "morning":   common.CHRISTMAS_TV_EVENT,
+    "late_morning": common.CHRISTMAS_TV_EVENT,
     "midday":    common.CHRISTMAS_TV_EVENT,
     "noon":      common.CHRISTMAS_TV_EVENT,
     "afternoon": common.CHRISTMAS_TV_EVENT,
-    "evening":   common.CHRISTMAS_TV_EVENT,
+    "after_school": common.CHRISTMAS_TV_EVENT,
+    "power_hour": common.CHRISTMAS_TV_EVENT,
+    "early_evening": common.CHRISTMAS_TV_EVENT,
+    "access":    common.CHRISTMAS_TV_EVENT,
     "prime":     "christmas_animated_movie",
+    "late_prime": common.CHRISTMAS_TV_EVENT,
     "night":     common.CHRISTMAS_TV_EVENT,
     "after_hours": common.CHRISTMAS_TV_EVENT,
 }
@@ -254,13 +342,18 @@ HOLIDAY_SCHEDULES = {
 DAILY_SCHEDULE = {
     "after_hours": AFTER_HOURS_BLOCK,
     "overnight": OVERNIGHT_BLOCK,
-    "early":     animation.THE_VAULT,
+    "early":     EARLY_BLOCK,
     "morning":   MORNING_BLOCK,
+    "late_morning": LATE_MORNING_BLOCK,
     "midday":    MIDDAY_BLOCK,
     "noon":      NOON_BLOCK,
     "afternoon": AFTERNOON_BLOCK,
-    "evening":   EVENING_BLOCK,
+    "after_school": AFTER_SCHOOL_BLOCK,
+    "power_hour": POWER_HOUR_BLOCK,
+    "early_evening": EARLY_EVENING_BLOCK,
+    "access":    ACCESS_BLOCK,
     "prime":     PRIME_BLOCK,
+    "late_prime": LATE_PRIME_BLOCK,
     "night":     NIGHT_BLOCK,
 }
 

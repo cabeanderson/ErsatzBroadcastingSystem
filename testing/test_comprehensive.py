@@ -279,5 +279,110 @@ class TestComprehensive(unittest.TestCase):
         
         print("✅ Unified injection logic verified.")
 
+    def test_08_cartoon_network_access_contract(self):
+        """FOX access stays two shows and weekday DBZ stays a double strip."""
+        print("\n[Test] Cartoon Network Access Contract")
+        from scripts.library import animation
+
+        expected_companions = {
+            "MONDAY": "fox_weekday_king_of_the_hill_tv",
+            "TUESDAY": "fox_weekday_futurama_tv",
+            "WEDNESDAY": "fox_weekday_family_guy_tv",
+            "THURSDAY": "fox_weekday_american_dad_tv",
+            "FRIDAY": "fox_weekday_bobs_burgers_tv",
+        }
+        for day, companion in expected_companions.items():
+            block = animation.FOX_WEEKDAY[day]
+            self.assertEqual(
+                block.items,
+                ["fox_weekday_simpsons_tv", companion],
+                f"{day} FOX access must be Simpsons plus one companion",
+            )
+            self.assertEqual(block.fill_strategy, "bridge")
+            self.assertFalse(block.strict_window)
+            self.assertFalse(block.use_epg_group)
+
+        for block in animation.CN_EARLY_EVENING.values():
+            self.assertEqual(len(block.items), 2,
+                             "18:00 CN must stop after two programme-length picks")
+            self.assertEqual(block.fill_strategy, "gap",
+                             "18:00 CN must wait for the hard 19:00 FOX start")
+
+        self.assertEqual(
+            animation.TOONAMI_DBZ_POWER_HOUR.scheduling["episodes_per_slot"],
+            2,
+        )
+        self.assertFalse(animation.TOONAMI_POWER_HOUR.use_epg_group)
+
+        from scripts.library import anime
+        self.assertNotIn(
+            "dragon_ball_z_syndication_tv",
+            anime.THE_DRAGON_BALL_HOUR.items.items,
+            "Japanorama must not counter-program CN's DBZ power hour with DBZ",
+        )
+
+        self.assertEqual([len(seq.items) for seq in animation.DBZ_MOVIE_TRILOGIES],
+                         [3, 3, 3])
+
+        self.assertEqual(MASTER_SOURCES["toonami_saturday_dragon_ball_z_tv"]["order"],
+                         "Chronological")
+        self.assertEqual(MASTER_SOURCES["toonami_overnight_dragon_ball_z_tv"]["order"],
+                         "Shuffle")
+        self.assertEqual(MASTER_SOURCES["as_prime_venture_bros_tv"]["order"],
+                         "Chronological")
+        self.assertEqual(MASTER_SOURCES["as_late_venture_bros_tv"]["order"],
+                         "Shuffle")
+        print("✅ FOX, DBZ, EPG and competing-channel contracts verified.")
+
+    def test_09_cartoon_network_weekday_playout(self):
+        """Realistic runtimes preserve 19:00 FOX and the post-FOX CN bridge."""
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from scripts.testing.simulator import ChannelSimulator
+
+        durations = {}
+        cn_lengths = {
+            "dexter": 7, "johnny_bravo": 7,
+            "powerpuff": 11, "ed_edd_n_eddy": 11, "courage": 11,
+            "adventure_time": 11, "steven_universe": 11,
+            "infinity_train": 11, "over_the_garden_wall": 11,
+            "samurai_jack": 22,
+        }
+        for prefix in ("cn_prime_", "cn_friday_"):
+            for show, minutes in cn_lengths.items():
+                for suffix in ("", "_auto_fall"):
+                    durations[f"{prefix}{show}_tv{suffix}"] = minutes
+        for show in ("simpsons", "king_of_the_hill", "futurama", "family_guy",
+                     "american_dad", "bobs_burgers"):
+            for suffix in ("", "_auto_fall"):
+                durations[f"fox_weekday_{show}_tv{suffix}"] = 20
+
+        for day in range(5, 10):
+            with redirect_stdout(StringIO()):
+                schedule = ChannelSimulator(
+                    cartoon_network, content_durations=durations
+                ).simulate_day(datetime(2026, 10, day), hours=24)
+            content = [e for e in schedule if e["type"] == "content"]
+            fox = [e for e in content
+                   if str(e["content"]).startswith("fox_weekday_")]
+            self.assertEqual(len(fox), 2)
+            self.assertEqual(fox[0]["time"].strftime("%H:%M"), "19:00")
+            self.assertIn("simpsons", fox[0]["content"])
+
+            dbz = [e for e in content
+                   if "dragon_ball_z" in str(e["content"])
+                   and e["time"].hour == 17]
+            self.assertEqual(len(dbz), 2)
+
+            cn_after_fox = [e for e in content
+                            if str(e["content"]).startswith(("cn_prime_", "cn_friday_"))
+                            and e["time"] >= fox[-1]["time"]]
+            self.assertTrue(any(e["time"].hour == 19 for e in cn_after_fox),
+                            "CN must bridge the unused tail after the FOX pair")
+            self.assertTrue(any(e["time"].hour >= 20 for e in cn_after_fox),
+                            "The scheduled CN prime block must still run after the bridge")
+
+        print("✅ Weekday playout holds FOX at 19:00 and resumes CN correctly.")
+
 if __name__ == "__main__":
     unittest.main()

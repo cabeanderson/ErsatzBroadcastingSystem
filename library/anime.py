@@ -65,21 +65,26 @@ remembering to behave (C3).
 
 Cartoon Network airs anime in exactly four windows:
 
-    17:00-20:00  Mon-Fri    Toonami
-    17:00-23:00  Saturday   Toonami Saturday, and its vault
+    15:00-18:00  Mon-Fri    Toonami  (since 2026-09-27; it was 17:00-20:00)
+    18:00-23:00  Saturday   Toonami Saturday, and its vault
     23:00-02:00  nightly    the Midnight Run  (Attack on Titan is the anchor)
     02:00-06:00  Sat night  Toonami: The Midnight Run
 
-Which leaves 06:00-17:00 every day, and 20:00-23:00 on the six nights that are
-not Saturday. **Every shared title on this channel is scheduled inside that
-window and nowhere else**, which is why the syndication keys appear only in
-`MORNING_CAST` through `THE_DRAGON_BALL_HOUR` (06:00-17:00) and in `SHONEN_NIGHT`
-(Friday 21:00-23:00).
+Which leaves 06:00-15:00 on weekdays and 06:00-18:00 at the weekend.
+**Every shared title on this channel is scheduled inside that window and
+nowhere else**, with one measured exception. On weekdays the Dragon Ball Hour
+runs 17:00-19:00, inside Toonami's last hour: Toonami's running order is fixed
+(DailyOrderedCollection) and its 17:00 hour is Kenshin, InuYasha and Naruto,
+none of which the Dragon Ball Hour airs. Dragon Ball Z itself is on Toonami
+just before 16:00. `same_show_check` is how that is verified, not the clock.
+The other shared keys appear only in `MORNING_CAST` through
+`THE_SYNDICATION_HOUR` (06:00-15:00) and in `SHONEN_NIGHT` (Friday 21:00-23:00).
 
 Three consequences worth writing down, because each one moved a decision:
 
-* **Teatime (17:00-19:00) is inside Toonami's window**, so it draws no shared
-  title at all -- Assassination Classroom, Ranking of Kings, Girls und Panzer,
+* **Teatime is inside Toonami's window** -- 15:00-17:00 on weekdays, 17:00-19:00
+  at the weekend, against Toonami Saturday from 18:00 -- so it draws no shared
+  title at all: Assassination Classroom, Ranking of Kings, Girls und Panzer,
   One-Punch Man and DAN DA DAN, every one of them Japanorama's alone.
 * **Attack on Titan is not on this channel.** It is the daily anchor of Cartoon
   Network's Midnight Run at 23:00, so an episode of it anywhere near this
@@ -171,31 +176,33 @@ THE_SYNDICATION_HOUR = Block(
 )
 
 # ==============================================================================
-# 4. THE DRAGON BALL HOUR -- 15:00-17:00
+# 4. THE DRAGON BALL HOUR -- 15:00-17:00 weekends, 17:00-19:00 weekdays
 # ==============================================================================
 
 # One franchise, two hours, every afternoon -- G3's "a strip that means
 # something is worth more than a strip with more variety in it", taken as far
-# as it goes. Z, GT and Super are 500 episodes between them and the hour reads
-# as *Dragon Ball is on at three* rather than *anime is on*.
+# as it goes. GT and Super still give the strip hundreds of episodes and make
+# it read as *Dragon Ball is on* rather than *anime is on*. Z stays exclusive
+# to Cartoon Network's new 17:00 weekday power hour, so the same series cannot
+# be playing on both channels at once.
 #
 # GT is the only one of the three no other channel touches. It is also the one
 # nobody defends, which is exactly why it belongs in a strip and not in prime.
 THE_DRAGON_BALL_HOUR = Block(
     name="The Dragon Ball Hour",
     items=RandomCollection([
-        "dragon_ball_z_syndication_tv",
         "dragon_ball_gt_tv",
         "dragon_ball_super_syndication_tv",
     ]),
 )
 
 # ==============================================================================
-# 5. TEATIME -- 17:00-19:00
+# 5. TEATIME -- 17:00-19:00 weekends, 15:00-17:00 weekdays
 # ==============================================================================
 
-# Cartoon Network's Toonami is on the air 17:00-20:00, so this block draws no
-# shared title -- see the hours rule in the module docstring. Five shows that
+# Placed opposite Toonami -- 15:00 on weekdays, and against Toonami Saturday's
+# 18:00 start at the weekend -- so this block draws no shared title. See the
+# hours rule in the module docstring. Five shows that
 # are Japanorama's alone, all of them episodic enough to tune into cold.
 TEATIME = Block(
     name="Teatime",

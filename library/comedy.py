@@ -63,7 +63,6 @@ with Dr. Steve Brule inside `AS_ORIGINALS_B`, which runs:
 
     20:00-23:00  Tuesday and Thursday   (prime, the WEEKDAY_B arm)
     23:00-24:00  Sunday                 (night)
-    00:00-02:00  Monday                 (after_hours -- Sunday night's tail)
 
 channel-coverage.md prescribes the C2 rung-1 split for exactly these shows:
 Adult Swim runs them as **first-run** -- chronological, appointment, late --

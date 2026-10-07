@@ -675,8 +675,8 @@ TV_REGISTRY = {
     "other_space_tv": show_by_title("other space"),
     "people_of_earth_tv": show_by_title("people of earth"),
 
-    # Shared with Cartoon Network's Adult Swim, which airs them 20:00-23:00
-    # Tue/Thu, 23:00-24:00 Sunday and 00:00-02:00 Monday. Corncob runs them as
+    # Shared with Cartoon Network's Adult Swim, which airs them after 22:00
+    # Tue/Thu/Sunday. Corncob runs them as
     # syndication in daylight, the split channel-coverage.md prescribes.
     "eric_andre_tv": show_by_title("the eric andre show"),
     "steve_brule_tv": show_by_title("check it out! with dr. steve brule"),
@@ -1373,14 +1373,202 @@ CARTOON_NETWORK_REGISTRY = {
     # Saturday, for the 32 weeks a year DAIMA is not in season.
     "dragon_ball_super_tv": show_by_title("Dragon Ball Super"),
 
+    # The rotating middle position in the weekday Toonami block. These are
+    # static named feeds so the rotation can choose a key (not a nested Program)
+    # while each series still advances chronologically and independently from
+    # Japanorama's shuffled syndication copies.
+    "toonami_weekday_yu_yu_hakusho_tv": playback_order(
+        show_by_title("Yu Yu Hakusho"), force="Chronological"),
+    "toonami_weekday_rurouni_kenshin_tv": playback_order(
+        show_by_title("Rurouni Kenshin"), force="Chronological"),
+    "toonami_weekday_inuyasha_tv": playback_order(
+        show_by_title("InuYasha"), force="Chronological"),
+    "toonami_weekday_sailor_moon_tv": playback_order(
+        'type:episode AND show_title:"Sailor Moon"'
+        ' AND NOT show_title:"Sailor Moon Crystal"', force="Chronological"),
+
+    # Saturday's appointment, Saturday's later vault and the overnight rerun
+    # are independent runs. The first two stay chronological; the late rerun
+    # is the one Toonami wheel where shuffle better fits the format.
+    **{
+        f"toonami_saturday_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "dragon_ball_z": "Dragon Ball Z",
+            "one_piece": "One Piece",
+            "naruto": "Naruto",
+            "fullmetal_alchemist_brotherhood": "Fullmetal Alchemist Brotherhood",
+            "yu_yu_hakusho": "Yu Yu Hakusho",
+            "samurai_jack": "Samurai Jack",
+            "batman_beyond": "Batman Beyond",
+            "inuyasha": "InuYasha",
+            "rurouni_kenshin": "Rurouni Kenshin",
+        }.items()
+    },
+    "toonami_saturday_sailor_moon_tv": playback_order(
+        'type:episode AND show_title:"Sailor Moon"'
+        ' AND NOT show_title:"Sailor Moon Crystal"', force="Chronological"),
+    "toonami_saturday_dragon_ball_tv": playback_order(
+        'type:episode AND show_title:"Dragon Ball"'
+        ' AND NOT show_title:"Dragon Ball Z" AND NOT show_title:"Dragon Ball GT"'
+        ' AND NOT show_title:"Dragon Ball Super" AND NOT show_title:"Dragon Ball DAIMA"',
+        force="Chronological"),
+    **{
+        f"toonami_overnight_{key}_tv": playback_order(show_by_title(title), force="Shuffle")
+        for key, title in {
+            "dragon_ball_z": "Dragon Ball Z",
+            "one_piece": "One Piece",
+            "naruto": "Naruto",
+            "inuyasha": "InuYasha",
+            "yu_yu_hakusho": "Yu Yu Hakusho",
+            "rurouni_kenshin": "Rurouni Kenshin",
+        }.items()
+    },
+
+    # Distinct named feeds are deliberate even when their queries are the
+    # same. ErsatzTV keeps playback position by content key, so daytime,
+    # primetime and weekend runs can each move chronologically at their own
+    # cadence instead of advancing one shared enumerator.
+    **{
+        f"cn_daytime_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "dexter": "Dexter's Laboratory",
+            "powerpuff": "The Powerpuff Girls",
+            "johnny_bravo": "Johnny Bravo",
+            "ed_edd_n_eddy": "Ed, Edd n Eddy",
+            "courage": "Courage the Cowardly Dog",
+        }.items()
+    },
+    **{
+        f"cn_weekend_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "dexter": "Dexter's Laboratory",
+            "powerpuff": "The Powerpuff Girls",
+            "johnny_bravo": "Johnny Bravo",
+            "ed_edd_n_eddy": "Ed, Edd n Eddy",
+            "courage": "Courage the Cowardly Dog",
+            "adventure_time": "Adventure Time",
+            "steven_universe": "Steven Universe",
+            "samurai_jack": "Samurai Jack",
+            "infinity_train": "Infinity Train",
+            "over_the_garden_wall": "Over the Garden Wall",
+        }.items()
+    },
+    **{
+        f"cn_sunday_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "scooby_where": "Scooby-Doo, Where Are You!",
+            "scooby_show": "The Scooby-Doo Show",
+            "whats_new_scooby": "What's New Scooby-Doo",
+            "popeye": "Popeye the Sailor",
+            "flintstones": "The Flintstones",
+        }.items()
+    },
+    "cn_sunday_superman_tv": playback_order(
+        f'{show_by_title("Superman")} AND release_date:[1941-01-01 TO 1945-12-31]',
+        force="Chronological"),
+    **{
+        f"cn_prime_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "dexter": "Dexter's Laboratory",
+            "powerpuff": "The Powerpuff Girls",
+            "johnny_bravo": "Johnny Bravo",
+            "ed_edd_n_eddy": "Ed, Edd n Eddy",
+            "courage": "Courage the Cowardly Dog",
+            "adventure_time": "Adventure Time",
+            "steven_universe": "Steven Universe",
+            "samurai_jack": "Samurai Jack",
+            "infinity_train": "Infinity Train",
+            "over_the_garden_wall": "Over the Garden Wall",
+        }.items()
+    },
+    **{
+        f"cn_friday_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "dexter": "Dexter's Laboratory",
+            "powerpuff": "The Powerpuff Girls",
+            "johnny_bravo": "Johnny Bravo",
+            "ed_edd_n_eddy": "Ed, Edd n Eddy",
+            "courage": "Courage the Cowardly Dog",
+            "samurai_jack": "Samurai Jack",
+        }.items()
+    },
+
+    # FOX access and Sunday primetime are separate chronological runs. The
+    # weekday strip always plays exactly two episodes; Sunday gets the longer
+    # rotation without stealing its position.
+    **{
+        f"fox_weekday_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "simpsons": "The Simpsons",
+            "king_of_the_hill": "King of the Hill",
+            "futurama": "Futurama",
+            "family_guy": "Family Guy",
+            "american_dad": "American Dad!",
+            "bobs_burgers": "Bob's Burgers",
+        }.items()
+    },
+    **{
+        f"fox_sunday_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "simpsons": "The Simpsons",
+            "king_of_the_hill": "King of the Hill",
+            "futurama": "Futurama",
+            "family_guy": "Family Guy",
+            "american_dad": "American Dad!",
+            "bobs_burgers": "Bob's Burgers",
+        }.items()
+    },
+
+    # Adult Swim prime and the 02:00 rerun wheel also keep separate cursors.
+    # Prime is chronological; the overnight acquisition/rerun mix is shuffled.
+    **{
+        f"as_prime_{key}_tv": playback_order(show_by_title(title), force="Chronological")
+        for key, title in {
+            "space_ghost": "Space Ghost Coast to Coast",
+            "brak_show": "The Brak Show",
+            "aqua_teen": "Aqua Teen Hunger Force",
+            "sealab": "Sealab 2021",
+            "harvey_birdman": "Harvey Birdman, Attorney at Law",
+            "home_movies": "Home Movies",
+            "twelve_oz_mouse": "12 oz. Mouse",
+            "venture_bros": "The Venture Bros.",
+            "robot_chicken": "Robot Chicken",
+            "metalocalypse": "Metalocalypse",
+            "boondocks": "The Boondocks",
+            "rick_and_morty": "Rick and Morty",
+            "eric_andre": "The Eric Andre Show",
+            "steve_brule": "Check It Out! with Dr. Steve Brule",
+            "frisky_dingo": "Frisky Dingo",
+            "black_dynamite": "Black Dynamite",
+        }.items()
+    },
+    **{
+        f"as_late_{key}_tv": playback_order(show_by_title(title), force="Shuffle")
+        for key, title in {
+            "king_of_the_hill": "King of the Hill",
+            "venture_bros": "The Venture Bros.",
+            "family_guy": "Family Guy",
+            "home_movies": "Home Movies",
+            "futurama": "Futurama",
+            "boondocks": "The Boondocks",
+            "american_dad": "American Dad!",
+            "bobs_burgers": "Bob's Burgers",
+            "robot_chicken": "Robot Chicken",
+            "archer": "Archer",
+        }.items()
+    },
+
     # The rerun bed behind the six weekday Toonami strips. Each is an
     # `annual_show()` in Contiguous Mode, and a contiguous strip has dead
     # stretches -- before its anchor date, and between the end of a run and the
     # start of the next loop. Without a rerun bed the Program resolves to
     # nothing, the block skips it, and a whole item slot stalls into the
     # circuit breaker. This is what plays instead.
+    #
+    # No Dragon Ball Z. The Z strip has its own 17:00 power hour, loops straight
+    # over, and never needs the shared rerun bed.
     "toonami_vault_tv": playback_order(
-        'type:episode AND (show_title:"Dragon Ball Z" OR show_title:"Naruto"'
+        'type:episode AND (show_title:"Naruto"'
         ' OR show_title:"InuYasha" OR show_title:"Yu Yu Hakusho"'
         ' OR show_title:"Rurouni Kenshin" OR show_title:"Sailor Moon"'
         # 82 episodes on disk, named nowhere. Toonami's anime bench was four

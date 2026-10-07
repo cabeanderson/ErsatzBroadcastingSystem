@@ -47,8 +47,8 @@ JAPANORAMA_TIMESLOTS = {
     "morning":    (6, 8),     # Morning Cast
     "kids":       (8, 12),    # The Kids' Hours
     "midday":     (12, 15),   # The Syndication Hour
-    "afternoon":  (15, 17),   # The Dragon Ball Hour
-    "teatime":    (17, 19),   # Teatime
+    "afternoon":  (15, 17),   # The Dragon Ball Hour -- Teatime on weekdays
+    "teatime":    (17, 19),   # Teatime -- the Dragon Ball Hour on weekdays
     "feature":    (19, 21),   # Japanorama Theatre
     "prime":      (21, 23),   # the named night
     "late":       (23, 24),   # Deep Night begins
@@ -106,6 +106,13 @@ PRIME_BLOCK = {
 # The clock means the same thing every day here, so the weekend arms change
 # three slots and no more: Saturday takes the canon at the feature and the
 # limited series in prime, Sunday gives the whole evening to Ghibli.
+#
+# One exception, forced by the hours rule: on weekdays Teatime and the Dragon
+# Ball Hour trade places. Cartoon Network's Toonami moved to 15:00-18:00
+# Monday to Friday on 2026-09-27. Its dedicated 17:00 Dragon Ball Z power hour
+# means Japanorama's simultaneous franchise block now draws only from GT and
+# Super; Z remains exclusive to Cartoon Network in those hours.
+# Saturday and Sunday have no Toonami until 18:00 and keep the old order.
 
 SCHEDULES = {
     "WEEKDAY": {
@@ -114,8 +121,8 @@ SCHEDULES = {
         "morning":    anime.MORNING_CAST,
         "kids":       anime.THE_KIDS_HOURS,
         "midday":     anime.THE_SYNDICATION_HOUR,
-        "afternoon":  anime.THE_DRAGON_BALL_HOUR,
-        "teatime":    anime.TEATIME,
+        "afternoon":  anime.TEATIME,
+        "teatime":    anime.THE_DRAGON_BALL_HOUR,
         "feature":    anime.JAPANORAMA_THEATRE,
         "prime":      PRIME_BLOCK,
         "late":       anime.DEEP_NIGHT,
