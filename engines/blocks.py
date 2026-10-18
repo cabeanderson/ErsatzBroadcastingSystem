@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional, Union, Tuple, List, TYPE_CHECKING
 from scripts.logic.resolution.resolver import ContentResolver
 from scripts.logic.resolution.pipeline import resolve_content, apply_injections, resolve_scheduled_content
 from scripts.core.logger import ChannelLogger
+from scripts.core import pick_ledger, stable_hash
 from scripts.playout import play_item, epg_group, fill_until_time, play_with_fallback, play_for_duration, wait_until_time, circuit_breaker
 from scripts.logic.models import Fallback, CommercialBreak
 from scripts.logic.structures import Block, Program
@@ -113,7 +114,14 @@ def _play_block_internal(session: PlayoutSession, block: Block, start_hour: int,
             f"will play nothing. Use a list or a collection."
         )
 
-    items_played = 0
+    # A list block's position is its own counter, not a collection's, so the
+    # ledger tracks it separately: a build that starts partway through a list
+    # carries on at the next item instead of replaying the first.
+    block_id = f"{block.name}:{stable_hash(block.items)}"
+    entered_at = session.context.current_time
+    pick_ledger.note_block_entry(block_id, entered_at)
+    is_list = isinstance(block.items, list)
+    items_played = pick_ledger.resume_list_offset(block_id) if is_list else 0
     epg_name = block.name if block.use_epg_group else None
     with epg_group(session.api, session.build_id, epg_name):
         if bumpers_enabled: session.context = play_block_intro(session, block.intro)
@@ -127,6 +135,7 @@ def _play_block_internal(session: PlayoutSession, block: Block, start_hour: int,
                     session.logger.info(f"🕒 Block time window ended at {session.context.current_time.strftime('%H:%M')}")
                     break
                 
+            item_started = session.context.current_time
             item_to_play = _get_next_block_item(block, items_played, session.boss)
             if item_to_play is None:
                 session.logger.info("Block items exhausted.")
@@ -158,6 +167,8 @@ def _play_block_internal(session: PlayoutSession, block: Block, start_hour: int,
                 session.context = play_program(session, implicit_program, start_hour, effective_end_hour, parent_block=block, day_schedule=day_schedule, bridge_depth=bridge_depth)
 
             items_played += 1
+            if is_list:
+                pick_ledger.note_list_item(block_id, entered_at, item_started)
             
             # Resolved, not raw: `circuit_breaker` passes this straight to
             # `play_item`, which stringifies a Block or Collection into a key

@@ -74,6 +74,12 @@ VERBOSE_LOGGING = False
 # impossible to read in isolation.
 LOG_BACKUP_RUNS = 3
 
+# The pick ledger (core/pick_ledger.py): a build that starts mid-day replays the
+# day's earlier collection picks so rotations carry on instead of restarting.
+# Kept for this many days back; only the start date is ever replayed.
+PICK_LEDGER_ENABLED = True
+PICK_LEDGER_KEEP_DAYS = 2
+
 # The seasonal tag injector builds OR-chains a few hundred characters long, and
 # logs one per injection. At INFO the line is summarised; set this True to log
 # the full query (it costs about 20MB per channel per run).

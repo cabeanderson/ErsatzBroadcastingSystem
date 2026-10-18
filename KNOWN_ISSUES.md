@@ -5,6 +5,23 @@ A living checklist of findings from the codebase review. Severity: 🔴 high ·
 
 ## Resolved
 
+### 2026-10-18 — every mid-day build restarted the day's rotations
+
+- ~~🔴 **Shows re-aired within hours on every channel.** ErsatzTV `continue`
+  builds start where the playout ends, usually mid-day, in a fresh process, and
+  `OrderedCollection`'s intraday step, `DailyOrderedCollection`'s index and
+  `RandomCollection`'s per-day RNG all lived in memory. The first pick after a
+  boundary repeated the day's first pick: Cartoon Network opened three blocks with
+  Ed, Edd n Eddy on 10-11 (09:03, 12:21, 13:07) and aired Metalocalypse at 22:06
+  and 23:18 on 10-18.~~ Fixed by the pick ledger, `core/pick_ledger.py`: picks
+  are recorded to `logs/state/<channel>.json` and a build starting at T replays
+  the day's picks before T. A plain-list block cut off mid-list resumes at its
+  next item. Verified with split builds (16 channels × 8 split points: 61 of 128
+  diverged before, 0 shows diverge after) and a seven-day from-midnight
+  build that is byte-identical to the old code on all 16 channels. The
+  simulator runs without a ledger unless given `ledger_dir`. Plan and remaining
+  work: [reference/repeat-plan.md](reference/repeat-plan.md).
+
 ### 2026-09-02 — the Totally 80s gaps that survived the reset
 
 The 2026-09-02 playout reset cleared the 26 hours of stale-epoch gaps, and gaps
@@ -510,6 +527,20 @@ input so it cannot rot into always saying PASS, but **the full sweep has to be
 run deliberately.** Add it to whatever you run before a deploy.
 
 ## Open
+
+### 2026-10-18 — Cartoon Network weekend repeats (see reference/repeat-plan.md)
+
+- [ ] 🟠 **Cartoon Theatre has no memory across weeks.** One `RandomCollection`
+  pick a Sunday, reset daily: Titan A.E. lands on 10-18, 10-25 and 11-01. Needs a
+  calendar shuffle-bag. The Battle of Gods entry also never plays its film.
+- [ ] 🟠 **`CARTOON_CARTOONS_WEEKEND` is used in two Sunday slots** (09–10 and
+  12–14), so its five shows each air twice.
+- [ ] 🟠 **Sunday FOX repeats three shows on purpose** to fill 19–22. Decided:
+  shorten to 19–21, Adult Swim from 21:00.
+- [ ] 🟡 **Toonami Saturday 20–23 is six shows for about eight picks**, and two
+  of them already aired earlier that day.
+- [ ] 🟡 **A block outro is skipped when a build boundary falls just before it.**
+  Cosmetic, and older than the ledger.
 
 ### 2026-10-01 — code review, corrected against the API contract
 

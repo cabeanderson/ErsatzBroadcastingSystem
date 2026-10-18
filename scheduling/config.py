@@ -79,6 +79,9 @@ class ScheduleConfig:
         self.filler_content = filler_content
         self.bumpers = bumpers
         self.logger = logger or ChannelLogger() # Default to a basic logger
+        # Names the channel's pick-ledger file, the same way the logger names
+        # its log file ("[CARTOONS]" -> "cartoons").
+        self.channel_name = self.logger.prefix.strip("[] ").lower() or "system"
         # A Block cannot be a fallback. `dispatcher.resolve_fallback_key`
         # resolves a key or a Collection down to a content key, but a Block is
         # a container of slots with no single key to reach -- it resolves to

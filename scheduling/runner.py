@@ -6,7 +6,7 @@ Resolver (Content), and Engines (Playback) to generate the stream.
 """
 
 from typing import Any
-from scripts.core import DayDirector
+from scripts.core import DayDirector, pick_ledger
 from scripts.logic.calendar.holidays import HolidayContext
 from scripts.logic.resolution.pipeline import resolve_content
 from scripts.logic.resolution.playback import hour_in_window
@@ -43,13 +43,22 @@ class ScheduleRunner:
         except Exception as e:
             self.config.logger.warn(f"Pre-registration failed: {e}")
 
+        # A build usually starts mid-day; the ledger replays the picks made
+        # earlier today by the build before this one. See core/pick_ledger.py.
+        pick_ledger.begin(self.config.channel_name, self.context.current_time, self.config.logger)
+
         while not self.context.is_done:
             self.boss = DayDirector(self.context)
             self.holiday_ctx = HolidayContext(self.boss)
             start_day = self.context.current_time.day
             last_time = self.context.current_time
 
-            day_schedule, marathon_block, marathon_window = assemble_day_schedule(self.config, self.boss, self.holiday_ctx)
+            # Every process repeats this at the start of each day from the same
+            # fresh state, so its picks reproduce without the ledger.
+            with pick_ledger.suspended():
+                day_schedule, marathon_block, marathon_window = assemble_day_schedule(self.config, self.boss, self.holiday_ctx)
+
+            pick_ledger.replay(self.boss)
 
             self.config.logger.info(f"=== {self.boss.now.strftime('%A, %B %d, %Y')} ===")
             self.config.logger.info(f"Season: {self.boss.season_vibe} | Holidays: {', '.join(self.holiday_ctx.active_holidays) or 'None'}")
@@ -101,4 +110,5 @@ class ScheduleRunner:
                 self.context = maintain_playout_invariants(session, last_time)
                 last_time = self.context.current_time
 
+        pick_ledger.finish()
         return self.context

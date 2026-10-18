@@ -10,6 +10,8 @@ from collections import defaultdict
 import re
 import sys
 
+from scripts.core import pick_ledger
+
 
 # ErsatzTV's PlayoutDaysToBuild config element, which defaults to 2:
 #   int daysToBuild = await GetDaysToBuild(...);   // IfNoneAsync(2)
@@ -600,16 +602,20 @@ def install_mocks():
 class ChannelSimulator:
     """Main simulator for testing channels."""
     
-    def __init__(self, channel_module, content_durations=None, missing_content=None):
+    def __init__(self, channel_module, content_durations=None, missing_content=None, ledger_dir=None):
         """
         Args:
             channel_module: The channel module to test (e.g., cartoon_network)
             content_durations: Optional dict of content_key -> minutes
             missing_content: Optional set of keys to simulate as missing
+            ledger_dir: Directory for the pick ledger. None (the default) runs
+                without one, so a simulation never reads or writes build state;
+                pass a scratch directory to test mid-day resumes.
         """
         self.channel = channel_module
         self.content_durations = content_durations or {}
         self.missing_content = missing_content or set()
+        self.ledger_dir = ledger_dir
     
     def simulate_day(self, start_date, hours=24):
         """
@@ -643,6 +649,7 @@ class ChannelSimulator:
         
         # Run channel
         build_id = uuid4()
+        pick_ledger.configure(enabled=self.ledger_dir is not None, state_dir=self.ledger_dir)
         
         try:
             self.channel.build_playout(api, context, build_id)

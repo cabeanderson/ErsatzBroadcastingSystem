@@ -570,6 +570,16 @@ Same date always produces the same schedule, **including across process restarts
 - **Per-day reset of transient state.** `RandomCollection` resets its no-repeat
   set each day, so a day's picks depend only on that date — not on how many picks
   happened on earlier days.
+- **Mid-day resumes replay the day so far.** ErsatzTV's `continue` builds start
+  wherever the playout ends, usually mid-day, in a fresh process. The points
+  above only fix the state at midnight; within a day, a collection's position
+  lives in memory. `core/pick_ledger.py` records each collection pick to
+  `logs/state/<channel>.json`, and a build starting at T replays that date's
+  picks before T, so every rotation resumes exactly where the last build left
+  it. Without it, every mid-day build restarted the day's rotations and re-aired
+  shows within hours (found 2026-10-18; see `reference/repeat-plan.md`). Records
+  at or after T are discarded, so a reset build — which starts at 00:00 —
+  replays nothing.
 
 > **Trade-offs of true determinism:** `RandomCollection`'s no-repeat memory is
 > per-day only (cross-day no-repeat is incompatible with "same date → same

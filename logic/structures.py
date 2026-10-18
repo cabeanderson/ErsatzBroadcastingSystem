@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import List, Any, Set, Optional, Tuple, Union, Dict
 from scripts.logic.models import ContentItem
 from scripts.core.identity import stable_hash
+from scripts.core import pick_ledger
 from scripts.settings import DEFAULT_APPOINTMENT_START_DATE
 
 # Fixed anchor used to map a calendar date to a deterministic position in
@@ -34,10 +35,12 @@ class RandomCollection:
         # restarts (id() would not). See core/identity.py.
         self._identity: str = stable_hash(self.items)
         self._last_date: Optional[date] = None
+        self._ledger_id: str = pick_ledger.register(self, self._identity)
 
     def pick(self, boss: Any) -> Any: # boss: DayDirector
         if not self.items:
             return None
+        pick_ledger.note(self._ledger_id, boss)
 
         # Reset the no-repeat state at the start of each day so a day's
         # selection depends only on the date, not on how many picks happened
@@ -81,6 +84,9 @@ class OrderedCollection:
         self.index: int = 0
         self._last_date: Optional[date] = None
         self._intraday: int = 0
+        # The intraday step is in-memory; a build that starts mid-day gets it
+        # back by replaying the day's picks. See core/pick_ledger.py.
+        self._ledger_id: str = pick_ledger.register(self, stable_hash(self.items))
 
     def pick(self, boss: Any = None) -> Any: # boss is optional for OrderedCollection
         n = len(self.items)
@@ -88,6 +94,7 @@ class OrderedCollection:
             return None
 
         if boss is not None:
+            pick_ledger.note(self._ledger_id, boss)
             # Anchor progression to the calendar: advance one step per day, plus
             # one per pick within a day. The result is a pure function of the
             # date, so it is reproducible across restarts and "moves on" while
@@ -126,6 +133,7 @@ class DailyOrderedCollection:
                 self.items.append(item)
         self.index: int = 0
         self.last_date: Optional[date] = None
+        self._ledger_id: str = pick_ledger.register(self, stable_hash(self.items))
     
     def pick(self, boss: Any) -> Any:
         """
@@ -138,6 +146,7 @@ class DailyOrderedCollection:
         Returns:
             The selected content item.
         """
+        pick_ledger.note(self._ledger_id, boss)
         current_date = boss.now.date()
         if self.last_date != current_date:
             self.index = 0
@@ -158,8 +167,10 @@ class WeightedCollection:
         self.weights: List[float] = [w for k, w in items]
         # Stable seed identity (see core/identity.py) instead of id().
         self._identity: str = stable_hash(self.keys)
+        self._ledger_id: str = pick_ledger.register(self, self._identity)
 
     def pick(self, boss: Any) -> Any: # boss: DayDirector
+        pick_ledger.note(self._ledger_id, boss)
         return boss._rng(f"weighted_collection_pick:{self._identity}").choices(self.keys, weights=self.weights, k=1)[0]
 
 @dataclass
