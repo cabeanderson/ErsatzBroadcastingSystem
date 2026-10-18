@@ -134,6 +134,9 @@ def _play_block_internal(session: PlayoutSession, block: Block, start_hour: int,
                 if session.context.current_time >= boundary_dt:
                     session.logger.info(f"🕒 Block time window ended at {session.context.current_time.strftime('%H:%M')}")
                     break
+                if block.last_start_minutes and session.context.current_time >= boundary_dt - timedelta(minutes=block.last_start_minutes):
+                    session.logger.info(f"🕒 No new item after {block.last_start_minutes} minutes before the boundary; stopping at {session.context.current_time.strftime('%H:%M')}")
+                    break
                 
             item_started = session.context.current_time
             item_to_play = _get_next_block_item(block, items_played, session.boss)

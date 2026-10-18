@@ -353,6 +353,19 @@ class TestComprehensive(unittest.TestCase):
             for show, minutes in cn_lengths.items():
                 for suffix in ("", "_auto_fall", "_auto_november"):
                     durations[f"{prefix}{show}_tv{suffix}"] = minutes
+        # Toonami's anime run about 23 minutes; the simulator's default is
+        # longer and pushes the block, and FOX after it, past the hour.
+        toonami_keys = [f"toonami_dragon_ball_s{n}_tv" for n in range(1, 7)]
+        toonami_keys += [f"toonami_weekday_{show}_tv" for show in (
+            "sailor_moon", "yu_yu_hakusho", "rurouni_kenshin", "inuyasha", "naruto")]
+        toonami_keys += ["toonami_thundercats_tv", "toonami_pokemon_tv"]
+        # Branding stings are seconds long, not the simulator's five minutes.
+        for key in ("toonami_intro", "toonami_outro", "toonami_bumpers",
+                    "toonami_dragon_ball_z_bumpers"):
+            durations[key] = 1
+        for key in toonami_keys:
+            for suffix in ("", "_auto_fall", "_auto_november"):
+                durations[f"{key}{suffix}"] = 23
         for show in ("simpsons", "king_of_the_hill", "futurama", "family_guy",
                      "american_dad", "bobs_burgers"):
             for suffix in ("", "_auto_fall", "_auto_november"):
@@ -370,8 +383,8 @@ class TestComprehensive(unittest.TestCase):
             fox = [e for e in content
                    if str(e["content"]).startswith("fox_")]
             self.assertEqual(len(fox), 2)
-            # The 18:00 rotation's last pick may run a few minutes over.
-            self.assertEqual(fox[0]["time"].hour, 19)
+            self.assertEqual((fox[0]["time"].hour, fox[0]["time"].minute), (19, 0),
+                             "18:00 must not start a pick that runs past 19:00")
             self.assertIn("simpsons", fox[0]["content"])
 
             # Episodes only: the DBZ bumper set also has the name in it.

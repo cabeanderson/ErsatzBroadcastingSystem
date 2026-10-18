@@ -301,12 +301,19 @@ CN_PRIME = Block(
 # per weekday, drawn from the same shows as prime but outside its rotation:
 # Monday's pair was Dexter and Adventure Time, and prime then opened wherever
 # its own rotation stood, so Adventure Time aired at 18:21 and again at 19:45
-# with two shows between. Sharing the rotation closes that. The last pick may
-# run a few minutes past 19:00; the FOX pair starts when it ends.
+# with two shows between. Sharing the rotation closes that.
+#
+# No pick starts after 18:38. The longest is 22 minutes (Samurai Jack, or two
+# eleven-minute segments), so the hour ends by 19:00 and waits for FOX. A
+# rotation never runs out the way the pairs did, and without the cutoff its
+# last pick started at 18:59 and put the Simpsons at 19:21.
+_EARLY_EVENING_LAST_START = 22
+
 CN_EARLY_EVENING = Block(
     name="Cartoon Network",
     items=_CN_PRIME_ROTATION,
     fill_strategy="gap",
+    last_start_minutes=_EARLY_EVENING_LAST_START,
     use_epg_group=False,
 )
 
@@ -323,6 +330,7 @@ CN_FRIDAY_EARLY_EVENING = Block(
         _half_hour("cn_prime_over_the_garden_wall_tv", 2),
     ]),
     fill_strategy="gap",
+    last_start_minutes=_EARLY_EVENING_LAST_START,
     use_epg_group=False,
 )
 
@@ -638,9 +646,12 @@ WEEKEND_ACTION_OR_MOVIE = WeightedCollection([
 # falls through to the circuit breaker.
 _WEEKDAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
 
+# Per-season registry keys, not show_title="Dragon Ball": that phrase also
+# matches Z, GT, Super and DAIMA, and the strip was airing GT. Season counts
+# are the library's six.
 TOONAMI_DRAGON_BALL = annual_show(
-    show_title="Dragon Ball",
-    episodes_per_season=[28, 15, 14, 13, 13, 14, 13, 13, 30],
+    content_pattern="toonami_dragon_ball_s{n}_tv",
+    episodes_per_season=[13, 15, 40, 33, 31, 21],
     start_date=date(2026, 3, 17), frequency=_WEEKDAYS,
     reruns="toonami_vault_tv", loop=True, loop_restart_season=False)
 

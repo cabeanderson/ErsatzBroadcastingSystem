@@ -1352,6 +1352,14 @@ DISNEY_REGISTRY = {
 
 # Four disambiguations. Every one of them is a title that resolves to two shows
 # now that the restructure airs both halves of the pair on the same channel.
+# The original Dragon Ball alone. `show_title:"Dragon Ball"` is a phrase match,
+# so on its own it returns every series whose title starts with it.
+DRAGON_BALL_ONLY = (
+    'type:episode AND show_title:"Dragon Ball"'
+    ' AND NOT show_title:"Dragon Ball Z" AND NOT show_title:"Dragon Ball GT"'
+    ' AND NOT show_title:"Dragon Ball Super" AND NOT show_title:"Dragon Ball DAIMA"'
+)
+
 CARTOON_NETWORK_REGISTRY = {
     # The 1941 Fleischer shorts (17, nine minutes each) open the Saturday
     # morning vault. Superman: The Animated Series is a different show and airs
@@ -1435,11 +1443,16 @@ CARTOON_NETWORK_REGISTRY = {
         ' AND NOT show_title:"Sailor Moon Crystal" AND NOT season_number:0',
         force="Chronological", start=(4, 1)),
     "toonami_saturday_dragon_ball_tv": playback_order(
-        'type:episode AND show_title:"Dragon Ball"'
-        ' AND NOT show_title:"Dragon Ball Z" AND NOT show_title:"Dragon Ball GT"'
-        ' AND NOT show_title:"Dragon Ball Super" AND NOT show_title:"Dragon Ball DAIMA"'
-        ' AND NOT season_number:0',
+        f'{DRAGON_BALL_ONLY} AND NOT season_number:0',
         force="Chronological", start=(5, 1)),
+    # The weekday strip's seasons, one key each for `annual_show`'s
+    # content_pattern. Its own `show_title=` would build show_title:"Dragon
+    # Ball" AND season_number:N, which also matches Z, GT, Super and DAIMA.
+    **{
+        f"toonami_dragon_ball_s{n}_tv": playback_order(
+            f'{DRAGON_BALL_ONLY} AND season_number:{n}', force="Chronological")
+        for n in range(1, 7)
+    },
     **{
         f"toonami_overnight_{key}_tv": playback_order(episodes_without_specials(title), force="Shuffle")
         for key, title in {
