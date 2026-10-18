@@ -72,11 +72,11 @@ Restructured against [cartoon-network-review.md](cartoon-network-review.md), whi
 | 06–08 early | The Vault | ← | ← | ← |
 | 08–09 morning | Cartoon Cartoons | ← | Cartoon Cartoons | Sunday Morning oldies |
 | 09–10 late morning | Cartoon Cartoons | ← | Cartoon Cartoons | Cartoon Cartoons |
-| 10–12 midday | Syndication / CN in summer | ← | Cartoon Network | Cartoon Theatre |
-| 12–14 noon | Action Hour | ← | Syndication Hour | Cartoon Cartoons |
-| 14–15 afternoon | Scooby-Doo | ← | Syndication Hour | Cartoon Network |
-| 15–17 after school | **Toonami** | ← | Action Hour / rare movie | Syndication Hour |
-| 17–18 power hour | **Two Dragon Ball Z** | ← | Action Hour | Action Hour |
+| 10–12 midday | Syndication / CN in summer | ← | Cartoon Network | **Cartoon Theatre**, first feature |
+| 12–13 noon | Marvel Action Hour: X-Men, Spider-Man, SWAT Kats | ← | Syndication Hour | **Cartoon Theatre**, second feature |
+| 13–14 afternoon | Scooby-Doo | ← | Syndication Hour | Cartoon Network |
+| 14–16 after school | **Action Hour**: BTAS, TNBA, Superman, Justice League, Batman Beyond | ← | Action Hour, all eight | Syndication Hour |
+| 16–18 toonami | **Toonami**: Dragon Ball, two DBZ, rotation, filler | ← | Action Hour / rare TV movie | Action Hour |
 | 18–19 early evening | Cartoon Network | ← | **Toonami Saturday** | Action Hour |
 | 19–20 access | **Simpsons + one FOX companion** | ← | Toonami Saturday | **FOX Primetime** |
 | 20–22 prime | Cartoon Network | Cartoon Cartoon Fridays | Toonami vault | FOX Primetime |
@@ -159,10 +159,11 @@ Ceding it leaves a fortnight's cycle; taking it without a rule breaks C1 a dozen
 times a night. So C2 rungs 1 and 2 together: Toonami runs these shows as a
 first-run chronological strip after school, Japanorama runs them as **shuffled
 daytime syndication**, and the `_syndication_tv` keys carry Shuffle at the key
-level (C3). Cartoon Network airs Toonami at 15:00–18:00 weekdays and
+level (C3). Cartoon Network airs Toonami at 16:00–18:00 weekdays and
 18:00–23:00 Saturday, plus its Midnight Run. Japanorama keeps the shared
-weekday titles outside that window; its simultaneous 17:00 Dragon Ball block
-uses only GT and Super, leaving DBZ exclusive to CN's power hour. Verified over
+weekday titles outside that window; its weekday Dragon Ball block moved to
+06:00 on 2026-10-18 and uses only GT and Super. Cartoon Network sets these
+hours; Japanorama works around them. Verified over
 three simulated years: the only shared titles outside
 daytime are Fullmetal Alchemist: Brotherhood and Death Note on Friday
 21:00–23:00, which is the documented exception.

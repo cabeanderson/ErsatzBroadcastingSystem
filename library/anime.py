@@ -72,11 +72,9 @@ Cartoon Network airs anime in exactly four windows:
 
 Which leaves 06:00-15:00 on weekdays and 06:00-18:00 at the weekend.
 **Every shared title on this channel is scheduled inside that window and
-nowhere else**, with one measured exception. On weekdays the Dragon Ball Hour
-runs 17:00-19:00, inside Toonami's last hour: Toonami's running order is fixed
-(DailyOrderedCollection) and its 17:00 hour is Kenshin, InuYasha and Naruto,
-none of which the Dragon Ball Hour airs. Dragon Ball Z itself is on Toonami
-just before 16:00. `same_show_check` is how that is verified, not the clock.
+nowhere else**. On weekdays the Dragon Ball Hour runs 06:00-08:00 (moved
+2026-10-18), and Morning Cast takes 17:00-19:00. `same_show_check` is how
+that is verified, not the clock.
 The other shared keys appear only in `MORNING_CAST` through
 `THE_SYNDICATION_HOUR` (06:00-15:00) and in `SHONEN_NIGHT` (Friday 21:00-23:00).
 
@@ -113,7 +111,7 @@ from scripts.logic.factories import annual_show
 from scripts.library.queries import movie_by_title_year
 
 # ==============================================================================
-# 1. MORNING -- 06:00-08:00
+# 1. MORNING -- 06:00-08:00 weekends, 17:00-19:00 weekdays
 # ==============================================================================
 
 # Iyashikei, which is a genre in Japan and nowhere else: shows in which nothing
@@ -176,15 +174,14 @@ THE_SYNDICATION_HOUR = Block(
 )
 
 # ==============================================================================
-# 4. THE DRAGON BALL HOUR -- 15:00-17:00 weekends, 17:00-19:00 weekdays
+# 4. THE DRAGON BALL HOUR -- 15:00-17:00 weekends, 06:00-08:00 weekdays
 # ==============================================================================
 
 # One franchise, two hours, every afternoon -- G3's "a strip that means
 # something is worth more than a strip with more variety in it", taken as far
 # as it goes. GT and Super still give the strip hundreds of episodes and make
 # it read as *Dragon Ball is on* rather than *anime is on*. Z stays exclusive
-# to Cartoon Network's new 17:00 weekday power hour, so the same series cannot
-# be playing on both channels at once.
+# to Cartoon Network. Weekdays run it at 06:00, clear of Toonami.
 #
 # GT is the only one of the three no other channel touches. It is also the one
 # nobody defends, which is exactly why it belongs in a strip and not in prime.

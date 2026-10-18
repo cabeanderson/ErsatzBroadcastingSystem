@@ -302,17 +302,18 @@ class TestComprehensive(unittest.TestCase):
             self.assertFalse(block.strict_window)
             self.assertFalse(block.use_epg_group)
 
-        for block in animation.CN_EARLY_EVENING.values():
-            self.assertEqual(len(block.items), 2,
-                             "18:00 CN must stop after two programme-length picks")
-            self.assertEqual(block.fill_strategy, "gap",
-                             "18:00 CN must wait for the hard 19:00 FOX start")
+        self.assertIs(animation.CN_EARLY_EVENING.items, animation.CN_PRIME.items,
+                      "18:00 CN must share prime's rotation so no show airs twice an evening")
 
         self.assertEqual(
-            animation.TOONAMI_DBZ_POWER_HOUR.scheduling["episodes_per_slot"],
+            animation.TOONAMI_DBZ.scheduling["episodes_per_slot"],
             2,
         )
-        self.assertFalse(animation.TOONAMI_POWER_HOUR.use_epg_group)
+        self.assertIs(animation.TOONAMI.items[0], animation.TOONAMI_DRAGON_BALL,
+                      "Dragon Ball opens Toonami")
+        self.assertIs(animation.TOONAMI.items[1], animation.TOONAMI_DBZ,
+                      "Dragon Ball Z follows it")
+        self.assertFalse(animation.TOONAMI.use_epg_group)
 
         from scripts.library import anime
         self.assertNotIn(
@@ -348,34 +349,40 @@ class TestComprehensive(unittest.TestCase):
             "infinity_train": 11, "over_the_garden_wall": 11,
             "samurai_jack": 22,
         }
-        for prefix in ("cn_prime_", "cn_friday_"):
+        for prefix in ("cn_daytime_", "cn_weekend_", "cn_prime_"):
             for show, minutes in cn_lengths.items():
-                for suffix in ("", "_auto_fall"):
+                for suffix in ("", "_auto_fall", "_auto_november"):
                     durations[f"{prefix}{show}_tv{suffix}"] = minutes
         for show in ("simpsons", "king_of_the_hill", "futurama", "family_guy",
                      "american_dad", "bobs_burgers"):
-            for suffix in ("", "_auto_fall"):
+            for suffix in ("", "_auto_fall", "_auto_november"):
                 durations[f"fox_weekday_{show}_tv{suffix}"] = 20
+                durations[f"fox_sunday_{show}_tv{suffix}"] = 20
 
-        for day in range(5, 10):
+        # A November week: the weekday Dragon Ball Z strip starts 2026-10-19,
+        # and Halloween takes the channel over the week after.
+        for day in range(9, 14):
             with redirect_stdout(StringIO()):
                 schedule = ChannelSimulator(
                     cartoon_network, content_durations=durations
-                ).simulate_day(datetime(2026, 10, day), hours=24)
+                ).simulate_day(datetime(2026, 11, day), hours=24)
             content = [e for e in schedule if e["type"] == "content"]
             fox = [e for e in content
-                   if str(e["content"]).startswith("fox_weekday_")]
+                   if str(e["content"]).startswith("fox_")]
             self.assertEqual(len(fox), 2)
-            self.assertEqual(fox[0]["time"].strftime("%H:%M"), "19:00")
+            # The 18:00 rotation's last pick may run a few minutes over.
+            self.assertEqual(fox[0]["time"].hour, 19)
             self.assertIn("simpsons", fox[0]["content"])
 
+            # Episodes only: the DBZ bumper set also has the name in it.
             dbz = [e for e in content
                    if "dragon_ball_z" in str(e["content"])
-                   and e["time"].hour == 17]
+                   and "bumpers" not in str(e["content"])
+                   and 16 <= e["time"].hour < 18]
             self.assertEqual(len(dbz), 2)
 
             cn_after_fox = [e for e in content
-                            if str(e["content"]).startswith(("cn_prime_", "cn_friday_"))
+                            if str(e["content"]).startswith("cn_")
                             and e["time"] >= fox[-1]["time"]]
             self.assertTrue(any(e["time"].hour == 19 for e in cn_after_fox),
                             "CN must bridge the unused tail after the FOX pair")

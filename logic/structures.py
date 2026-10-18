@@ -4,6 +4,7 @@ Smart collection classes for scheduling logic.
 Separated from content definitions to keep the library clean.
 """
 
+import random
 from datetime import date
 from dataclasses import dataclass
 from typing import List, Any, Set, Optional, Tuple, Union, Dict
@@ -155,6 +156,54 @@ class DailyOrderedCollection:
         choice = self.items[self.index % len(self.items)]
         self.index += 1
         return choice
+
+class CalendarDeck:
+    """
+    Deals every item once per cycle, in an order fixed by the calendar.
+
+    For a slot that comes round once a week, where `RandomCollection` has no
+    memory: it resets every day, so each Sunday was an independent draw and
+    Titan A.E. aired three Sundays running. Here deal number n is the week's
+    index times `per_week`, plus `deal`; deal n is item n % len of a cycle
+    shuffled by a seed from n // len. Every item airs once before any airs
+    twice, and the order is a pure function of the date, so it needs no state
+    and survives restarts. The first deal of a cycle is never the last of the
+    one before.
+
+    Two slots in the same week share one deck by taking deals 0 and 1 of
+    `per_week=2`; they can never deal the same item.
+    """
+    def __init__(self, items: List[Any], per_week: int = 1, deal: int = 0):
+        if not 0 <= deal < per_week:
+            raise ValueError(f"deal {deal} is outside 0..{per_week - 1}")
+        self.items: List[Any] = [
+            ContentItem(**item) if isinstance(item, dict) else item
+            for item in items
+        ]
+        self.per_week: int = per_week
+        self.deal: int = deal
+        # Shared by every deal of the deck, so both Sunday slots shuffle alike.
+        self._identity: str = stable_hash(self.items)
+
+    def _order(self, cycle: int) -> List[int]:
+        order = list(range(len(self.items)))
+        random.Random(f"calendar_deck:{self._identity}:{cycle}").shuffle(order)
+        return order
+
+    def _dealt(self, n: int) -> int:
+        size = len(self.items)
+        cycle, position = divmod(n, size)
+        order = self._order(cycle)
+        if size > 1 and cycle > 0 and order[0] == self._order(cycle - 1)[-1]:
+            order[0], order[1] = order[1], order[0]
+        return order[position]
+
+    def pick(self, boss: Any) -> Any:
+        if not self.items:
+            return None
+        week = (boss.now.date() - _EPOCH).days // 7
+        return self.items[self._dealt(week * self.per_week + self.deal)]
+
 
 class WeightedCollection:
     """

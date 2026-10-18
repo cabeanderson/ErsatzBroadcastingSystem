@@ -44,11 +44,11 @@ from scripts.library import anime
 JAPANORAMA_TIMESLOTS = {
     "deep_night": (0, 2),     # Deep Night, the film half
     "overnight":  (2, 6),     # The Rebroadcast
-    "morning":    (6, 8),     # Morning Cast
+    "morning":    (6, 8),     # Morning Cast -- the Dragon Ball Hour on weekdays
     "kids":       (8, 12),    # The Kids' Hours
     "midday":     (12, 15),   # The Syndication Hour
     "afternoon":  (15, 17),   # The Dragon Ball Hour -- Teatime on weekdays
-    "teatime":    (17, 19),   # Teatime -- the Dragon Ball Hour on weekdays
+    "teatime":    (17, 19),   # Teatime -- Morning Cast on weekdays
     "feature":    (19, 21),   # Japanorama Theatre
     "prime":      (21, 23),   # the named night
     "late":       (23, 24),   # Deep Night begins
@@ -107,22 +107,22 @@ PRIME_BLOCK = {
 # three slots and no more: Saturday takes the canon at the feature and the
 # limited series in prime, Sunday gives the whole evening to Ghibli.
 #
-# One exception, forced by the hours rule: on weekdays Teatime and the Dragon
-# Ball Hour trade places. Cartoon Network's Toonami moved to 15:00-18:00
-# Monday to Friday on 2026-09-27. Its dedicated 17:00 Dragon Ball Z power hour
-# means Japanorama's simultaneous franchise block now draws only from GT and
-# Super; Z remains exclusive to Cartoon Network in those hours.
-# Saturday and Sunday have no Toonami until 18:00 and keep the old order.
+# One exception: weekdays move the Dragon Ball Hour to 06:00, well clear of
+# Cartoon Network's Toonami (16:00-18:00, Dragon Ball and Z first, since
+# 2026-10-18). Cartoon Network sets those hours and Japanorama works around
+# them, not the other way round. Morning Cast takes 17:00 in exchange --
+# iyashikei suits the end of the day as well as the start -- and Teatime keeps
+# 15:00. Saturday and Sunday have no Toonami until 18:00 and keep the old order.
 
 SCHEDULES = {
     "WEEKDAY": {
         "deep_night": anime.DEEP_NIGHT_LATE,
         "overnight":  anime.THE_REBROADCAST,
-        "morning":    anime.MORNING_CAST,
+        "morning":    anime.THE_DRAGON_BALL_HOUR,
         "kids":       anime.THE_KIDS_HOURS,
         "midday":     anime.THE_SYNDICATION_HOUR,
         "afternoon":  anime.TEATIME,
-        "teatime":    anime.THE_DRAGON_BALL_HOUR,
+        "teatime":    anime.MORNING_CAST,
         "feature":    anime.JAPANORAMA_THEATRE,
         "prime":      PRIME_BLOCK,
         "late":       anime.DEEP_NIGHT,

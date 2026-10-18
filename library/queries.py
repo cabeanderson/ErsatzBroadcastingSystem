@@ -38,11 +38,18 @@ ANIME = "genre:anime"
 # read as unevaluable and silently widen every pool that carries it.
 NOT_ANIMATED = "NOT genre:animation AND NOT genre:anime"
 
-def playback_order(query, force=None):
-    """Returns a dictionary containing the search query and the playback order."""
-    if force:
-        return {"query": query, "order": force}
-    return {"query": query, "order": DEFAULT_ORDER}
+def playback_order(query, force=None, start=None):
+    """Returns a dictionary containing the search query and the playback order.
+
+    `start` is a (season, episode) a Chronological feed opens on after a
+    playout reset, instead of its first episode. It is how two feeds of the
+    same show stay apart: weekday prime from the top, the weekend from well
+    into the run. See core/build_mode.py.
+    """
+    data = {"query": query, "order": force or DEFAULT_ORDER}
+    if start:
+        data["start"] = start
+    return data
 
 # 3. BUILDER FUNCTIONS
 
@@ -111,6 +118,17 @@ def show_by_title(title: str) -> str:
     """Build a TV show search by exact title (returns Episodes)."""
     safe_title = escape_quotes(title)
     return f'type:episode AND show_title:"{safe_title}"'
+
+def episodes_without_specials(title: str) -> str:
+    """A show's numbered episodes by exact title, leaving out season 0.
+
+    Season 0 is where the library files a show's specials and TV movies, and a
+    rotation that draws from it plays them as if they were episodes: The
+    Flintstones has sixteen, among them I Yabba-Dabba Do! (92 minutes) and
+    three Christmas specials, which aired on Cartoon Network's Saturday morning
+    in October. Anything that wants a special names season 0 explicitly.
+    """
+    return f'{show_by_title(title)} AND NOT season_number:0'
 
 def show_container_by_title(title: str) -> str:
     """Build a TV show search by exact title (returns Show Container)."""

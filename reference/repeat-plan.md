@@ -21,9 +21,12 @@ merged into a single airing:
 
 - **Fail:** the same show twice in a row; three times in a row; two shows
   alternating (A B A B).
-- **Fail:** a show back on the same day with fewer than five other shows between.
+- **Fail:** a show back on the same day with fewer than four other shows between
+  (five was the first wording; the operator relaxed it to four on 2026-10-18).
 - **Pass:** a block that wraps to its first show or two at the tail, once at
-  least five other shows have aired between.
+  least four other shows have aired between.
+- **Segments:** two of the same short show back to back is one airing; three is
+  not. `_half_hour()` groups two at most.
 - **Exempt:** deliberate repeats — marathons, double features, a power hour of
   two consecutive episodes. These are declared, not accidental.
 
@@ -106,17 +109,68 @@ same-day repeat, but it is why the weekend reads as samey.
 - **The film roster expands** beyond what aired on Cartoon Network (below).
 - **The ledger writes beside the logs**, in `logs/state/`.
 
+## Second pass, 2026-10-18 — what the live guide showed after the ledger
+
+The operator deployed the ledger, reset Cartoon Network and still saw repeats.
+The ledger was not the cause of what they saw; these were:
+
+- **Three segments per pick.** Dexter, Johnny Bravo, Looney Tunes, Tom and
+  Jerry, Yogi Bear and Popeye played three in a row. Now two.
+- **One show, several chronological feeds.** `cn_daytime_`, `cn_weekend_`,
+  `cn_prime_` and `cn_friday_` were four positions on the same run; so were
+  `fox_weekday_`/`fox_sunday_`, `toonami_weekday_`/`toonami_saturday_`, and
+  Batman Beyond and Samurai Jack in two places each. A reset rewinds every key,
+  so all of them opened on the same episodes a day apart. Merging them into one
+  key per show was tried and rejected by the operator the same day: the split
+  is the point, as with a network's prime-time run and a station's 7pm reruns.
+  The split stays, and the second feed now opens well into the show:
+  `playback_order(..., start=(season, episode))`, applied once on a reset
+  build (core/build_mode.py). Weekday prime, the weekday Toonami block and the
+  weekday FOX pair run from episode one; `cn_weekend_*`, `fox_sunday_*` and
+  `toonami_saturday_*` start one-half to three-quarters in. Weekday-morning
+  Cartoon Cartoons (`cn_daytime_*`) are shuffled. Weekday Dragon Ball Z
+  restarts at episode one on 2026-10-19; Saturday's opens on the Android saga,
+  S04E19.
+- **Season 0 in the rotations.** A bare title includes the specials and TV
+  movies: The Flintstones' I Yabba-Dabba Do! took 92 minutes of a weekday
+  morning, and its Christmas specials aired on October Saturdays.
+  `episodes_without_specials()` (library/queries.py) now backs every CN feed
+  and title item.
+- **18:00 outside prime's rotation.** The fixed weekday pairs repeated prime's
+  shows within the hour (Adventure Time 18:21 and 19:45). 18:00 now draws from
+  prime's own rotation; Friday's takes the four shows CCF never airs.
+- **Toonami padding.** Up to eighteen minutes of `toonami_bumpers` closed the
+  block. Toonami is now 16:00–18:00 — Dragon Ball, two Dragon Ball Z, one show
+  from a five-show rotation, then ThunderCats or Pokémon alternating by day.
+  The afternoon ahead of it is now Marvel and SWAT Kats at 12:00, Scooby at
+  13:00 and the DC Action Hour 14:00–16:00, leading into Toonami.
+
+Simulated week of 2026-11-09 with real segment lengths: four failures before
+(all 18:00-against-prime), one after (Home Movies across two Adult Swim blocks,
+Monday 01:10 and 03:25, pre-existing).
+
+**Not yet fixed: the Halloween schedule.** The same check over 10-19 to 10-25
+fails 23 times, all inside the Halloween takeover: `CN_HALLOWEEN` and the
+overnight horror slot are small `RandomCollection`s, and they ping-pong
+(Metalocalypse, horror, Metalocalypse; Halloween cartoons, Scooby, Halloween
+cartoons).
+
 ## Phase 1 — Cartoon Network's weekend
 
 1. ~~Pick ledger (engine).~~ Done 2026-10-18.
-2. **Calendar shuffle-bag for weekly film slots.** Deal every film once per
+2. ~~**Calendar shuffle-bag for weekly film slots.**~~ Done 2026-10-18 as
+   `CalendarDeck` (logic/structures.py); Battle of Gods fixed (it is a movie,
+   not a season-0 episode). Deal every film once per
    cycle in an order fixed by the calendar: cycle = week number // N, with the
    order shuffled by a seed derived from the cycle, and the first film of a new
    cycle never equal to the last of the old one. It needs no state, and a film
    comes back every N weeks rather than whenever the dice say so. Fix or drop
    the Battle of Gods entry.
 3. **Expand the film roster** (below) and give it two Sunday slots plus one
-   Saturday slot.
+   Saturday slot. *Sunday done 2026-10-18:* 58 films, a double feature at
+   10:00 and 12:00 dealt from one deck, replacing the 12:00 Cartoon Cartoons
+   rerun. The rare Saturday 16:00 movie is now the shows' own TV movies
+   (season 0, 16 of them). Still open: the Saturday Ghibli slot.
 4. **Sunday grid**: replace the 12:00 Cartoon Cartoons rerun; FOX 19–21; Adult
    Swim from 21:00 with enough shows that 21:00–02:00 does not cycle.
 5. **Toonami Saturday 20–23**: enough shows for one pick each, none already seen

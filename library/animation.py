@@ -38,11 +38,12 @@ than borrowing Adult Swim's. See reference/channel-plan.md.
 from datetime import date
 from scripts.logic.structures import (
     RandomCollection, OrderedCollection, DailyOrderedCollection, WeightedCollection,
-    MarathonSequence, Block, Program
+    CalendarDeck, MarathonSequence, Block, Program
 )
 from scripts.logic.factories import annual_show
 from scripts.logic.models import Swap, ContentItem
 from scripts.logic.calendar.seasonal import SeasonalBlock
+from scripts.library.queries import episodes_without_specials, movie_by_title_year
 from . import branding
 
 
@@ -81,8 +82,11 @@ def _half_hour(item, segments, bumper_key=None):
     Universe about eleven (median runtimes probed off disk, 2026-09-27). One
     pick of a seven-minute show is a sixth of the pick a Flintstones episode
     is, so a two-hour block of five of them needed sixteen picks and went round
-    its list three times. Grouped the way the shows actually aired, every pick
-    is 20-24 minutes and the same block needs five or six.
+    its list three times. Grouped, the same block needs six or seven.
+
+    Two segments at most (operator, 2026-10-18): three of the same show back to
+    back reads as a repeat, not a half-hour. A seven-minute show's pick is now
+    about fourteen minutes.
     """
     if isinstance(item, dict):
         item = ContentItem(**item)
@@ -94,8 +98,16 @@ def _half_hour(item, segments, bumper_key=None):
     )
 
 
-# Block sizing, for every block below: a pick is 20-25 minutes, so an hour is
-# about three picks, two hours five or six, three hours eight. A block holds at
+def _episodes(title, order=None):
+    """A title-only item without season 0, where the specials and TV movies are."""
+    item = {"title": title, "query": episodes_without_specials(title)}
+    if order:
+        item["order"] = order
+    return item
+
+
+# Block sizing, for every block below: a pick is 14-25 minutes, so an hour is
+# about three or four picks, two hours six or seven, three hours nine. A block holds at
 # least that many shows, so each one airs once per block and the list only goes
 # round again -- back to the top -- when the slot has time left over. Rotations
 # are OrderedCollection: the start moves one show a day, and a block used twice
@@ -117,12 +129,12 @@ def _half_hour(item, segments, bumper_key=None):
 THE_VAULT = Block(
     name="The Vault",
     items=OrderedCollection([
-        _half_hour({"title": "Looney Tunes"}, 3),
-        {"title": "The Flintstones"},
-        _half_hour({"title": "Tom and Jerry"}, 3),
-        {"title": "The Jetsons"},
-        _half_hour({"title": "Yogi Bear"}, 3),
-        _half_hour({"title": "Hong Kong Phooey"}, 2),
+        _half_hour(_episodes("Looney Tunes"), 2),
+        _episodes("The Flintstones"),
+        _half_hour(_episodes("Tom and Jerry"), 2),
+        _episodes("The Jetsons"),
+        _half_hour(_episodes("Yogi Bear"), 2),
+        _half_hour(_episodes("Hong Kong Phooey"), 2),
     ]),
     use_epg_group=False
 )
@@ -137,11 +149,11 @@ THE_VAULT = Block(
 SATURDAY_MORNING = Block(
     name="Saturday Morning Cartoons",
     items=DailyOrderedCollection([
-        _half_hour({"title": "Looney Tunes"}, 3),
-        {"title": "The Flintstones"},
-        _half_hour({"title": "Popeye the Sailor"}, 3),
-        {"title": "Scooby-Doo, Where Are You!", "order": "Chronological"},
-        _half_hour({"title": "Tom and Jerry"}, 3),
+        _half_hour(_episodes("Looney Tunes"), 2),
+        _episodes("The Flintstones"),
+        _half_hour(_episodes("Popeye the Sailor"), 2),
+        _episodes("Scooby-Doo, Where Are You!", "Chronological"),
+        _half_hour(_episodes("Tom and Jerry"), 2),
         _half_hour("superman_fleischer_tv", 2),
     ]),
     use_epg_group=False
@@ -153,7 +165,7 @@ SATURDAY_MORNING = Block(
 SUNDAY_MORNING = OrderedCollection([
     Block(
         name="Sunday Morning Cartoons",
-        items=["cn_sunday_scooby_where_tv", _half_hour("cn_sunday_popeye_tv", 3)],
+        items=["cn_sunday_scooby_where_tv", _half_hour("cn_sunday_popeye_tv", 2)],
         fill_strategy="gap",
         use_epg_group=False,
     ),
@@ -176,9 +188,9 @@ SUNDAY_MORNING = OrderedCollection([
 THE_SCOOBY_BLOCK = Block(
     name="The Scooby Block",
     items=OrderedCollection([
-        {"title": "Scooby-Doo, Where Are You!", "order": "Chronological"},
-        {"title": "The Scooby-Doo Show", "order": "Chronological"},
-        {"title": "What's New Scooby-Doo", "order": "Chronological"},
+        _episodes("Scooby-Doo, Where Are You!", "Chronological"),
+        _episodes("The Scooby-Doo Show", "Chronological"),
+        _episodes("What's New Scooby-Doo", "Chronological"),
     ]),
     use_epg_group=False
 )
@@ -201,9 +213,9 @@ THE_SCOOBY_BLOCK = Block(
 CARTOON_CARTOONS = Block(
     name="Cartoon Cartoons",
     items=OrderedCollection([
-        _half_hour("cn_daytime_dexter_tv", 3),
+        _half_hour("cn_daytime_dexter_tv", 2),
         _half_hour("cn_daytime_powerpuff_tv", 2),
-        _half_hour("cn_daytime_johnny_bravo_tv", 3),
+        _half_hour("cn_daytime_johnny_bravo_tv", 2),
         _half_hour("cn_daytime_ed_edd_n_eddy_tv", 2),
         _half_hour("cn_daytime_courage_tv", 2),
     ]),
@@ -216,9 +228,9 @@ CARTOON_CARTOONS = Block(
 CARTOON_CARTOONS_WEEKEND = Block(
     name="Cartoon Cartoons",
     items=OrderedCollection([
-        _half_hour("cn_weekend_dexter_tv", 3),
+        _half_hour("cn_weekend_dexter_tv", 2),
         _half_hour("cn_weekend_powerpuff_tv", 2),
-        _half_hour("cn_weekend_johnny_bravo_tv", 3),
+        _half_hour("cn_weekend_johnny_bravo_tv", 2),
         _half_hour("cn_weekend_ed_edd_n_eddy_tv", 2),
         _half_hour("cn_weekend_courage_tv", 2),
     ]),
@@ -263,49 +275,56 @@ CN_SATURDAY = Block(
 )
 
 # Weekday prime after the FOX access pair, and 10:00-12:00 in summer. Every CN
-# original appears in one old/new rotation. Ten shows cover the evening without
-# wrapping, and the named feed continues from the separate 18:00 pair.
+# original appears in one old/new rotation. The 18:00 hour draws from the same
+# rotation, so the evening is one run of ten shows: nothing comes back until the
+# other nine have aired.
+_CN_PRIME_ROTATION = OrderedCollection([
+    _half_hour("cn_prime_dexter_tv", 2),
+    _half_hour("cn_prime_adventure_time_tv", 2),
+    _half_hour("cn_prime_powerpuff_tv", 2),
+    _half_hour("cn_prime_steven_universe_tv", 2),
+    _half_hour("cn_prime_johnny_bravo_tv", 2),
+    "cn_prime_samurai_jack_tv",
+    _half_hour("cn_prime_ed_edd_n_eddy_tv", 2),
+    _half_hour("cn_prime_infinity_train_tv", 2),
+    _half_hour("cn_prime_courage_tv", 2),
+    _half_hour("cn_prime_over_the_garden_wall_tv", 2),
+])
+
 CN_PRIME = Block(
     name="Cartoon Network",
-    items=OrderedCollection([
-        _half_hour("cn_prime_dexter_tv", 3),
-        _half_hour("cn_prime_adventure_time_tv", 2),
-        _half_hour("cn_prime_powerpuff_tv", 2),
-        _half_hour("cn_prime_steven_universe_tv", 2),
-        _half_hour("cn_prime_johnny_bravo_tv", 3),
-        "cn_prime_samurai_jack_tv",
-        _half_hour("cn_prime_ed_edd_n_eddy_tv", 2),
-        _half_hour("cn_prime_infinity_train_tv", 2),
-        _half_hour("cn_prime_courage_tv", 2),
-        _half_hour("cn_prime_over_the_garden_wall_tv", 2),
-    ]),
+    items=_CN_PRIME_ROTATION,
     use_epg_group=False
 )
 
+# 18:00-19:00 weekdays, ahead of the FOX pair. This was five fixed pairs, one
+# per weekday, drawn from the same shows as prime but outside its rotation:
+# Monday's pair was Dexter and Adventure Time, and prime then opened wherever
+# its own rotation stood, so Adventure Time aired at 18:21 and again at 19:45
+# with two shows between. Sharing the rotation closes that. The last pick may
+# run a few minutes past 19:00; the FOX pair starts when it ends.
+CN_EARLY_EVENING = Block(
+    name="Cartoon Network",
+    items=_CN_PRIME_ROTATION,
+    fill_strategy="gap",
+    use_epg_group=False,
+)
 
-def _cn_early_evening(first, first_segments, second, second_segments):
-    """Two programme-length picks, then wait cleanly for FOX at 19:00."""
-    return Block(
-        name="Cartoon Network",
-        items=[
-            _half_hour(f"cn_prime_{first}_tv", first_segments),
-            _half_hour(f"cn_prime_{second}_tv", second_segments),
-        ],
-        fill_strategy="gap",
-        use_epg_group=False,
-    )
-
-
-# A different pair each weekday gives all ten prime shows one early-evening
-# appearance. Because the list is finite, it finishes around 18:45 and waits
-# for the hard 19:00 FOX start instead of beginning a third half-hour late.
-CN_EARLY_EVENING = {
-    "MONDAY": _cn_early_evening("dexter", 3, "adventure_time", 2),
-    "TUESDAY": _cn_early_evening("powerpuff", 2, "steven_universe", 2),
-    "WEDNESDAY": _cn_early_evening("johnny_bravo", 3, "samurai_jack", 1),
-    "THURSDAY": _cn_early_evening("ed_edd_n_eddy", 2, "infinity_train", 2),
-    "FRIDAY": _cn_early_evening("courage", 2, "over_the_garden_wall", 2),
-}
+# 18:00-19:00 Friday. Cartoon Cartoon Fridays follows at 20:00 with Dexter,
+# Powerpuff, Johnny Bravo, Ed, Courage and Samurai Jack, so the hour ahead of
+# it takes the four prime shows CCF never airs. The prime rotation would have
+# put Powerpuff at 18:46 and again in CCF at 20:02.
+CN_FRIDAY_EARLY_EVENING = Block(
+    name="Cartoon Network",
+    items=OrderedCollection([
+        _half_hour("cn_prime_adventure_time_tv", 2),
+        _half_hour("cn_prime_steven_universe_tv", 2),
+        _half_hour("cn_prime_infinity_train_tv", 2),
+        _half_hour("cn_prime_over_the_garden_wall_tv", 2),
+    ]),
+    fill_strategy="gap",
+    use_epg_group=False,
+)
 
 # 20:00-22:00 Friday. A fixed
 # running order, because the point of it was that it was an event. This used
@@ -315,12 +334,12 @@ CN_EARLY_EVENING = {
 CARTOON_CARTOON_FRIDAY = Block(
     name="Cartoon Cartoon Fridays",
     items=DailyOrderedCollection([
-        _half_hour("cn_friday_dexter_tv", 3),
-        _half_hour("cn_friday_powerpuff_tv", 2),
-        _half_hour("cn_friday_johnny_bravo_tv", 3),
-        _half_hour("cn_friday_ed_edd_n_eddy_tv", 2),
-        _half_hour("cn_friday_courage_tv", 2),
-        "cn_friday_samurai_jack_tv",
+        _half_hour("cn_prime_dexter_tv", 2),
+        _half_hour("cn_prime_powerpuff_tv", 2),
+        _half_hour("cn_prime_johnny_bravo_tv", 2),
+        _half_hour("cn_prime_ed_edd_n_eddy_tv", 2),
+        _half_hour("cn_prime_courage_tv", 2),
+        "cn_prime_samurai_jack_tv",
     ]),
     use_epg_group=False
 )
@@ -329,175 +348,294 @@ CARTOON_CARTOON_FRIDAY = Block(
 # 3. SYNDICATION AND ACTION
 # ==============================================================================
 
-# 10:00-12:00 weekdays, 12:00-15:00 Saturday, 15:00-18:00 Sunday. The
-# period-correct syndication package, nine shows, so even the three-hour
-# airings never repeat one. Gargoyles is not here; it went back to Disney.
+# 10:00-12:00 weekdays, 12:00-14:00 Saturday, 14:00-16:00 Sunday. The
+# period-correct syndication package, eight shows, so no airing repeats one. Gargoyles is not here; it went back to
+# Disney. ThunderCats left for Toonami's closing filler on 2026-10-18 -- it
+# opened the first Toonami in 1997, and one channel airing it twice a day was
+# one too many.
 #
 # Never before 10:00: He-Man, The Transformers and ThunderCats are also Totally
 # 80s' morning cartoons, 06:00-10:00.
 #
-# Teenage Mutant Ninja Turtles is only in the spring Marvel hour. Be Kind Rewind
-# and Sci-Fi both carry the 1990 film, and a daily airing here met it on 13
-# days in 30; once a week on Saturday it had met it twice.
+# Teenage Mutant Ninja Turtles is only in the spring Marvel hour; see there.
 SYNDICATION_HOUR = Block(
     name="Syndication Hour",
     items=OrderedCollection([
-        {"title": "ThunderCats", "order": "Chronological"},
-        {"title": "He-Man and the Masters of the Universe", "order": "Chronological"},
-        {"title": "The Transformers", "order": "Chronological"},
-        {"title": "Beast Wars Transformers", "order": "Chronological"},
-        {"title": "Inspector Gadget", "order": "Chronological"},
-        {"title": "Captain Planet and the Planeteers", "order": "Chronological"},
+        _episodes("He-Man and the Masters of the Universe", "Chronological"),
+        _episodes("The Transformers", "Chronological"),
+        _episodes("Beast Wars Transformers", "Chronological"),
+        _episodes("Inspector Gadget", "Chronological"),
+        _episodes("Captain Planet and the Planeteers", "Chronological"),
         # The 1994 animated series. The bare title also matches the 2001 and
         # 2017 live-action shows.
         {"title": "The Tick",
          "query": 'type:episode AND show_title:"The Tick"'
                   ' AND release_date:[1994-01-01 TO 1997-12-31]'},
-        {"title": "Street Sharks", "order": "Chronological"},
-        {"title": "Mister T", "order": "Chronological"},
+        _episodes("Street Sharks", "Chronological"),
+        _episodes("Mister T", "Chronological"),
     ]),
     use_epg_group=False
 )
 
-# 12:00-14:00 weekdays, 15:00-18:00 Saturday, 18:00-20:00 Sunday. This is the
-# old SUPERHERO_HOUR, MARVEL_HOUR and the never-referenced ACTION_ANIMATION
-# folded into one block. Eight shows, so Saturday's three hours play each once.
-ACTION_HOUR = Block(
+# The DC animated universe, in order. Weekdays 14:00-16:00, the hour Cartoon
+# Network ran its action shows ahead of Toonami (operator, 2026-10-18). Five
+# shows across two hours is six picks, so the sixth goes back to the first with
+# four between.
+_DC_SHOWS = [
+    _episodes("Batman: The Animated Series", "Chronological"),
+    _episodes("The New Batman Adventures", "Chronological"),
+    _episodes("Superman: The Animated Series", "Chronological"),
+    _episodes("Justice League", "Chronological"),
+    "cn_batman_beyond_tv",
+]
+
+# Marvel and SWAT Kats. Weekdays 12:00-13:00: three shows of about 22 minutes
+# each, so the hour is one of each, the last running a few minutes past 13:00.
+_MARVEL_SHOWS = [
+    "xmen_animated_tv",
+    _episodes("Spider-Man"),
+    # The library title is "SWAT Kats The Radical Squadron"; the phrase
+    # matches its prefix. `type:episode` was missing here and the query
+    # was returning show containers alongside episodes.
+    {"title": "SWAT Kats",
+     "query": 'type:episode AND show_title:"SWAT Kats*"',
+     "order": "Chronological"},
+]
+
+DC_ACTION_HOUR = Block(
     name="Action Hour",
-    items=OrderedCollection([
-        {"title": "Batman: The Animated Series", "order": "Chronological"},
-        {"title": "The New Batman Adventures", "order": "Chronological"},
-        {"title": "Superman: The Animated Series", "order": "Chronological"},
-        {"title": "Justice League", "order": "Chronological"},
-        {"title": "Batman Beyond", "order": "Chronological"},
-        "xmen_animated_tv",
-        {"title": "Spider-Man"},
-        # The library title is "SWAT Kats The Radical Squadron"; the phrase
-        # matches its prefix. `type:episode` was missing here and the query
-        # was returning show containers alongside episodes.
-        {"title": "SWAT Kats",
-         "query": 'type:episode AND show_title:"SWAT Kats*"',
-         "order": "Chronological"},
-    ]),
+    items=OrderedCollection(_DC_SHOWS),
     use_epg_group=False
 )
 
-# The spring variant of the weekday 12:00 airing, kept from the old grid: the
-# same slot leans Marvel and the Turtles for the season. SeasonalBlock ramps
-# rather than hard-swaps, so it fades in over the spring and peaks mid-March to
-# mid-April. Four shows was two of each per airing; The Tick and Street Sharks
-# make it six, the Fox Kids and syndication half of the same afternoon.
 MARVEL_HOUR = Block(
     name="Marvel Action Hour",
-    items=OrderedCollection([
-        "xmen_animated_tv",
-        {"title": "Spider-Man"},
-        {"title": "Teenage Mutant Ninja Turtles"},
-        # The library title is "SWAT Kats The Radical Squadron"; the phrase
-        # matches its prefix. `type:episode` was missing here and the query
-        # was returning show containers alongside episodes.
-        {"title": "SWAT Kats",
-         "query": 'type:episode AND show_title:"SWAT Kats*"',
-         "order": "Chronological"},
-        # The 1994 animated series. The bare title also matches the 2001 and
-        # 2017 live-action shows.
-        {"title": "The Tick",
-         "query": 'type:episode AND show_title:"The Tick"'
-                  ' AND release_date:[1994-01-01 TO 1997-12-31]'},
-        {"title": "Street Sharks"},
-    ]),
+    items=OrderedCollection(_MARVEL_SHOWS),
     use_epg_group=False
 )
 
-# ==============================================================================
-# 4. CARTOON THEATRE (12:00-14:00 Sunday)
-# ==============================================================================
-
-# One film, from the pool that is actually CN-shaped. The old Sunday gave 11
-# hours a week to ANIMATION_SHOWCASE -- Ghibli, Pixar, DreamWorks and Disney
-# features, none of which ever aired on Cartoon Network -- while the films that
-# did were never scheduled.
+# The spring variant of the weekday noon hour, kept from the old grid: the
+# Turtles join for the season. SeasonalBlock ramps rather than hard-swaps, so
+# it fades in over the spring and peaks mid-March to mid-April.
 #
-# Akira and Ghost in the Shell are the two the review listed that are not here:
-# both are R-rated and this is a Sunday lunchtime slot. They run in the Saturday
-# overnight Toonami block instead.
-CARTOON_THEATRE = Block(
-    name="Cartoon Theatre",
-    items=[RandomCollection([
-        {"title": "Batman: Mask of the Phantasm",
-         "query": 'type:movie AND title:"Batman Mask of the Phantasm"',
-         "media_type": "movie"},
-        {"title": "The Iron Giant",
-         "query": 'type:movie AND title:"The Iron Giant"',
-         "media_type": "movie"},
-        {"title": "The Transformers: The Movie",
-         "query": 'type:movie AND title:"Transformers - The Movie"',
-         "media_type": "movie"},
-        {"title": "Titan A.E.",
-         "query": 'type:movie AND title:"Titan A.E."',
-         "media_type": "movie"},
-        {"title": "Who Framed Roger Rabbit",
-         "query": 'type:movie AND title:"Who Framed Roger Rabbit"',
-         "media_type": "movie"},
-        {"title": "Steven Universe: The Movie",
-         "query": 'type:movie AND title:"Steven Universe The Movie"',
-         "media_type": "movie"},
-        {"title": "Dragon Ball Z: Battle of Gods",
-         "query": 'type:episode AND show_title:"Dragon Ball Z" AND season_number:0'
-                  ' AND title:"Battle of Gods"',
-         "media_type": "movie"},
-    ])],
-    # One film, then shorts to the top of the hour. The items used to be the
-    # film collection itself, which handed back a second feature whenever the
-    # first ended before 14:00 -- Titan A.E. at 12:18 and Steven Universe: The
-    # Movie at 13:56, running to 15:20 and taking the whole 14:00 hour with it.
-    # A one-item list exhausts after the film, and `fill` pads the remainder.
-    fill_strategy="fill",
-    filler=RandomCollection([
-        {"title": "Looney Tunes"},
-        {"title": "Tom and Jerry"},
+# Teenage Mutant Ninja Turtles is only here. Be Kind Rewind and Sci-Fi both
+# carry the 1990 film, and a daily airing met it on 13 days in 30; once a week
+# on Saturday it had met it twice.
+MARVEL_SPRING_HOUR = Block(
+    name="Marvel Action Hour",
+    items=OrderedCollection([
+        *_MARVEL_SHOWS,
+        _episodes("Teenage Mutant Ninja Turtles"),
     ]),
     use_epg_group=False
 )
 
-# On roughly one weekend slot in twenty, a single Cartoon Theatre feature
-# replaces Action Hour. The movie block pads the rest of the window with shorts,
-# so resolving the schedule again cannot sneak Action Hour back in afterward.
+# The weekend's Action Hour is all eight, DC and Marvel together, 14:00-18:00
+# Saturday and 16:00-19:00 Sunday. Eight shows is about three hours, so
+# Saturday's fourth hour goes back to the top with seven between. Same shows,
+# same feeds as the weekdays, so the weekend carries on where Friday stopped.
+ACTION_HOUR = Block(
+    name="Action Hour",
+    items=OrderedCollection([*_DC_SHOWS, *_MARVEL_SHOWS]),
+    use_epg_group=False
+)
+
+# ==============================================================================
+# 4. CARTOON THEATRE (10:00-13:00 Sunday, and the odd Saturday afternoon)
+# ==============================================================================
+
+def _film(title, year):
+    """One feature, by the title in its NFO and its release year."""
+    return {"title": title, "query": movie_by_title_year(title, year), "media_type": "movie"}
+
+
+def _tv_movie(title, show, episode):
+    """A show's own film, which the library files as a season-0 episode.
+
+    Season 0 is left out of every rotation (`episodes_without_specials`), so a
+    show's movie airs only where it is named, as here.
+    """
+    return {
+        "title": title,
+        "query": f'type:episode AND show_title:"{show}" AND season_number:0'
+                 f' AND episode_number:{episode}',
+        "media_type": "movie",
+    }
+
+
+# The Sunday double feature's pool. It started as the seven films Cartoon
+# Network actually ran; it is now the animated features no other channel
+# claims (reference/repeat-plan.md, "The film roster"): Disney and Pixar are
+# the Disney channel's, Japanese features Japanorama's, and Ghibli -- cleared
+# for this channel -- belongs on a Saturday, because Japanorama gives Ghibli
+# all of Sunday evening.
+#
+# Left out: Akira and Ghost in the Shell (R; they run in the Saturday overnight
+# Toonami block), Isle of Dogs (PG-13), and the Christmas films (Klaus and the
+# rest air at Christmas only). Fifty-eight films at two a Sunday is a
+# twenty-nine-week cycle.
+#
+# Dragon Ball Z: Battle of Gods was a season-0 episode query and never played:
+# the film is in the movie library, not the show's specials.
+CARTOON_THEATRE_FILMS = [
+    # What Cartoon Network ran, and its own.
+    _film("Batman: Mask of the Phantasm", 1993),
+    _film("The Iron Giant", 1999),
+    _film("The Transformers: The Movie", 1986),
+    _film("Titan A.E.", 2000),
+    _film("Who Framed Roger Rabbit", 1988),
+    _film("Steven Universe: The Movie", 2019),
+    _film("Dragon Ball Z: Battle of Gods", 2013),
+    _film("Dragon Ball Super: Broly", 2018),
+    _film("The Day the Earth Blew Up: A Looney Tunes Movie", 2024),
+    _film("The Lego Movie", 2014),
+    _film("The Lego Batman Movie", 2017),
+    _film("Happy Feet", 2006),
+    _film("Happy Feet Two", 2011),
+    # Hanna-Barbera, Rankin/Bass, Don Bluth and the other classics.
+    _film("Charlotte's Web", 1973),
+    _film("Once Upon A Forest", 1993),
+    _film("The Hobbit", 1977),
+    _film("Yellow Submarine", 1968),
+    _film("Watership Down", 1978),
+    _film("The Secret of NIMH", 1982),
+    _film("An American Tail", 1986),
+    _film("An American Tail: Fievel Goes West", 1991),
+    _film("The Land Before Time", 1988),
+    _film("All Dogs Go to Heaven", 1989),
+    _film("The Brave Little Toaster", 1987),
+    _film("FernGully The Last Rainforest", 1992),
+    _film("The Pagemaster", 1994),
+    # DreamWorks and the other studios.
+    _film("Antz", 1998),
+    _film("The Prince of Egypt", 1998),
+    _film("The Road to El Dorado", 2000),
+    _film("Chicken Run", 2000),
+    _film("Shrek", 2001),
+    _film("Ice Age", 2002),
+    _film("Madagascar", 2005),
+    _film("Kung Fu Panda", 2008),
+    _film("Kung Fu Panda 2", 2011),
+    _film("Kung Fu Panda 3", 2016),
+    _film("Cloudy with a Chance of Meatballs", 2009),
+    _film("How to Train Your Dragon", 2010),
+    _film("Megamind", 2010),
+    _film("Rise of the Guardians", 2012),
+    _film("Spider-Man: Into the Spider-Verse", 2018),
+    _film("Spider-Man: Across the Spider-Verse", 2023),
+    _film("The Mitchells vs. the Machines", 2021),
+    _film("The Sea Beast", 2022),
+    _film("Teenage Mutant Ninja Turtles: Mutant Mayhem", 2023),
+    _film("The Super Mario Bros. Movie", 2023),
+    _film("The Wild Robot", 2024),
+    _film("Transformers One", 2024),
+    _film("KPop Demon Hunters", 2025),
+    # Stop-motion and the small studios.
+    _film("Wallace and Gromit in The Curse of the Were Rabbit", 2005),
+    _film("Wallace & Gromit: Vengeance Most Fowl", 2024),
+    _film("Coraline", 2009),
+    _film("Fantastic Mr. Fox", 2009),
+    _film("Guillermo del Toro's Pinocchio", 2022),
+    _film("The Secret of Kells", 2009),
+    _film("Song of the Sea", 2014),
+    _film("Wolfwalkers", 2020),
+    _film("Flow", 2024),
+]
+
+# The shows' own films, for the Saturday afternoon movie: TV movies air on
+# purpose or not at all (operator, 2026-10-18). Episode numbers are the
+# library's season-0 numbering. Not here: A Flintstones Christmas Carol
+# (Christmas), Futurama's four films (FOX's shelf), and Ed, Edd n Eddy's Big
+# Picture Show, which the library files as an extra rather than an episode.
+CARTOON_THEATRE_TV_MOVIES = [
+    _tv_movie("The Man Called Flintstone", "The Flintstones", 2),
+    _tv_movie("The Jetsons Meet the Flintstones", "The Flintstones", 10),
+    _tv_movie("I Yabba-Dabba Do!", "The Flintstones", 11),
+    _tv_movie("Hollyrock-a-Bye Baby", "The Flintstones", 12),
+    _tv_movie("The Flintstones On the Rocks", "The Flintstones", 17),
+    _tv_movie("Rockin' with Judy Jetson", "The Jetsons", 2),
+    _tv_movie("Jetsons: The Movie", "The Jetsons", 3),
+    _tv_movie("Batman Beyond: Return of the Joker", "Batman Beyond", 1),
+    _tv_movie("The Powerpuff Girls Movie", "The Powerpuff Girls", 4),
+    _tv_movie("Johnny Bravo Goes to Bollywood", "Johnny Bravo", 20),
+    _tv_movie("Dragon Ball Z: Broly - The Legendary Super Saiyan", "Dragon Ball Z", 8),
+    _tv_movie("Dragon Ball Z: The Tree of Might", "Dragon Ball Z", 3),
+    _tv_movie("Yu Yu Hakusho: Poltergeist Report", "Yu Yu Hakusho", 2),
+    _tv_movie("Rurouni Kenshin: Requiem for the Ishin Patriots", "Rurouni Kenshin", 1),
+    _tv_movie("InuYasha: Affections Touching Across Time", "InuYasha", 1),
+    _tv_movie("Naruto the Movie: Ninja Clash in the Land of Snow", "Naruto", 4),
+]
+
+
+def _cartoon_theatre(films):
+    """One film, then shorts to the end of the slot.
+
+    The items used to be the film collection itself, which handed back a
+    second feature whenever the first ended early -- Titan A.E. at 12:18 and
+    Steven Universe: The Movie at 13:56, running to 15:20 and taking the next
+    hour with it. A one-item list exhausts after the film, and `fill` pads the
+    remainder.
+    """
+    return Block(
+        name="Cartoon Theatre",
+        items=[films],
+        fill_strategy="fill",
+        filler=RandomCollection([
+            _episodes("Looney Tunes"),
+            _episodes("Tom and Jerry"),
+        ]),
+        use_epg_group=False
+    )
+
+
+# Sunday 10:00 and 12:00, a double feature dealt from one deck: every film airs
+# once before any airs twice, and the two halves of a Sunday are always
+# different films. The second runs past 13:00 into the modern-shows hour.
+CARTOON_THEATRE = _cartoon_theatre(CalendarDeck(CARTOON_THEATRE_FILMS, per_week=2, deal=0))
+CARTOON_THEATRE_SECOND = _cartoon_theatre(CalendarDeck(CARTOON_THEATRE_FILMS, per_week=2, deal=1))
+
+# The Saturday afternoon movie: a show's own film, dealt weekly.
+CARTOON_THEATRE_TV = _cartoon_theatre(CalendarDeck(CARTOON_THEATRE_TV_MOVIES))
+
+# On roughly one Saturday in twenty, a TV movie replaces Action Hour's last two
+# hours. The movie block pads the rest of the window with shorts, so resolving
+# the schedule again cannot sneak Action Hour back in afterward.
 WEEKEND_ACTION_OR_MOVIE = WeightedCollection([
     (ACTION_HOUR, 0.95),
-    (CARTOON_THEATRE, 0.05),
+    (CARTOON_THEATRE_TV, 0.05),
 ])
 
 # ==============================================================================
 # 5. TOONAMI
 # ==============================================================================
 
-# 15:00-17:00 weekdays. Five half-hours, with Kenshin and InuYasha sharing one
-# rotating position. The finite list cannot wrap, so no strip repeats merely
-# because the runtimes leave a few minutes at the end of the block.
+# 16:00-18:00 weekdays, where Toonami began in 1997. Dragon Ball opens and
+# Dragon Ball Z follows with two consecutive episodes -- the old 17:00 power
+# hour, folded in. Then one show from a rotation of five, and a closing filler
+# show for whatever time is left.
+#
+# The filler used to be `toonami_bumpers` padded to the hour, which on a short
+# day was eighteen minutes of back-to-back promos. Now the block's last item is
+# a whole episode of ThunderCats or Pokémon, alternating by day, and only the
+# minute or two after it falls to the bumpers.
 #
 # Every show carries its own bumper set instead of all of them sharing a
 # 21-file generic pool.
 #
-# Japanorama shares InuYasha, Naruto, Kenshin and One Piece only outside
-# Toonami's hours. Dragon Ball Z was removed from its simultaneous franchise
-# block when this dedicated 17:00 power hour was added. See library/anime.py.
-#
 # The `annual_show()` start dates are Contiguous Mode: each show walks its run
 # one episode per weekday from the date given, so the block is a real strip
 # rather than a shuffle. The start dates are anchors: they were calculated to
-# put each show at a particular episode on 2026-03-17, and the four-day week
-# below has moved where that lands. Recalculate if you want a specific episode
-# on a specific day; nothing else depends on them.
+# put each show at a particular episode on a particular day. Recalculate if you
+# want a specific episode on a specific day; nothing else depends on them.
 #
-# `loop_restart_season=False` and `reruns=` are new, and between them they close
-# the strip's two dead stretches. `annual_show()` defaults `loop_restart_season`
-# to the season half of `premiere_season`, which is "FALL" even in Contiguous
-# Mode where no premiere season was given -- so a strip that finished its run
-# in June sat dark until mid-September. False loops it straight over instead.
-# The rerun bed then covers whatever is left, since a Program that resolves to
-# nothing does not just go quiet: the block skips it, time does not advance,
-# and the slot falls through to the circuit breaker.
+# `loop_restart_season=False` and `reruns=` close the strip's two dead
+# stretches. `annual_show()` defaults `loop_restart_season` to the season half
+# of `premiere_season`, which is "FALL" even in Contiguous Mode where no
+# premiere season was given -- so a strip that finished its run in June sat
+# dark until mid-September. False loops it straight over instead. The rerun bed
+# then covers whatever is left, since a Program that resolves to nothing does
+# not just go quiet: the block skips it, time does not advance, and the slot
+# falls through to the circuit breaker.
 _WEEKDAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
 
 TOONAMI_DRAGON_BALL = annual_show(
@@ -506,35 +644,48 @@ TOONAMI_DRAGON_BALL = annual_show(
     start_date=date(2026, 3, 17), frequency=_WEEKDAYS,
     reruns="toonami_vault_tv", loop=True, loop_restart_season=False)
 
-TOONAMI_NARUTO = _with_bumpers(annual_show(
-    show_title="Naruto", episodes_per_season=[35, 48, 48, 48, 41],
-    start_date=date(2026, 3, 3), frequency=_WEEKDAYS,
-    reruns="toonami_vault_tv", loop=True, loop_restart_season=False
-), "toonami_naruto_bumpers")
-
-# Two consecutive episodes every weekday. The May anchor preserves the episode
-# reached by the former one-a-day strip on 2026-10-01, then advances twice as
-# fast from there.
-TOONAMI_DBZ_POWER_HOUR = _with_bumpers(annual_show(
+# Two consecutive episodes every weekday, from episode one on Monday
+# 2026-10-19 (operator, 2026-10-18). Toonami Saturday has its own Dragon Ball Z
+# run, which opens on the Android saga, so the two are about 120 episodes
+# apart. Season counts are the library's (seasons 8 and 9 are 34 and 38 on
+# disk; this said 25 and 47, which skipped nine episodes and asked for nine
+# that are not there). A simulation of any date before the start gets the
+# shuffled overnight run instead of an empty slot.
+TOONAMI_DBZ = _with_bumpers(annual_show(
     show_title="Dragon Ball Z",
-    episodes_per_season=[39, 35, 33, 32, 26, 29, 25, 25, 47],
-    start_date=date(2026, 5, 6), frequency=_WEEKDAYS,
+    episodes_per_season=[39, 35, 33, 32, 26, 29, 25, 34, 38],
+    start_date=date(2026, 10, 19), frequency=_WEEKDAYS,
+    reruns="toonami_overnight_dragon_ball_z_tv",
     episodes_per_slot=2, loop=True, loop_restart_season=False
 ), "toonami_dragon_ball_z_bumpers")
 
-TOONAMI_EARLY = Block(
+# One a day, in turn, each on its weekday feed from episode one. Toonami
+# Saturday has its own feeds of the same shows, started well into each. Plain keys,
+# not `_with_bumpers` Programs: a collection that is one item of a list block
+# is resolved as content, and a Program picked that way is skipped as
+# unplayable and stalls the slot into the circuit breaker. These shows get the
+# block's Toonami bumpers instead of their own sets.
+TOONAMI_ROTATION = OrderedCollection([
+    "toonami_weekday_sailor_moon_tv",
+    "toonami_weekday_yu_yu_hakusho_tv",
+    "toonami_weekday_rurouni_kenshin_tv",
+    "toonami_weekday_inuyasha_tv",
+    "toonami_weekday_naruto_tv",
+])
+
+# ThunderCats one day, Pokémon the next.
+TOONAMI_FILLER_SHOWS = OrderedCollection([
+    "toonami_thundercats_tv",
+    "toonami_pokemon_tv",
+])
+
+TOONAMI = Block(
     name="Toonami",
     items=[
-        "toonami_weekday_sailor_moon_tv",
         TOONAMI_DRAGON_BALL,
-        # One rotating middle show keeps the two-hour block to four episodes;
-        # five full anime episodes plus Toonami presentation cannot fit.
-        OrderedCollection([
-            "toonami_weekday_yu_yu_hakusho_tv",
-            "toonami_weekday_rurouni_kenshin_tv",
-            "toonami_weekday_inuyasha_tv",
-        ]),
-        TOONAMI_NARUTO,
+        TOONAMI_DBZ,
+        TOONAMI_ROTATION,
+        TOONAMI_FILLER_SHOWS,
     ],
     intro=branding.BRANDING_TOONAMI.intro,
     outro=branding.BRANDING_TOONAMI.outro,
@@ -542,17 +693,6 @@ TOONAMI_EARLY = Block(
     fill_strategy="fill",
     filler="toonami_bumpers",
     use_epg_group=False
-)
-
-TOONAMI_POWER_HOUR = Block(
-    name="Toonami",
-    items=[TOONAMI_DBZ_POWER_HOUR],
-    intro=branding.BRANDING_TOONAMI.intro,
-    outro=branding.BRANDING_TOONAMI.outro,
-    bumpers=branding.BRANDING_TOONAMI.bumpers,
-    fill_strategy="fill",
-    filler="toonami_bumpers",
-    use_epg_group=False,
 )
 
 # --- The Saturday appointment -----------------------------------------------
@@ -612,7 +752,7 @@ TOONAMI_SATURDAY = Block(
 TOONAMI_SATURDAY_VAULT = Block(
     name="Toonami",
     items=OrderedCollection([
-        _with_bumpers("toonami_saturday_samurai_jack_tv", "toonami_samurai_jack_bumpers"),
+        _with_bumpers("cn_weekend_samurai_jack_tv", "toonami_samurai_jack_bumpers"),
         "toonami_saturday_sailor_moon_tv",
         _with_bumpers("toonami_saturday_inuyasha_tv", "toonami_inuyasha_bumpers"),
         "toonami_saturday_batman_beyond_tv",
@@ -744,9 +884,9 @@ ATTACK_ON_TITAN_JUNIOR_HIGH = _with_bumpers(annual_show(
 # in a Saturday-only slot; the same trick here is a Friday-only variant. See
 # reference/next-session.md on the Good Times version of this bug.
 _MIDNIGHT_RUN_TAIL = [
-    _with_bumpers({"title": "Cowboy Bebop", "order": "Chronological"},
+    _with_bumpers(_episodes("Cowboy Bebop", "Chronological"),
                   "toonami_cowboy_bebop_bumpers"),
-    _with_bumpers({"title": "Space Dandy", "order": "Shuffle"},
+    _with_bumpers(_episodes("Space Dandy", "Shuffle"),
                   "toonami_space_dandy_bumpers"),
 ]
 
@@ -780,14 +920,14 @@ MIDNIGHT_RUN_PREMIERE = Block(
 MIDNIGHT_RUN_LATE = Block(
     name="Adult Swim: The Midnight Run",
     items=RandomCollection([
-        {"title": "Samurai Champloo", "order": "Chronological"},
-        _with_bumpers({"title": "FLCL", "order": "Chronological"}, "toonami_flcl_bumpers"),
-        _with_bumpers({"title": "Neon Genesis Evangelion", "order": "Chronological"},
+        _episodes("Samurai Champloo", "Chronological"),
+        _with_bumpers(_episodes("FLCL", "Chronological"), "toonami_flcl_bumpers"),
+        _with_bumpers(_episodes("Neon Genesis Evangelion", "Chronological"),
                       "toonami_neon_genesis_evangelion_bumpers"),
-        _with_bumpers({"title": "Fullmetal Alchemist Brotherhood", "order": "Chronological"},
+        _with_bumpers(_episodes("Fullmetal Alchemist Brotherhood", "Chronological"),
                       "toonami_fullmetal_alchemist_brotherhood_bumpers"),
-        {"title": "Death Note", "order": "Chronological"},
-        {"title": "Primal", "order": "Chronological"},
+        _episodes("Death Note", "Chronological"),
+        _episodes("Primal", "Chronological"),
     ]),
     intro=branding.BRANDING_ADULT_SWIM.intro,
     bumpers=branding.BRANDING_ADULT_SWIM.bumpers,
@@ -893,12 +1033,12 @@ CN_MIDDAY_BLOCK = SeasonalBlock(
     }
 )
 
-# Spring leans Marvel, as it did before the restructure -- the swap has moved
-# with the action hour, from 08:00 to 14:00 and now to 12:00.
-CN_AFTERNOON_BLOCK = SeasonalBlock(
-    base=ACTION_HOUR,
+# Weekdays at noon. Spring adds the Turtles, as it has since before the
+# restructure.
+CN_NOON_BLOCK = SeasonalBlock(
+    base=MARVEL_HOUR,
     seasonal={
-        "SPRING": Swap(MARVEL_HOUR)
+        "SPRING": Swap(MARVEL_SPRING_HOUR)
     }
 )
 

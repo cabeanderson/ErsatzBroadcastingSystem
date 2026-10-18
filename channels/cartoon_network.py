@@ -13,11 +13,11 @@ Schedule shape, weekdays:
 - Early        (06-08): The Vault
 - Morning      (08-10): Cartoon Cartoons
 - Midday       (10-12): Syndication Hour -- CN's own shows in summer
-- Noon         (12-14): Action Hour, Marvel-led in spring
-- Afternoon    (14-15): The Scooby Block
-- After school (15-17): TOONAMI
-- Power hour   (17-18): two chronological Dragon Ball Z episodes
-- Evening      (18-19): Cartoon Network
+- Noon         (12-13): Marvel Action Hour -- X-Men, Spider-Man, SWAT Kats
+- Afternoon    (13-14): The Scooby Block
+- After school (14-16): Action Hour, the DC animated universe
+- Toonami      (16-18): Dragon Ball, two Dragon Ball Z, one rotating show, filler
+- Evening      (18-19): Cartoon Network, the prime rotation
 - FOX access   (19-~19:40): Simpsons plus one companion
 - Prime        (~19:40-22): Cartoon Network -- CCF from 20:00 Friday
 - Late prime   (22-23): Adult Swim, the originals
@@ -26,11 +26,13 @@ Schedule shape, weekdays:
 
 Saturday runs oldest to newest and then into the action: the classic shorts at
 06:00, Cartoon Cartoons at 08:00, the modern shows at 10:00, the syndication
-package 12:00-15:00, Action Hour 15:00-18:00, then five hours of Toonami. The
+package 12:00-14:00, Action Hour 14:00-18:00 (or, one Saturday in twenty, a
+Cartoon Theatre TV movie from 16:00), then five hours of Toonami. The
 Toonami Midnight Run takes the Saturday-night overnight.
 
-Sunday: the vault, oldies only through 09:00, Cartoon Cartoons, a film at
-10:00, the modern shows, syndication, Action Hour, and FOX Primetime at 19:00.
+Sunday: the vault, oldies only through 09:00, Cartoon Cartoons, a Cartoon
+Theatre double feature at 10:00 and 12:00, the modern shows, syndication,
+Action Hour, and FOX Primetime at 19:00.
 
 Daytime blocks group seven- and eleven-minute segments into programme-length
 picks and carry enough shows to avoid cycling repeatedly inside one window.
@@ -58,6 +60,7 @@ from scripts.logic import triggers
 
 # Framework - Content
 from scripts.library import animation, common
+from scripts.core import build_mode
 from scripts.core.logger import ChannelLogger
 
 # ==============================================================================
@@ -76,8 +79,8 @@ from scripts.core.logger import ChannelLogger
 #
 # Nick and Disney carry their own maps for the same reason.
 #
-# Toonami begins at 15:00, where it belongs historically. Its final hour is a
-# separate DBZ power hour so that exactly two episodes can be guaranteed.
+# Toonami is 16:00-18:00, where it began in March 1997, one block with Dragon
+# Ball Z's two episodes inside it (moved from 15:00-18:00 on 2026-10-18).
 CARTOON_NETWORK_TIMESLOTS = {
     "after_hours":  (0, 2),
     "overnight":    (2, 6),
@@ -85,10 +88,10 @@ CARTOON_NETWORK_TIMESLOTS = {
     "morning":      (8, 9),
     "late_morning": (9, 10),
     "midday":       (10, 12),
-    "noon":         (12, 14),
-    "afternoon":    (14, 15),
-    "after_school": (15, 17),
-    "power_hour":   (17, 18),
+    "noon":         (12, 13),
+    "afternoon":    (13, 14),
+    "after_school": (14, 16),
+    "toonami":      (16, 18),
     "early_evening": (18, 19),
     "access":       (19, 20),
     "prime":        (20, 22),
@@ -204,14 +207,17 @@ MIDDAY_BLOCK = {
     "default": animation.CN_MIDDAY_BLOCK,
 }
 
+# 12:00-13:00. Weekdays, Marvel and SWAT Kats; the DC shows are at 14:00.
+# Sunday, the second half of the Cartoon Theatre double feature, which took
+# this hour from a second airing of Cartoon Cartoons.
 NOON_BLOCK = {
     "SATURDAY": animation.SYNDICATION_HOUR,
-    "SUNDAY": animation.CARTOON_CARTOONS_WEEKEND,
-    "default": animation.CN_AFTERNOON_BLOCK,
+    "SUNDAY": animation.CARTOON_THEATRE_SECOND,
+    "default": animation.CN_NOON_BLOCK,
 }
 
-# 14:00-15:00. On Saturday this is the third hour of the syndication package:
-# the same collection continues where 12:00 stopped, so the three hours are
+# 13:00-14:00. On Saturday this is the second hour of the syndication package:
+# the same collection continues where 12:00 stopped, so the two hours are
 # eight different shows.
 AFTERNOON_BLOCK = {
     "SATURDAY": animation.SYNDICATION_HOUR,
@@ -219,25 +225,30 @@ AFTERNOON_BLOCK = {
     "default": animation.THE_SCOOBY_BLOCK,
 }
 
-# 15:00-17:00. Saturday has the only ordinary random film opportunity: about
-# five percent of Saturdays, Cartoon Theatre replaces these two action hours.
+# 14:00-16:00. Weekdays, Action Hour: Batman, Superman, Justice League and
+# Batman Beyond, leading into Toonami, where Cartoon Network had them
+# (operator, 2026-10-18). Saturday starts its four action hours here; Sunday
+# gets the syndication package's two.
 AFTER_SCHOOL_BLOCK = {
-    "SATURDAY": animation.WEEKEND_ACTION_OR_MOVIE,
+    "SATURDAY": animation.ACTION_HOUR,
     "SUNDAY": animation.SYNDICATION_HOUR,
-    "default": animation.TOONAMI_EARLY,
+    "default": animation.DC_ACTION_HOUR,
 }
 
-# 17:00-18:00. DBZ gets two consecutive chronological episodes every weekday.
-POWER_HOUR_BLOCK = {
-    "SATURDAY": animation.ACTION_HOUR,
+# 16:00-18:00. Saturday has the only ordinary random film opportunity: about
+# five percent of Saturdays, a Cartoon Theatre TV movie replaces Action Hour's last two
+# hours.
+TOONAMI_BLOCK = {
+    "SATURDAY": animation.WEEKEND_ACTION_OR_MOVIE,
     "SUNDAY": animation.ACTION_HOUR,
-    "default": animation.TOONAMI_POWER_HOUR,
+    "default": animation.TOONAMI,
 }
 
 EARLY_EVENING_BLOCK = {
     "SATURDAY": animation.TOONAMI_SATURDAY,
     "SUNDAY": animation.ACTION_HOUR,
-    **animation.CN_EARLY_EVENING,
+    "FRIDAY": animation.CN_FRIDAY_EARLY_EVENING,
+    "default": animation.CN_EARLY_EVENING,
 }
 
 # 19:00. Weekdays always play exactly Simpsons plus one companion, then bridge
@@ -303,7 +314,7 @@ HALLOWEEN_SCHEDULE = {
     "noon":      animation.CN_HALLOWEEN,
     "afternoon": animation.CN_HALLOWEEN,
     "after_school": animation.CN_HALLOWEEN,
-    "power_hour": animation.CN_HALLOWEEN,
+    "toonami":   animation.CN_HALLOWEEN,
     "early_evening": animation.CN_HALLOWEEN,
     "access":    animation.CN_HALLOWEEN,
     "prime":     common.HALLOWEEN_TV_EVENT,
@@ -321,7 +332,7 @@ CHRISTMAS_SCHEDULE = {
     "noon":      common.CHRISTMAS_TV_EVENT,
     "afternoon": common.CHRISTMAS_TV_EVENT,
     "after_school": common.CHRISTMAS_TV_EVENT,
-    "power_hour": common.CHRISTMAS_TV_EVENT,
+    "toonami":   common.CHRISTMAS_TV_EVENT,
     "early_evening": common.CHRISTMAS_TV_EVENT,
     "access":    common.CHRISTMAS_TV_EVENT,
     "prime":     "christmas_animated_movie",
@@ -349,7 +360,7 @@ DAILY_SCHEDULE = {
     "noon":      NOON_BLOCK,
     "afternoon": AFTERNOON_BLOCK,
     "after_school": AFTER_SCHOOL_BLOCK,
-    "power_hour": POWER_HOUR_BLOCK,
+    "toonami":   TOONAMI_BLOCK,
     "early_evening": EARLY_EVENING_BLOCK,
     "access":    ACCESS_BLOCK,
     "prime":     PRIME_BLOCK,
@@ -376,6 +387,9 @@ def define_content(api, context, build_id):
 
 def reset_playout(api, context, build_id):
     """Reset playout to midnight with rewind."""
+    # The weekend, Sunday FOX and Saturday Toonami feeds open partway into
+    # their shows after a reset. See core/build_mode.py.
+    build_mode.mark_reset(build_id)
     return api.wait_until(build_id, ControlWaitUntil(
         when="00:00",
         tomorrow=False,

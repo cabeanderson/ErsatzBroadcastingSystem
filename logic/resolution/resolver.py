@@ -10,8 +10,9 @@ from typing import Any, Dict, Optional, Set, Union
 import re
 import hashlib
 from scripts.library.queries import show_by_title
+from scripts.core import build_mode
 from scripts.core.identity import stable_hash
-from etv_client.models import ContentSearch, ContentPlaylist
+from etv_client.models import ContentSearch, ContentPlaylist, ControlSkipToItem
 from scripts.core.logger import ChannelLogger
 from scripts.logic.models import MarathonDefinition
 from scripts.logic.models import ContentItem
@@ -129,6 +130,15 @@ class ContentResolver:
             self.logger.info(f"Registering TEST key '{key}' with order: '{order}'")
         self.api.add_search(self.build_id, ContentSearch(key=key, query=query, order=order))
         self.active_keys.add(key)
+
+        # A reset rewinds every key to its first episode; a feed with a start
+        # point is moved to it once, here, and carries on from there in every
+        # later build. Registration happens once per key per build.
+        start = data.get("start") if isinstance(data, dict) else None
+        if start and build_mode.is_reset(self.build_id):
+            season, episode = start
+            self.api.skip_to_item(self.build_id, ControlSkipToItem(content=key, season=season, episode=episode))
+            self.logger.info(f"Reset: '{key}' starts at S{season:02d}E{episode:02d}")
 
     def resolve(self, target: Any, boss: Optional[Any] = None) -> str: # boss: DayDirector
         key = self._get_key_from_target(target, boss)
