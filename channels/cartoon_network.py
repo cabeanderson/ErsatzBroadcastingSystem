@@ -18,7 +18,7 @@ Schedule shape, weekdays:
 - After school (14-16): Action Hour, the DC animated universe
 - Toonami      (16-18): Dragon Ball, two Dragon Ball Z, one rotating show, filler
 - Evening      (18-19): Cartoon Network, the prime rotation
-- FOX access   (19-~19:40): Simpsons plus one companion
+- FOX access   (19-20): Simpsons, one companion, Futurama if there's room
 - Prime        (~19:40-22): Cartoon Network -- CCF from 20:00 Friday
 - Late prime   (22-23): Adult Swim, the originals
 - Night        (23-24): The Midnight Run -- its premiere hour on Friday
@@ -251,8 +251,8 @@ EARLY_EVENING_BLOCK = {
     "default": animation.CN_EARLY_EVENING,
 }
 
-# 19:00. Weekdays always play exactly Simpsons plus one companion, then bridge
-# into the 20:00 CN block as soon as those two episodes finish. Sunday begins
+# 19:00. Weekdays play Simpsons plus one companion, then Futurama (King of the
+# Hill on Tuesday) if there is room before 20:00. Sunday begins
 # its full FOX night; Saturday continues Toonami.
 ACCESS_BLOCK = {
     "SATURDAY": animation.TOONAMI_SATURDAY,

@@ -291,11 +291,6 @@ class Block:
     use_epg_group: bool = False
     fill_strategy: str = "yield" # "fill", "yield", "gap", "bridge"
     strict_window: bool = True # If False, allows content to overflow timeslot
-    # Minutes before the slot ends after which no new item starts; the fill
-    # strategy then covers the rest. For a rotation ahead of a hard start, so
-    # its last pick cannot begin a minute before the boundary and run twenty
-    # past it. 0 starts items right up to the boundary.
-    last_start_minutes: int = 0
     filler: Optional[Any] = None
     # Feature Overrides
     enable_commercials: Optional[bool] = None

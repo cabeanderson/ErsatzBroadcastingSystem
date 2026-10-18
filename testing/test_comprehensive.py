@@ -5,7 +5,7 @@ Validates imports, registry integrity, schedule references, and core logic.
 """
 
 import unittest
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from unittest.mock import MagicMock
 
 # Run as a module, not a loose script:
@@ -294,12 +294,14 @@ class TestComprehensive(unittest.TestCase):
         for day, companion in expected_companions.items():
             block = animation.FOX_WEEKDAY[day]
             self.assertEqual(
-                block.items,
+                block.items[:2],
                 ["fox_weekday_simpsons_tv", companion],
                 f"{day} FOX access must be Simpsons plus one companion",
             )
+            # Then one FOX filler show, never the companion again.
+            self.assertEqual(len(block.items), 3)
+            self.assertNotEqual(block.items[2], companion)
             self.assertEqual(block.fill_strategy, "bridge")
-            self.assertFalse(block.strict_window)
             self.assertFalse(block.use_epg_group)
 
         self.assertIs(animation.CN_EARLY_EVENING.items, animation.CN_PRIME.items,
@@ -382,10 +384,11 @@ class TestComprehensive(unittest.TestCase):
             content = [e for e in schedule if e["type"] == "content"]
             fox = [e for e in content
                    if str(e["content"]).startswith("fox_")]
-            self.assertEqual(len(fox), 2)
-            self.assertEqual((fox[0]["time"].hour, fox[0]["time"].minute), (19, 0),
-                             "18:00 must not start a pick that runs past 19:00")
+            # Simpsons and the companion always; the filler when it fits.
+            self.assertIn(len(fox), (2, 3))
             self.assertIn("simpsons", fox[0]["content"])
+            # A late start is fine (operator, 2026-10-18); an hour late is not.
+            self.assertEqual(fox[0]["time"].hour, 19)
 
             # Episodes only: the DBZ bumper set also has the name in it.
             dbz = [e for e in content
@@ -394,15 +397,22 @@ class TestComprehensive(unittest.TestCase):
                    and 16 <= e["time"].hour < 18]
             self.assertEqual(len(dbz), 2)
 
+            # No dead air from 18:00 to 21:00: each item starts when the one
+            # before it ends.
+            timed = [e for e in content if "duration" in e
+                     and 18 <= e["time"].hour < 21]
+            for before, after in zip(timed, timed[1:]):
+                ends = before["time"] + timedelta(minutes=before["duration"])
+                self.assertLess((after["time"] - ends).total_seconds(), 60,
+                                f"dead air {ends:%H:%M}-{after['time']:%H:%M}")
+
             cn_after_fox = [e for e in content
                             if str(e["content"]).startswith("cn_")
                             and e["time"] >= fox[-1]["time"]]
-            self.assertTrue(any(e["time"].hour == 19 for e in cn_after_fox),
-                            "CN must bridge the unused tail after the FOX pair")
             self.assertTrue(any(e["time"].hour >= 20 for e in cn_after_fox),
-                            "The scheduled CN prime block must still run after the bridge")
+                            "The scheduled CN prime block must still run after FOX")
 
-        print("✅ Weekday playout holds FOX at 19:00 and resumes CN correctly.")
+        print("✅ Weekday playout keeps FOX in the 19:00 hour with no dead air.")
 
 if __name__ == "__main__":
     unittest.main()

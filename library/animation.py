@@ -159,26 +159,26 @@ SATURDAY_MORNING = Block(
     use_epg_group=False
 )
 
-# 08:00-09:00 Sunday. One of three finite two-show bills rotates by date, then
-# waits at the boundary. That keeps a little Scooby, Popeye and Fleischer
-# Superman without allowing the oldies to spill into the 09:00 CN hour.
+# 08:00-09:00 Sunday. One of three finite two-show bills rotates by date, and
+# when it finishes the 09:00 Cartoon Cartoons hour starts early. A bill is
+# 31-47 minutes, and waiting for 09:00 was up to half an hour of dead air.
 SUNDAY_MORNING = OrderedCollection([
     Block(
         name="Sunday Morning Cartoons",
         items=["cn_sunday_scooby_where_tv", _half_hour("cn_sunday_popeye_tv", 2)],
-        fill_strategy="gap",
+        fill_strategy="bridge",
         use_epg_group=False,
     ),
     Block(
         name="Sunday Morning Cartoons",
         items=["cn_sunday_scooby_show_tv", _half_hour("cn_sunday_superman_tv", 2)],
-        fill_strategy="gap",
+        fill_strategy="bridge",
         use_epg_group=False,
     ),
     Block(
         name="Sunday Morning Cartoons",
         items=["cn_sunday_whats_new_scooby_tv", "cn_sunday_flintstones_tv"],
-        fill_strategy="gap",
+        fill_strategy="bridge",
         use_epg_group=False,
     ),
 ])
@@ -301,19 +301,14 @@ CN_PRIME = Block(
 # per weekday, drawn from the same shows as prime but outside its rotation:
 # Monday's pair was Dexter and Adventure Time, and prime then opened wherever
 # its own rotation stood, so Adventure Time aired at 18:21 and again at 19:45
-# with two shows between. Sharing the rotation closes that.
-#
-# No pick starts after 18:38. The longest is 22 minutes (Samurai Jack, or two
-# eleven-minute segments), so the hour ends by 19:00 and waits for FOX. A
-# rotation never runs out the way the pairs did, and without the cutoff its
-# last pick started at 18:59 and put the Simpsons at 19:21.
-_EARLY_EVENING_LAST_START = 22
+# with two shows between. Sharing the rotation closes that. The last pick may
+# run past 19:00 and the FOX pair starts when it ends: a few minutes late is
+# fine, dead air is not (operator, 2026-10-18).
 
 CN_EARLY_EVENING = Block(
     name="Cartoon Network",
     items=_CN_PRIME_ROTATION,
     fill_strategy="gap",
-    last_start_minutes=_EARLY_EVENING_LAST_START,
     use_epg_group=False,
 )
 
@@ -330,7 +325,6 @@ CN_FRIDAY_EARLY_EVENING = Block(
         _half_hour("cn_prime_over_the_garden_wall_tv", 2),
     ]),
     fill_strategy="gap",
-    last_start_minutes=_EARLY_EVENING_LAST_START,
     use_epg_group=False,
 )
 
@@ -984,22 +978,29 @@ AS_LATE = Block(
 # 7. FOX PRIMETIME
 # ==============================================================================
 
-def _fox_access(companion):
-    """Exactly two episodes, then hand the unused part of 19:00 to CN prime."""
+def _fox_access(companion, filler="fox_weekday_futurama_tv"):
+    """Simpsons and one companion, then a FOX filler show if 19:00 has room.
+
+    The filler starts only before 20:00, so it plays when the pair finishes
+    early and is skipped when a late 18:00 hour has pushed the pair back. It
+    used to be Cartoon Network prime bridged in to the top of the hour; a FOX
+    show keeps the hour FOX's (operator, 2026-10-18). Starting a few minutes
+    late is fine, dead air is not, so nothing here waits for a clock time: if
+    the filler ends before 20:00, prime is bridged in for the rest.
+    """
     return Block(
         name="FOX Primetime",
-        items=["fox_weekday_simpsons_tv", companion],
+        items=["fox_weekday_simpsons_tv", companion, filler],
         fill_strategy="bridge",
-        # If an earlier show overruns 19:00, still play both promised episodes;
-        # the access block is defined by its two shows, not by padding an hour.
-        strict_window=False,
         use_epg_group=False,
     )
 
 
+# Futurama fills, except on Tuesday, where it is the companion: King of the
+# Hill fills instead of a second Futurama in a row.
 FOX_WEEKDAY = {
     "MONDAY": _fox_access("fox_weekday_king_of_the_hill_tv"),
-    "TUESDAY": _fox_access("fox_weekday_futurama_tv"),
+    "TUESDAY": _fox_access("fox_weekday_futurama_tv", filler="fox_weekday_king_of_the_hill_tv"),
     "WEDNESDAY": _fox_access("fox_weekday_family_guy_tv"),
     "THURSDAY": _fox_access("fox_weekday_american_dad_tv"),
     "FRIDAY": _fox_access("fox_weekday_bobs_burgers_tv"),
