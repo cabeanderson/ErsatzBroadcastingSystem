@@ -526,10 +526,18 @@ def _apply_schedule_looping(current_date: date, season_windows: List[Tuple[date,
             # reason: a 45-day cycle walks the run through the week and the
             # gate drops its first slot. The run pauses for the few spare
             # days instead, which the `reruns` bed covers.
+            #
+            # The lap is counted from the run's first day, not its last. Counting
+            # from `last_end_date` started every lap the day after the finale,
+            # which is a whole number of weeks from the premiere only by luck:
+            # the weekday Dragon Ball strip opened on a Tuesday and finished on
+            # a Thursday, so its second lap mapped Tuesday onto Saturday and
+            # Wednesday onto Sunday, neither of which advances the episode index,
+            # and it aired episode 5 three days running. Rounding the cycle only
+            # fixed its length; the phase has to come from the premiere too.
             if isinstance(frequency, list) and cycle_length_days % 7:
                 cycle_length_days += 7 - (cycle_length_days % 7)
-            days_past_end: int = (current_date - last_end_date).days
-            days_into_cycle: int = days_past_end % cycle_length_days
+            days_into_cycle: int = (current_date - first_start_date).days % cycle_length_days
             current_date = first_start_date + timedelta(days=days_into_cycle)
             if current_date >= last_end_date: return None
 

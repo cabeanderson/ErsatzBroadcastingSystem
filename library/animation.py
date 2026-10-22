@@ -643,10 +643,16 @@ _WEEKDAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
 # Per-season registry keys, not show_title="Dragon Ball": that phrase also
 # matches Z, GT, Super and DAIMA, and the strip was airing GT. Season counts
 # are the library's six.
+#
+# Episode 6 on Friday 2026-10-23 (operator, 2026-10-22), which puts episode 1
+# on Friday 10-16. Episode 5 had aired three days running by then, from the
+# loop-phase bug fixed in `_apply_schedule_looping`; the strip picks up from
+# there instead of starting over. The finale airs Tuesday 2027-05-18, the
+# rerun bed takes Wednesday and Thursday, and episode 1 returns on Friday.
 TOONAMI_DRAGON_BALL = annual_show(
     content_pattern="toonami_dragon_ball_s{n}_tv",
     episodes_per_season=[13, 15, 40, 33, 31, 21],
-    start_date=date(2026, 3, 17), frequency=_WEEKDAYS,
+    start_date=date(2026, 10, 16), frequency=_WEEKDAYS,
     reruns="toonami_vault_tv", loop=True, loop_restart_season=False)
 
 # Two consecutive episodes every weekday, from episode one on Monday

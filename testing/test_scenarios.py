@@ -975,6 +975,37 @@ class TestFrequencyGatesTheAiring(unittest.TestCase):
                                  f"strip went dark on {day}")
         print("✅ a contiguous strip loops instead of waiting for autumn")
 
+    def test_a_looped_strip_advances_one_episode_a_day(self):
+        """
+        Each lap was counted from the day after the finale. The weekday Dragon
+        Ball strip opened on a Tuesday and finished on a Thursday, so its second
+        lap mapped Tuesday and Wednesday onto Saturday and Sunday, neither of
+        which advances the index: episode 5 aired Tuesday, Wednesday and
+        Thursday, 2026-10-20 to 22. The lap now counts from the premiere.
+        """
+        from scripts.logic.factories import annual_show
+        from scripts.logic.resolution.pipeline import resolve_scheduled_content
+        weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+        strip = annual_show(
+            episodes_per_season=[13, 15, 40, 33, 31, 21], show_title="Some Strip",
+            start_date=date(2026, 3, 17), frequency=weekdays,
+            reruns="toonami_vault_tv", loop=True, loop_restart_season=False)
+
+        # Laps two and three. A day on the rerun bed between laps is fine; the
+        # same episode twice, or one skipped, is not.
+        aired = []
+        day = date(2026, 10, 16)
+        while day < date(2027, 12, 31):
+            if day.weekday() < 5:
+                hit = resolve_scheduled_content(strip, day)
+                if hit:
+                    aired.append((day, hit))
+            day += timedelta(days=1)
+        for (d1, (k1, _, e1)), (d2, (k2, _, e2)) in zip(aired, aired[1:]):
+            if k1 == k2:
+                self.assertEqual(e2, e1 + 1, f"{k1}: episode {e1} on {d1}, then {e2} on {d2}")
+        print("✅ a looped strip advances one episode a day")
+
 
 class TestLogCaptureAcrossDays(unittest.TestCase):
     """
